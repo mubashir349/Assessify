@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Register your Institution — AssessAI Aptitude</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/css/theme.css" />
+<link rel="stylesheet" href="../assets/css/auth.css" />
+<link rel="stylesheet" href="../assets/css/institution-signup.css" />
+</head>
+<body class="mesh-bg">
+  <div class="blob-field"></div>
+  <a href="../index.html" class="back-link">← Back to AssessAI</a>
+
+  <div class="signup-wrap">
+    <form class="signup-card glass fade-up" id="signupForm" novalidate>
+
+      <div class="signup-brand">
+        <div class="mark">Σ</div>
+        <div><b>AssessAI</b><span>APTITUDE PORTAL</span></div>
+      </div>
+
+      <h1>Register your Institution</h1>
+      <p class="lead">
+        Set up your university or institute on AssessAI's Aptitude Test Portal — add your
+        fields of study, then generate and run large-scale aptitude tests with roster-based
+        access and fullscreen integrity locking.
+      </p>
+
+      <div class="auth-err" id="signupErr"></div>
+      <div class="auth-ok" id="signupOk">Institution registered — redirecting you to sign in…</div>
+
+      <!-- Section 1: Institution details -->
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="n">1</span>
+          <div><h2>Institution details</h2><p>This appears on candidate logins and reports</p></div>
+        </div>
+
+        <div class="a-field">
+          <label for="instName">Institution name</label>
+          <input class="a-input" id="instName" placeholder="e.g. NED University of Engineering &amp; Technology" required />
+        </div>
+
+        <div class="signup-grid" style="margin-bottom:14px;">
+          <div class="a-field">
+            <label for="instType">Institution type</label>
+            <select class="a-select" id="instType" required>
+              <option value="" disabled selected>Select type</option>
+              <option>University</option>
+              <option>College</option>
+              <option>Institute</option>
+              <option>Training Center</option>
+            </select>
+          </div>
+          <div class="a-field">
+            <label for="instCity">City / Location</label>
+            <input class="a-input" id="instCity" placeholder="e.g. Karachi, Pakistan" required />
+          </div>
+        </div>
+
+        <div class="a-field">
+          <label for="instSite">Official website <span class="hint">(optional)</span></label>
+          <input class="a-input" id="instSite" type="url" placeholder="https://www.your-institution.edu" />
+        </div>
+      </div>
+
+      <!-- Section 2: Primary admin -->
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="n">2</span>
+          <div><h2>Primary Admin</h2><p>This person gets the first Institution Admin account</p></div>
+        </div>
+
+        <div class="signup-grid" style="margin-bottom:14px;">
+          <div class="a-field">
+            <label for="adminName">Full name</label>
+            <input class="a-input" id="adminName" placeholder="e.g. Dr. Ayesha Khan" required />
+          </div>
+          <div class="a-field">
+            <label for="adminEmail">Work email</label>
+            <input class="a-input" id="adminEmail" type="email" placeholder="admissions@your-institution.edu" required />
+          </div>
+        </div>
+
+        <div class="signup-grid">
+          <div class="a-field">
+            <label for="adminPhone">Phone</label>
+            <input class="a-input" id="adminPhone" type="tel" placeholder="e.g. 0300 1234567" required />
+          </div>
+          <div class="a-field">
+            <label for="adminRole">Designation</label>
+            <input class="a-input" id="adminRole" placeholder="e.g. Registrar, Dean of Admissions" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Fields & Departments -->
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="n">3</span>
+          <div><h2>Fields &amp; Departments</h2><p>What will you be testing candidates in?</p></div>
+        </div>
+
+        <div class="a-field">
+          <label for="deptEntry">Add a field of study, then press Enter</label>
+          <div class="chip-input-box" id="deptBox">
+            <input id="deptEntry" placeholder="e.g. Pre-Engineering" />
+          </div>
+          <div class="chip-suggest" id="deptSuggest">
+            <button type="button" data-dept="Pre-Engineering">+ Pre-Engineering</button>
+            <button type="button" data-dept="Pre-Medical">+ Pre-Medical</button>
+            <button type="button" data-dept="Computer Science">+ Computer Science</button>
+            <button type="button" data-dept="Commerce">+ Commerce</button>
+          </div>
+          <p class="dept-count"><b id="deptCount">0</b> field(s) added — you can rename these, add subjects, and add more anytime from Fields &amp; Subjects after logging in.</p>
+        </div>
+      </div>
+
+      <!-- Section 4: Security -->
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="n">4</span>
+          <div><h2>Security</h2><p>For the primary Admin's sign-in</p></div>
+        </div>
+
+        <div class="signup-grid">
+          <div class="a-field">
+            <label for="pw1">Password</label>
+            <input class="a-input" id="pw1" type="password" placeholder="••••••••" required />
+          </div>
+          <div class="a-field">
+            <label for="pw2">Confirm password</label>
+            <input class="a-input" id="pw2" type="password" placeholder="••••••••" required />
+          </div>
+        </div>
+      </div>
+
+      <div class="chk-row" style="margin-bottom:22px;">
+        <input type="checkbox" id="terms" required />
+        <label for="terms">I confirm I'm authorised to register this institution, and agree to AssessAI's <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a>.</label>
+      </div>
+
+      <button type="submit" class="btn btn-amber" style="width:100%;">Create Institution Account →</button>
+
+      <p class="auth-foot">Already registered? <a href="institution-login.html">Sign in</a></p>
+    </form>
+  </div>
+
+  <script src="../assets/js/main.js"></script>
+  <script src="../assets/js/institution-signup.js"></script>
+</body>
+</html>

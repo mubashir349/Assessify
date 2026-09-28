@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reports — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+</head>
+<body data-page="reports" data-title="Reports" data-sub="Aggregate-only — no per-candidate analytics in Institution mode">
+
+<template id="a-content-template">
+
+  <div class="a-card" style="margin-bottom:20px;">
+    <div class="section-head">
+      <div><h2>Commerce Placement Test — Batch 12</h2><p>Completed Sep 18, 2026 · 234 candidates</p></div>
+      <button class="a-btn a-btn-amber" onclick="aToast('Aggregate PDF downloaded.')">Export PDF ⬇</button>
+    </div>
+    <div class="a-grid a-grid-3">
+      <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Highest score</div><div class="num" style="color:var(--success);">92 / 100</div></div>
+      <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Lowest score</div><div class="num" style="color:#f87171;">18 / 100</div></div>
+      <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Average score</div><div class="num">61.4 / 100</div></div>
+    </div>
+    <p class="muted" style="margin-top:14px;font-size:11.5px;">No individual candidate names, scores, or answers are included — aggregate figures only, by design.</p>
+  </div>
+
+  <div class="a-card" style="margin-bottom:20px;">
+    <div class="section-head">
+      <div><h2>Result-release email log</h2><p>Scheduled batch — sent Sep 19, 2026</p></div>
+      <span class="badge badge-approved">1,190 / 1,190 sent</span>
+    </div>
+    <div class="a-table-wrap">
+      <table class="a-table">
+        <thead><tr><th>Roll No.</th><th>Name</th><th>Email</th><th>Outcome</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">PE-2026-014</td><td class="name">Ahmed Raza</td><td>ahmed.raza@mail.com</td><td><span class="badge badge-approved">Sent</span></td></tr>
+          <tr><td class="mono">PM-2026-091</td><td class="name">Sana Fatima</td><td>sana.fatima@mail.com</td><td><span class="badge badge-approved">Sent</span></td></tr>
+          <tr><td class="mono">CS-2026-208</td><td class="name">Bilal Hussain</td><td>bilal.h@mail.com</td><td><span class="badge badge-locked">Failed — bounced</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="a-card">
+    <div class="section-head"><div><h2>Past tests</h2></div></div>
+    <div class="a-table-wrap">
+      <table class="a-table">
+        <thead><tr><th>Test</th><th>Fields</th><th>Date</th><th>Candidates</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="name">Spring Intake Aptitude Test</td><td>Pre-Eng, CS</td><td class="mono">Mar 2, 2026</td><td>612</td><td><button class="a-btn a-btn-ghost a-btn-sm">Export PDF</button></td></tr>
+          <tr><td class="name">Commerce Placement Test — Batch 11</td><td>Commerce</td><td class="mono">Jan 14, 2026</td><td>198</td><td><button class="a-btn a-btn-ghost a-btn-sm">Export PDF</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</template>
+
+<script src="../../assets/js/admin-shell.js"></script>
+</body>
+</html>

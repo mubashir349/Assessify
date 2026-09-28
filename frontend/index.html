@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AssessAI — AI-Powered Assessment &amp; Learning Platform</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="assets/css/theme.css" />
+<link rel="stylesheet" href="assets/css/gateway.css" />
+</head>
+<body class="mesh-bg">
+
+  <div class="blob-field"></div>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="wrap nav-inner">
+      <div class="brand">
+        <div class="brand-mark">Σ</div>
+        <span class="brand-name">AssessAI</span>
+      </div>
+      <div class="eyebrow" style="display:none" id="nav-hint"></div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero wrap">
+    <span class="eyebrow"><span class="dot"></span>AI-Powered Assessment &amp; Learning Platform</span>
+    <h1>One platform.<br /><span class="grad">Two ways in.</span></h1>
+    <p class="sub">
+      The same AI question-generation and review engine powers two experiences:
+      everyday classroom assessment for teachers and students, and large-scale,
+      field-specific aptitude testing for partner institutions. Choose where you're headed.
+    </p>
+  </header>
+
+  <!-- Doors -->
+  <main class="wrap">
+    <section class="doors" aria-label="Choose your portal">
+
+      <!-- Door 1: Course Platform -->
+      <article class="door door-course glass hover-lift fade-up" style="animation-delay:.05s">
+        <div class="door-icon">🎓</div>
+        <span class="door-badge">TEACHERS &amp; STUDENTS</span>
+        <h2>Course Platform</h2>
+        <p class="desc">
+          Generate, review, and publish tests for your own classes. AI drafts —
+          you approve every word before it ever reaches a student.
+        </p>
+        <ul class="door-points">
+          <li><span class="tick">✦</span> AI-drafted question banks, reviewed by you before use</li>
+          <li><span class="tick">✦</span> Weak-topic detection &amp; AI Recommendations for students</li>
+          <li><span class="tick">✦</span> Real-time tab-switch pause, resolved by the teacher</li>
+          <li><span class="tick">✦</span> Private practice directories &amp; performance analytics</li>
+        </ul>
+        <div class="door-actions">
+          <a class="btn btn-primary" href="course-login.html">Continue to Course Platform →</a>
+        </div>
+        <p class="door-foot">New here? <a href="course-signup.html">Create a teacher or student account</a></p>
+      </article>
+
+      <!-- Door 2: Aptitude Test Portal -->
+      <article class="door door-apt glass hover-lift-amber fade-up" style="animation-delay:.15s">
+        <div class="door-icon">📝</div>
+        <span class="door-badge">INSTITUTIONS &amp; CANDIDATES</span>
+        <h2>Aptitude Test Portal</h2>
+        <p class="desc">
+          Large-scale, field-specific aptitude testing for a partner university
+          or institute — roster-based access, fullscreen integrity lock, and
+          aggregate-only reporting.
+        </p>
+        <ul class="door-points">
+          <li><span class="tick">✦</span> Institution-defined fields, subjects &amp; shared subjects</li>
+          <li><span class="tick">✦</span> Roster-based, no-signup candidate access</li>
+          <li><span class="tick">✦</span> Fullscreen lock-on-exit, unlocked only by an Admin</li>
+          <li><span class="tick">✦</span> Live status dashboard &amp; aggregate PDF reporting</li>
+        </ul>
+        <div class="door-actions">
+          <a class="btn btn-amber" href="aptitude/candidate-login.html">Candidate Login</a>
+          <a class="btn btn-ghost" href="aptitude/institution-login.html">Institution Admin</a>
+        </div>
+        <p class="door-foot">New university or institute? <a href="aptitude/institution-register.html">Register your institution →</a></p>
+      </article>
+
+    </section>
+  </main>
+
+  <!-- One engine, two modes -->
+  <section class="engine">
+    <div class="wrap">
+      <div class="engine-head">
+        <span class="eyebrow" style="justify-content:center;margin-bottom:14px;"><span class="dot"></span>How it works</span>
+        <h2>One engine, two modes</h2>
+        <p>Course mode and Aptitude mode share the same generation, review, and sufficiency
+          pipeline underneath — they differ only in who gets in, and how integrity is enforced.</p>
+      </div>
+
+      <div class="pipeline" id="pipeline"></div>
+
+      <p class="split-note">
+        <b>Course mode</b> pauses an attempt on tab-switch and lets the teacher resume or end it.
+        <b>Aptitude mode</b> locks an attempt on fullscreen exit and only an Institution Admin can unlock it —
+        the same underlying engine, tuned to each setting.
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="gw-footer">
+    <div class="wrap gw-footer-inner">
+      <div class="brand">
+        <div class="brand-mark">Σ</div>
+        <span class="brand-name">AssessAI</span>
+      </div>
+      <p>AI-Powered Online Assessment &amp; Personalized Learning Platform — Course Mode &amp; Institution/Aptitude Mode</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/gateway.js"></script>
+</body>
+</html>

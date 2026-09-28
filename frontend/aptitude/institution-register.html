@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Register Your Institution — AssessAI Aptitude</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/css/theme.css" />
+<link rel="stylesheet" href="../assets/css/auth.css" />
+<link rel="stylesheet" href="../assets/css/institution-register.css" />
+</head>
+<body class="mesh-bg">
+  <div class="blob-field"></div>
+  <a href="../index.html" class="back-link">← Back to AssessAI</a>
+
+  <div class="reg-wrap">
+
+    <!-- FORM STATE -->
+    <div id="formState">
+      <div class="reg-head fade-up">
+        <span class="eyebrow" style="justify-content:center;"><span class="dot"></span>Institution Onboarding</span>
+        <h1>Register your institution</h1>
+        <p>Tell us about your institution and the fields you test candidates in. A platform Administrator
+          reviews every application and personally provisions your Institution Admin account — this keeps
+          every institution's data properly isolated from day one.</p>
+      </div>
+
+      <form id="regForm" novalidate>
+
+        <!-- Section 1 -->
+        <div class="a-card glass reg-section fade-up" style="animation-delay:.05s">
+          <div class="reg-section-head">
+            <h2><span class="num">1</span>Institution details</h2>
+            <p>Basic information about your university or institute</p>
+          </div>
+
+          <div class="a-field reg-field-single">
+            <label>Institution name <span class="req">*</span></label>
+            <input class="a-input" id="instName" placeholder="e.g. NED University of Engineering & Technology" required />
+          </div>
+
+          <div class="reg-row2">
+            <div class="a-field">
+              <label>Institution type <span class="req">*</span></label>
+              <select class="a-select" id="instType">
+                <option>University</option>
+                <option>College</option>
+                <option>Training Institute</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="a-field">
+              <label>Website <span class="hint" style="margin:0;">(optional)</span></label>
+              <input class="a-input" id="instWebsite" placeholder="https://your-institution.edu" />
+            </div>
+          </div>
+
+          <div class="reg-row2">
+            <div class="a-field">
+              <label>City <span class="req">*</span></label>
+              <input class="a-input" id="instCity" placeholder="e.g. Karachi" required />
+            </div>
+            <div class="a-field">
+              <label>Country <span class="req">*</span></label>
+              <input class="a-input" id="instCountry" placeholder="e.g. Pakistan" required />
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2 -->
+        <div class="a-card glass reg-section fade-up" style="animation-delay:.1s">
+          <div class="reg-section-head">
+            <h2><span class="num">2</span>Primary contact</h2>
+            <p>This person becomes your institution's first Institution Admin</p>
+          </div>
+
+          <div class="reg-row2">
+            <div class="a-field">
+              <label>Full name <span class="req">*</span></label>
+              <input class="a-input" id="contactName" placeholder="e.g. Dr. Ayesha Khan" required />
+            </div>
+            <div class="a-field">
+              <label>Designation <span class="req">*</span></label>
+              <input class="a-input" id="contactRole" placeholder="e.g. Head of Admissions" required />
+            </div>
+          </div>
+          <div class="reg-row2">
+            <div class="a-field">
+              <label>Official email <span class="req">*</span></label>
+              <input class="a-input" type="email" id="contactEmail" placeholder="admissions@your-institution.edu" required />
+              <span class="hint">Admin login credentials will be sent here once approved.</span>
+            </div>
+            <div class="a-field">
+              <label>Phone number <span class="req">*</span></label>
+              <input class="a-input" type="tel" id="contactPhone" placeholder="e.g. +92 300 1234567" required />
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: dynamic Fields -->
+        <div class="a-card glass reg-section fade-up" style="animation-delay:.15s">
+          <div class="reg-section-head">
+            <h2><span class="num">3</span>Fields of study you'll test</h2>
+            <p>Add one row per field/department — e.g. Pre-Engineering, Pre-Medical, Computer Science, Commerce. You can rename or add more later from your dashboard.</p>
+          </div>
+
+          <div id="fieldRows"></div>
+
+          <button type="button" class="a-btn a-btn-ghost reg-add-btn" id="addFieldBtn">+ Add another field</button>
+        </div>
+
+        <!-- Section 4 -->
+        <div class="a-card glass reg-section fade-up" style="animation-delay:.2s">
+          <div class="reg-section-head">
+            <h2><span class="num">4</span>Testing plan <span class="hint" style="margin:0;font-weight:400;">(optional)</span></h2>
+            <p>Helps us prioritize review if you're on a deadline</p>
+          </div>
+          <div class="reg-row2">
+            <div class="a-field">
+              <label>Target first test date</label>
+              <input class="a-input" type="date" id="targetDate" />
+            </div>
+            <div class="a-field">
+              <label>Estimated total candidates</label>
+              <input class="a-input" type="number" id="estCandidates" placeholder="e.g. 1200" min="1" />
+            </div>
+          </div>
+          <div class="a-field">
+            <label>Anything else we should know?</label>
+            <textarea class="a-textarea" id="notes" placeholder="e.g. we need results released the same week, or we're migrating from a paper-based test..."></textarea>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="a-card glass reg-submit-bar fade-up" style="animation-delay:.25s">
+          <p>By submitting, you agree that this application will be reviewed by a platform Administrator before any account is created. No data is shared with other institutions.</p>
+          <button type="submit" class="btn btn-amber">Submit application →</button>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- CONFIRMATION STATE -->
+    <div class="a-card glass reg-confirm" id="confirmState">
+      <div class="ic">✓</div>
+      <h2>Application received</h2>
+      <p>Thanks — a platform Administrator will review <b id="cfInstName" style="color:#fff;"></b>'s details
+        and provision your Institution Admin account, usually within 2–3 business days. Your login credentials
+        will be emailed to the address below once it's ready.</p>
+      <div class="a-card summary">
+        <div><span>Institution</span><b id="cfInst"></b></div>
+        <div><span>Admin contact</span><b id="cfContact"></b></div>
+        <div><span>Credentials will go to</span><b id="cfEmail"></b></div>
+        <div><span>Fields submitted</span><b id="cfFieldCount"></b></div>
+      </div>
+      <a href="../index.html" class="a-btn a-btn-ghost" style="margin-top:24px;">← Back to AssessAI</a>
+    </div>
+
+  </div>
+
+  <script src="../assets/js/main.js"></script>
+  <script src="../assets/js/institution-register.js"></script>
+</body>
+</html>

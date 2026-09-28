@@ -1,0 +1,11 @@
+/* question-bank.html — page-specific styles */
+
+.filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+.filters .a-select, .filters .a-input { width: auto; min-width: 150px; }
+.qrow { display:flex; gap:14px; align-items:flex-start; }
+.qrow .qbody { flex:1; min-width:0; }
+.qrow .qtext { color:#fff; font-size:13.5px; line-height:1.5; margin-bottom:6px; }
+.qmeta { display:flex; gap:8px; flex-wrap:wrap; }
+.qactions { display:flex; gap:6px; flex-shrink:0; }
+.gen-panel { display:none; }
+.gen-panel.open { display:block; }

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create Aptitude Test — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/create-test.css" />
+</head>
+<body data-page="tests" data-title="Create Aptitude Test" data-sub="Select Fields, build each paper, then schedule the window">
+
+<template id="a-actions-template">
+  <a href="monitor.html" class="a-btn a-btn-ghost">View scheduled tests</a>
+</template>
+
+<template id="a-content-template">
+
+  <!-- Step indicator -->
+  <div class="wiz-steps" id="wizSteps">
+    <div class="wiz-step active" data-step="1"><span class="wiz-num">1</span>Fields</div>
+    <div class="wiz-step" data-step="2"><span class="wiz-num">2</span>Paper Composition</div>
+    <div class="wiz-step" data-step="3"><span class="wiz-num">3</span>Schedule &amp; Release</div>
+    <div class="wiz-step" data-step="4"><span class="wiz-num">4</span>Review &amp; Publish</div>
+  </div>
+
+  <!-- STEP 1: Fields -->
+  <div class="wiz-panel active" id="panel-1">
+    <div class="a-card" style="margin-bottom:18px;">
+      <div class="a-field">
+        <label>Test name</label>
+        <input class="a-input" id="testName" value="Undergraduate Admission Test — Fall 2026" />
+      </div>
+    </div>
+    <div class="a-card">
+      <div class="section-head">
+        <div><h2>Select the Fields this test covers</h2><p>Each candidate's paper is drawn only from their own roster Field</p></div>
+      </div>
+      <div id="fieldToggleList"></div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Paper composition -->
+  <div class="wiz-panel" id="panel-2">
+    <div class="a-card" style="margin-bottom:16px;">
+      <div class="section-head"><div><h2>Paper composition</h2><p>Required question count per subject/type/difficulty — one tab per selected Field</p></div></div>
+      <div class="field-tabs" id="fieldTabs"></div>
+      <div id="compositionArea"></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Schedule -->
+  <div class="wiz-panel" id="panel-3">
+    <div class="a-grid a-grid-2">
+      <div class="a-card">
+        <div class="section-head"><div><h2>Time limit &amp; window</h2></div></div>
+        <div class="a-field" style="margin-bottom:14px;"><label>Time limit (minutes)</label><input class="a-input" type="number" id="timeLimit" value="150" /></div>
+        <div class="a-field" style="margin-bottom:14px;"><label>Test date</label><input class="a-input" type="date" id="testDate" value="2026-10-05" /></div>
+        <div class="a-grid a-grid-2">
+          <div class="a-field"><label>Window opens</label><input class="a-input" type="time" id="winOpen" value="09:00" /></div>
+          <div class="a-field"><label>Window closes</label><input class="a-input" type="time" id="winClose" value="11:30" /></div>
+        </div>
+        <p class="muted" style="margin-top:10px;font-size:11px;">Each candidate's own timer starts on successful login + fullscreen entry, within this window.</p>
+      </div>
+
+      <div class="a-card">
+        <div class="section-head"><div><h2>Result release</h2></div></div>
+        <div class="radio-group" style="margin-bottom:14px;">
+          <div class="radio-opt" id="relImmediate" onclick="setRelease('immediate')">Show score immediately on submission</div>
+          <div class="radio-opt sel" id="relScheduled" onclick="setRelease('scheduled')">Release later via email</div>
+        </div>
+        <div class="a-field" id="relDateField">
+          <label>Release date</label>
+          <input class="a-input" type="date" id="releaseDate" value="2026-10-12" />
+          <span class="hint">A scheduled job emails each candidate their name, roll number, and score only — no AI commentary.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Review & publish -->
+  <div class="wiz-panel" id="panel-4">
+    <div class="a-card" id="shortfallBanner" style="margin-bottom:18px;border-color:rgba(239,68,68,.35);display:none;">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <span style="font-size:18px;">⚠</span>
+        <div>
+          <div style="color:#fff;font-size:13px;font-weight:600;">Some combinations are short of approved questions</div>
+          <p class="muted">Resolve every shortfall before this test can publish (BR-07).</p>
+          <ul id="shortfallList" style="margin-top:8px;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#f87171;"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="reviewFields"></div>
+
+    <div class="a-grid a-grid-2" style="margin:18px 0;">
+      <div class="a-card"><h3>Schedule</h3><div id="reviewSchedule" class="muted" style="margin-top:8px;font-size:12.5px;line-height:1.8;"></div></div>
+      <div class="a-card"><h3>Result release</h3><div id="reviewRelease" class="muted" style="margin-top:8px;font-size:12.5px;line-height:1.8;"></div></div>
+    </div>
+
+    <div class="a-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div id="publishStatusText">
+        <p style="color:#fff;font-size:13.5px;font-weight:600;" id="publishTitle">Ready to publish</p>
+        <p class="muted" id="publishSub">Every required combination meets its approved-pool requirement.</p>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="a-btn a-btn-ghost" onclick="aToast('Saved as draft.')">Save as draft</button>
+        <button class="a-btn a-btn-amber" id="publishBtn" onclick="publishTest()">Publish test</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wizard nav -->
+  <div class="wiz-nav">
+    <button class="a-btn a-btn-ghost" id="backBtn" onclick="wizBack()" disabled>← Back</button>
+    <button class="a-btn a-btn-amber" id="nextBtn" onclick="wizNext()">Next: Paper Composition →</button>
+  </div>
+
+</template>
+
+<script src="../../assets/js/admin-shell.js"></script>
+<script src="../../assets/js/create-test.js"></script>
+</body>
+</html>
