@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live Monitor — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/monitor.css" />
+</head>
+<body data-page="monitor" data-title="Live Monitor" data-sub="Undergraduate Admission Test — Fall 2026 · window closes in 41:12">
+
+<template id="a-actions-template">
+  <span style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--n-400);"><span class="live-dot"></span>Live · refreshing every 5s</span>
+</template>
+
+<template id="a-content-template">
+
+  <div class="status-strip">
+    <div class="status-pill active"><div class="n">1,284</div><div class="l">All candidates</div></div>
+    <div class="status-pill"><div class="n" style="color:#94a3b8;">62</div><div class="l">Not Started</div></div>
+    <div class="status-pill"><div class="n" style="color:#22c55e;">1,140</div><div class="l">In Progress</div></div>
+    <div class="status-pill"><div class="n" style="color:#ef4444;">14</div><div class="l">Locked</div></div>
+    <div class="status-pill"><div class="n" style="color:#f59e0b;">6</div><div class="l">Disconnected</div></div>
+    <div class="status-pill"><div class="n" style="color:#818cf8;">3</div><div class="l">Auto-Submitted</div></div>
+    <div class="status-pill"><div class="n" style="color:#22d3ee;">59</div><div class="l">Completed</div></div>
+  </div>
+
+  <div class="filters" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <select class="a-select" style="width:auto;"><option>All Fields</option><option>Pre-Engineering</option><option>Pre-Medical</option><option>Computer Science</option></select>
+    <input class="a-input" style="width:220px;" placeholder="Search name or roll no…" />
+  </div>
+
+  <div class="a-table-wrap">
+    <table class="a-table">
+      <thead><tr><th>Candidate</th><th>Roll No.</th><th>Field</th><th>Status</th><th>Remaining</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="name">Ahmed Raza</td><td class="mono">PE-2026-014</td><td>Pre-Engineering</td>
+          <td><span class="badge badge-locked">🔒 Locked</span></td><td class="mono">34:12</td>
+          <td><button class="a-btn a-btn-amber a-btn-sm" onclick="aToast('Ahmed Raza unlocked — timer resumed.')">Unlock</button> <button class="a-btn a-btn-danger a-btn-sm">End</button></td>
+        </tr>
+        <tr>
+          <td class="name">Sana Fatima</td><td class="mono">PM-2026-091</td><td>Pre-Medical</td>
+          <td><span class="badge badge-in-progress">● In Progress</span></td><td class="mono">1:02:40</td>
+          <td><button class="a-btn a-btn-ghost a-btn-sm" disabled>—</button> <button class="a-btn a-btn-danger a-btn-sm">End</button></td>
+        </tr>
+        <tr>
+          <td class="name">Bilal Hussain</td><td class="mono">CS-2026-208</td><td>Computer Science</td>
+          <td><span class="badge badge-disconnected">⚠ Disconnected</span></td><td class="mono">58:03</td>
+          <td><button class="a-btn a-btn-ghost a-btn-sm" disabled>Waiting…</button> <button class="a-btn a-btn-danger a-btn-sm">End</button></td>
+        </tr>
+        <tr>
+          <td class="name">Mehak Iqbal</td><td class="mono">PE-2026-201</td><td>Pre-Engineering</td>
+          <td><span class="badge badge-not-started">Not Started</span></td><td class="mono">—</td>
+          <td><span class="muted" style="font-size:12px;">Awaiting login</span></td>
+        </tr>
+        <tr>
+          <td class="name">Usman Tariq</td><td class="mono">CS-2026-117</td><td>Computer Science</td>
+          <td><span class="badge badge-auto-submitted">Auto-Submitted</span></td><td class="mono">00:00</td>
+          <td><span class="muted" style="font-size:12px;">Window elapsed</span></td>
+        </tr>
+        <tr>
+          <td class="name">Hira Shahid</td><td class="mono">PM-2026-045</td><td>Pre-Medical</td>
+          <td><span class="badge badge-completed">✓ Completed</span></td><td class="mono">—</td>
+          <td><span class="muted" style="font-size:12px;">Submitted normally</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" style="margin-top:12px;font-size:11.5px;">Status list only — no live screen-mirroring or video feed of any candidate's device.</p>
+
+</template>
+
+<script src="../../assets/js/admin-shell.js"></script>
+</body>
+</html>

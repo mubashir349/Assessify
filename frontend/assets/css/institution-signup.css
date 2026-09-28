@@ -1,0 +1,65 @@
+/* ============================================================
+   Institution Signup — "Register your Institution"
+   Wider form card than the plain auth-card, organised into
+   labelled sections with a responsive 2-column grid.
+   ============================================================ */
+
+.signup-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 48px 20px; position: relative; z-index: 1;
+}
+.signup-card { width: 100%; max-width: 660px; padding: 40px 44px 36px; border-radius: 26px; }
+
+.signup-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+.signup-brand .mark {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--apt-primary), #ea580c);
+  display: flex; align-items: center; justify-content: center; color: #1c1206; font-weight: 800; flex-shrink: 0;
+}
+.signup-brand b { color: #fff; font-family: var(--font-display); font-size: 16px; }
+.signup-brand span { display: block; font-size: 10.5px; color: var(--apt-light); font-family: var(--font-mono); letter-spacing: .05em; }
+
+.signup-card h1 { color: #fff; font-size: 1.5rem; margin-bottom: 6px; }
+.signup-card p.lead { color: var(--n-400); font-size: 13px; margin-bottom: 30px; line-height: 1.6; max-width: 480px; }
+
+.form-section { margin-bottom: 26px; }
+.form-section:last-of-type { margin-bottom: 0; }
+.form-section-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.form-section-head .n {
+  width: 20px; height: 20px; border-radius: 6px; background: rgba(245,158,11,0.14); color: var(--apt-light);
+  font-size: 11px; font-weight: 700; font-family: var(--font-mono);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.form-section-head h2 { font-size: 13px; font-weight: 600; color: #fff; }
+.form-section-head p { font-size: 11px; color: var(--n-600); margin-top: 1px; }
+
+.signup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.signup-grid .a-field { margin-bottom: 0; }
+.signup-card .a-field { margin-bottom: 14px; }
+.signup-card .a-field:last-child { margin-bottom: 0; }
+
+@media (max-width: 560px) {
+  .signup-card { padding: 30px 22px 28px; }
+  .signup-grid { grid-template-columns: 1fr; }
+}
+
+/* Aptitude portal uses amber, not the default indigo, for chips + focus */
+.signup-card .chip-input-box:focus-within {
+  border-color: rgba(245,158,11,0.5); background: rgba(245,158,11,0.05);
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.14);
+}
+.signup-card .chip-tag {
+  background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.32); color: var(--apt-light);
+}
+.signup-card .a-input:focus, .signup-card .a-select:focus, .signup-card .a-textarea:focus {
+  border-color: rgba(245,158,11,0.5); background: rgba(245,158,11,0.05);
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.14);
+}
+.signup-card .chk-row input[type="checkbox"] { accent-color: var(--apt-primary); }
+.signup-card .chk-row a { color: var(--apt-light); }
+
+.dept-count { font-size: 11px; color: var(--n-600); margin-top: 8px; }
+.dept-count b { color: var(--apt-light); }

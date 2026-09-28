@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+</head>
+<body data-page="dashboard" data-title="Dashboard" data-sub="NED University of Engineering &amp; Technology">
+
+<template id="a-actions-template">
+  <a href="create-test.html" class="a-btn a-btn-amber">+ New Aptitude Test</a>
+</template>
+
+<template id="a-content-template">
+
+  <div class="a-grid a-grid-4" style="margin-bottom:22px;">
+    <div class="a-card a-stat">
+      <div class="lbl">Fields configured</div>
+      <div class="num">4</div>
+      <div class="delta"><span>Pre-Eng · Pre-Med · CS · Commerce</span></div>
+    </div>
+    <div class="a-card a-stat">
+      <div class="lbl">Approved questions</div>
+      <div class="num">612</div>
+      <div class="delta up">▲ 48 pending review</div>
+    </div>
+    <div class="a-card a-stat">
+      <div class="lbl">Candidates on roster</div>
+      <div class="num">1,284</div>
+      <div class="delta"><span>Across 4 fields</span></div>
+    </div>
+    <div class="a-card a-stat">
+      <div class="lbl">Upcoming test window</div>
+      <div class="num" style="font-size:1.3rem;">Oct 5, 9:00 AM</div>
+      <div class="delta warn">⚠ 3 combinations short of target</div>
+    </div>
+  </div>
+
+  <div class="a-grid a-grid-2" style="align-items:start;">
+    <div class="a-card">
+      <div class="section-head">
+        <div><h2>Upcoming &amp; recent tests</h2><p>Scheduled aptitude test windows across all fields</p></div>
+      </div>
+      <div class="a-table-wrap">
+        <table class="a-table">
+          <thead><tr><th>Test</th><th>Fields</th><th>Window</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="name">Undergraduate Admission Test — Fall 2026</td>
+              <td>Pre-Eng, Pre-Med, CS</td>
+              <td class="mono">Oct 5, 9:00–11:30 AM</td>
+              <td><span class="badge badge-draft">Scheduled</span></td>
+            </tr>
+            <tr>
+              <td class="name">Commerce Placement Test — Batch 12</td>
+              <td>Commerce</td>
+              <td class="mono">Sep 18, 10:00 AM</td>
+              <td><span class="badge badge-completed">Completed</span></td>
+            </tr>
+            <tr>
+              <td class="name">Spring Intake Aptitude Test</td>
+              <td>Pre-Eng, CS</td>
+              <td class="mono">Mar 2, 9:00 AM</td>
+              <td><span class="badge badge-completed">Completed</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="a-card">
+      <div class="section-head">
+        <div><h2>Needs your attention</h2><p>Blocking items before the next publish</p></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="a-card" style="padding:14px 16px;border-color:rgba(245,158,11,.35);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#fff;font-weight:600;">Pre-Medical → Biology (Hard, MCQ)</span>
+            <span class="badge badge-draft">7 of 10</span>
+          </div>
+          <p class="muted" style="margin-top:6px;">3 more approved questions needed before this test can publish.</p>
+          <a href="question-bank.html" class="a-btn a-btn-ghost a-btn-sm" style="margin-top:10px;">Review draft questions →</a>
+        </div>
+        <div class="a-card" style="padding:14px 16px;border-color:rgba(245,158,11,.35);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#fff;font-weight:600;">14 roster rows failed import</span>
+            <span class="badge badge-locked">Errors</span>
+          </div>
+          <p class="muted" style="margin-top:6px;">Unrecognized Field or unparseable date of birth.</p>
+          <a href="roster.html" class="a-btn a-btn-ghost a-btn-sm" style="margin-top:10px;">Fix roster rows →</a>
+        </div>
+        <div class="a-card" style="padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:#fff;font-weight:600;">Result email batch — Sep 18 test</span>
+            <span class="badge badge-approved">Sent 1,190 / 1,190</span>
+          </div>
+          <p class="muted" style="margin-top:6px;">All roster candidates emailed successfully.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</template>
+
+<script src="../../assets/js/admin-shell.js"></script>
+</body>
+</html>
