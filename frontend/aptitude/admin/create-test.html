@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/create-test.css" />
 </head>
-<body data-page="tests" data-title="Create Aptitude Test" data-sub="Select Fields, build each paper, then schedule the window">
+<body data-page="tests" data-title="Create Aptitude Test" data-sub="Choose a degree level, then fields or departments, build each paper, then schedule">
 
 <template id="a-actions-template">
   <a href="monitor.html" class="a-btn a-btn-ghost">View scheduled tests</a>
@@ -19,7 +19,7 @@
 
   <!-- Step indicator -->
   <div class="wiz-steps" id="wizSteps">
-    <div class="wiz-step active" data-step="1"><span class="wiz-num">1</span>Fields</div>
+    <div class="wiz-step active" data-step="1"><span class="wiz-num">1</span><span id="step1Lbl">Level &amp; Fields</span></div>
     <div class="wiz-step" data-step="2"><span class="wiz-num">2</span>Paper Composition</div>
     <div class="wiz-step" data-step="3"><span class="wiz-num">3</span>Schedule &amp; Release</div>
     <div class="wiz-step" data-step="4"><span class="wiz-num">4</span>Review &amp; Publish</div>
@@ -30,12 +30,16 @@
     <div class="a-card" style="margin-bottom:18px;">
       <div class="a-field">
         <label>Test name</label>
-        <input class="a-input" id="testName" value="Undergraduate Admission Test — Fall 2026" />
+        <input class="a-input" id="testName" value="" />
       </div>
+    </div>
+    <div class="a-card" style="margin-bottom:18px;">
+      <div class="section-head"><div><h2>1 · Degree level</h2><p>A test belongs to one level — pick it first</p></div></div>
+      <div class="seg" id="levelSeg"></div>
     </div>
     <div class="a-card">
       <div class="section-head">
-        <div><h2>Select the Fields this test covers</h2><p>Each candidate's paper is drawn only from their own roster Field</p></div>
+        <div><h2 id="selTitle">2 · Select fields</h2><p id="selSub">Each candidate's paper is drawn only from their own roster selection</p></div>
       </div>
       <div id="fieldToggleList"></div>
     </div>
@@ -44,7 +48,7 @@
   <!-- STEP 2: Paper composition -->
   <div class="wiz-panel" id="panel-2">
     <div class="a-card" style="margin-bottom:16px;">
-      <div class="section-head"><div><h2>Paper composition</h2><p>Required question count per subject/type/difficulty — one tab per selected Field</p></div></div>
+      <div class="section-head"><div><h2>Paper composition</h2><p id="compSub">Questions per candidate and the pool needed for random selection</p></div></div>
       <div class="field-tabs" id="fieldTabs"></div>
       <div id="compositionArea"></div>
     </div>
@@ -52,16 +56,34 @@
 
   <!-- STEP 3: Schedule -->
   <div class="wiz-panel" id="panel-3">
+    <div class="a-card" style="margin-bottom:18px;">
+      <div class="section-head"><div><h2>Test timing mode</h2><p>Choose how the clock works for candidates</p></div></div>
+      <div class="radio-group">
+        <div class="radio-opt sel" id="modeFlex" onclick="setTimeMode('flex')"><b style="color:#fff;">Flexible window</b><br/><span class="muted">Each candidate gets their own timer (e.g. 150 min) from when they start, inside an open window.</span></div>
+        <div class="radio-opt" id="modeFixed" onclick="setTimeMode('fixed')"><b style="color:#fff;">Fixed time</b><br/><span class="muted">Everyone starts together and ends together, e.g. 2:00 pm – 4:00 pm. Late starters lose time.</span></div>
+      </div>
+    </div>
     <div class="a-grid a-grid-2">
       <div class="a-card">
-        <div class="section-head"><div><h2>Time limit &amp; window</h2></div></div>
-        <div class="a-field" style="margin-bottom:14px;"><label>Time limit (minutes)</label><input class="a-input" type="number" id="timeLimit" value="150" /></div>
+        <div class="section-head"><div><h2 id="timeTitle">Time limit &amp; window</h2></div></div>
         <div class="a-field" style="margin-bottom:14px;"><label>Test date</label><input class="a-input" type="date" id="testDate" value="2026-10-05" /></div>
-        <div class="a-grid a-grid-2">
-          <div class="a-field"><label>Window opens</label><input class="a-input" type="time" id="winOpen" value="09:00" /></div>
-          <div class="a-field"><label>Window closes</label><input class="a-input" type="time" id="winClose" value="11:30" /></div>
+
+        <div id="flexFields">
+          <div class="a-field" style="margin-bottom:14px;"><label>Time limit per candidate (minutes)</label><input class="a-input" type="number" id="timeLimit" value="150" /></div>
+          <div class="a-grid a-grid-2">
+            <div class="a-field"><label>Window opens</label><input class="a-input" type="time" id="winOpen" value="09:00" /></div>
+            <div class="a-field"><label>Window closes</label><input class="a-input" type="time" id="winClose" value="11:30" /></div>
+          </div>
+          <p class="muted" style="margin-top:10px;font-size:11px;">Each candidate's own timer starts on successful login + fullscreen entry, within this window.</p>
         </div>
-        <p class="muted" style="margin-top:10px;font-size:11px;">Each candidate's own timer starts on successful login + fullscreen entry, within this window.</p>
+
+        <div id="fixedFields" style="display:none;">
+          <div class="a-grid a-grid-2">
+            <div class="a-field"><label>Start time</label><input class="a-input" type="time" id="fixStart" value="14:00" oninput="updFixed()" /></div>
+            <div class="a-field"><label>End time</label><input class="a-input" type="time" id="fixEnd" value="16:00" oninput="updFixed()" /></div>
+          </div>
+          <div class="rand-note" id="fixedNote"></div>
+        </div>
       </div>
 
       <div class="a-card">
@@ -119,6 +141,7 @@
 
 </template>
 
+<script src="../../assets/js/store.js"></script>
 <script src="../../assets/js/admin-shell.js"></script>
 <script src="../../assets/js/create-test.js"></script>
 </body>

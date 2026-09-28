@@ -113,8 +113,16 @@ table.a-table { width: 100%; border-collapse: collapse; font-size: 13px; min-wid
 .a-table .mono { font-family: var(--font-mono); font-size: 12px; color: var(--n-500); }
 
 /* Forms */
-/* Form primitives (.a-field, .a-input, .a-select, .a-textarea) now live in
-   theme.css so every page — including simple login pages — gets them. */
+.a-field { display: flex; flex-direction: column; gap: 6px; }
+.a-field label { font-size: 12.5px; font-weight: 600; color: var(--n-300); }
+.a-field .hint { font-size: 11px; color: var(--n-600); }
+.a-input, .a-select, .a-textarea {
+  background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.12); color: #fff;
+  padding: 10px 13px; border-radius: 10px; font-size: 13.5px; font-family: var(--font-body); width: 100%;
+}
+.a-input::placeholder, .a-textarea::placeholder { color: var(--n-600); }
+.a-textarea { resize: vertical; min-height: 80px; }
+.a-select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0L5 6L10 0Z' fill='%2394a3b8'/></svg>"); background-repeat: no-repeat; background-position: right 13px center; }
 
 .a-btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; transition: all .15s; }
 .a-btn-amber { background: var(--apt-primary); color: #1c1206; }
@@ -160,3 +168,25 @@ table.a-table { width: 100%; border-collapse: collapse; font-size: 13px; min-wid
 .a-modal-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
 .a-modal-x { background: rgba(255,255,255,.06); width: 26px; height: 26px; border-radius: 8px; color: var(--n-400); }
 .a-modal-x:hover { color: #fff; background: rgba(255,255,255,.12); }
+
+/* ---------- v2 additions ---------- */
+.a-dropzone { border:1.5px dashed rgba(245,158,11,.4); border-radius:14px; padding:22px; text-align:center; background:rgba(245,158,11,.04); cursor:pointer; transition:background .15s; }
+.a-dropzone:hover, .a-dropzone.drag { background:rgba(245,158,11,.1); }
+.a-dropzone b { color:#fff; font-size:13.5px; display:block; margin-bottom:4px; }
+.a-dropzone .file { margin-top:10px; font-size:12px; color:var(--apt-light); font-family:var(--font-mono); }
+.ai-card { border-color:rgba(6,182,212,.3); background:linear-gradient(135deg,rgba(6,182,212,.08),rgba(124,58,237,.07)); }
+.ai-tag { display:inline-flex; gap:6px; align-items:center; font-size:10.5px; font-family:var(--font-mono); color:var(--ai-light); letter-spacing:.05em; margin-bottom:10px; }
+.ai-item { display:flex; gap:10px; padding:10px 0; border-top:1px solid rgba(255,255,255,.06); font-size:12.5px; color:var(--n-300); line-height:1.5; }
+.ai-item:first-of-type { border-top:0; }
+.ai-item .ic { flex-shrink:0; }
+.bar-row { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--n-400); margin:7px 0; }
+.bar-row .lb { width:110px; flex-shrink:0; } .bar-row .tr { flex:1; height:8px; border-radius:6px; background:rgba(255,255,255,.07); overflow:hidden; } .bar-row .fl { height:100%; border-radius:6px; background:linear-gradient(90deg,var(--ai),var(--violet)); } .bar-row .v { width:38px; text-align:right; color:#fff; font-family:var(--font-mono); }
+.opt-view { display:flex; flex-direction:column; gap:5px; margin:8px 0; font-size:12.5px; color:var(--n-300); }
+.opt-view span.ok { color:var(--success); font-weight:600; }
+.badge-rejected { background:rgba(239,68,68,.12); color:#f87171; }
+.attempt-row { cursor:pointer; transition:border-color .15s; } .attempt-row:hover { border-color:rgba(245,158,11,.4); }
+.seg { display:flex; gap:8px; } .seg label { flex:1; padding:11px 12px; border:1px solid rgba(255,255,255,.12); border-radius:12px; cursor:pointer; font-size:12.5px; color:var(--n-300); } .seg input { margin-right:6px; accent-color:#f59e0b; }
+.tag-in { display:flex; flex-wrap:wrap; gap:6px; padding:8px; border:1px solid rgba(255,255,255,.12); border-radius:10px; } .tag-in input { flex:1; min-width:120px; background:none; border:0; outline:0; color:#fff; font-size:13px; }
+.a-chip button { background:none; border:0; color:inherit; cursor:pointer; margin-left:4px; }
+.filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; } .filters .a-select, .filters .a-input { width:auto; min-width:150px; }
+.a-modal { max-height:90vh; overflow-y:auto; }

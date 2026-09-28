@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Generate Questions — Institution Admin</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" /><link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/question-bank.css" />
+</head>
+<body data-page="generate" data-title="Generate Questions" data-sub="Create AI drafts from a topic, description, or your own book / PDF">
+<template id="a-content-template">
+  <div class="a-card" style="max-width:920px;border-color:rgba(245,158,11,.35);">
+    <div class="a-grid a-grid-3" style="margin-bottom:14px;">
+      <div class="a-field"><label id="deptLbl">Field / Department</label><select class="a-select" id="gDept" onchange="fillSubjects()"></select></div>
+      <div class="a-field"><label>Degree level (set by selection)</label><input class="a-input" id="gLevel" readonly tabindex="-1" style="opacity:.75;cursor:not-allowed;" /></div>
+      <div class="a-field"><label>Subject</label><select class="a-select" id="gSubj"></select></div>
+      <div class="a-field"><label>Difficulty (admin only)</label><select class="a-select" id="gDiff"><option>Easy</option><option selected>Medium</option><option>Hard</option></select></div>
+      <div class="a-field"><label>Question type</label><select class="a-select" id="gType"><option>MCQ</option><option>True/False</option></select></div>
+      <div class="a-field"><label>Questions to generate</label><input class="a-input" type="number" id="gCount" value="10" min="1" max="50" /></div>
+      <div class="a-field"><label>Marks per question</label><input class="a-input" type="number" id="gMarks" value="1" min="1" /></div>
+    </div>
+    <div class="a-field" style="margin-bottom:14px;">
+      <label>Source material (optional)</label>
+      <div class="a-dropzone" id="drop" onclick="document.getElementById('gFile').click()">
+        <b>📄 Upload a book or PDF</b>
+        <span class="muted">Drag &amp; drop or click — PDF, EPUB, DOCX, TXT (questions will be drawn from this content)</span>
+        <div class="file" id="fileName"></div>
+      </div>
+      <input type="file" id="gFile" accept=".pdf,.epub,.docx,.txt" style="display:none" onchange="setFile(this.files[0])" />
+    </div>
+    <div class="a-field" style="margin-bottom:14px;">
+      <label>Description / focus (optional)</label>
+      <textarea class="a-textarea" id="gDesc" placeholder="e.g. Focus on algebra and trigonometry, HSC-1 level…"></textarea>
+    </div>
+    <button class="btn btn-amber" onclick="doGenerate()">✦ Generate drafts →</button>
+    <span class="hint" style="margin-left:10px;">Drafts go to <b>Draft Review</b> — nothing reaches the question bank until you approve it.</span>
+  </div>
+</template>
+<script src="../../assets/js/store.js"></script><script src="../../assets/js/admin-shell.js"></script>
+<script>
+let file=null;
+function setFile(f){file=f;document.getElementById('fileName').textContent=f?('✓ '+f.name+' · '+(f.size/1024).toFixed(0)+' KB'):'';}
+function fillSubjects(){const d=AA.depts().find(x=>x.id===gDept.value); gSubj.innerHTML=(d?d.subjects:[]).map(s=>`<option>${AA.esc(s)}</option>`).join(''); if(d){gLevel.value=d.level; deptLbl.textContent=AA.term(d.level);}}
+function deptOptions(){const all=AA.depts(); return AA.LEVELS.map(l=>{const g=all.filter(d=>d.level===l); return g.length?`<optgroup label="${l} — ${AA.term(l,true)}">${g.map(d=>`<option value="${d.id}">${AA.esc(d.name)}</option>`).join('')}</optgroup>`:'';}).join('');}
+document.addEventListener('DOMContentLoaded',()=>{
+  gDept.innerHTML=deptOptions(); fillSubjects();
+  const dz=document.getElementById('drop');
+  ['dragover','dragenter'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag');}));
+  ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag');}));
+  dz.addEventListener('drop',ev=>setFile(ev.dataTransfer.files[0]));
+});
+function doGenerate(){
+  const n=Math.min(50,Math.max(1,+gCount.value||10)), subj=gSubj.value, type=gType.value, marks=+gMarks.value||1, diff=gDiff.value;
+  const d=AA.depts().find(x=>x.id===gDept.value); if(!d||!subj) return aToast('Pick a field / department and subject.','⚠');
+  const qs=Array.from({length:n},(_,i)=>aaMakeQuestion(subj,type,marks,diff,i));
+  const at=AA.attempts(); const id=AA.uid();
+  at.unshift({id,dept:d.name,level:gLevel.value,subject:subj,type,difficulty:diff,source:file?file.name:(gDesc.value.trim()?'Description':'Topic only'),created:new Date().toISOString(),questions:qs});
+  AA.saveAttempts(at); aToast(n+' draft questions generated.'); setTimeout(()=>location.href='draft-review.html?attempt='+id,700);
+}
+</script></body></html>

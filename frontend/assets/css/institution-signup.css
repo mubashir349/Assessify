@@ -46,20 +46,85 @@
   .signup-grid { grid-template-columns: 1fr; }
 }
 
-/* Aptitude portal uses amber, not the default indigo, for chips + focus */
-.signup-card .chip-input-box:focus-within {
-  border-color: rgba(245,158,11,0.5); background: rgba(245,158,11,0.05);
-  box-shadow: 0 0 0 3px rgba(245,158,11,0.14);
-}
-.signup-card .chip-tag {
-  background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.32); color: var(--apt-light);
-}
-.signup-card .a-input:focus, .signup-card .a-select:focus, .signup-card .a-textarea:focus {
-  border-color: rgba(245,158,11,0.5); background: rgba(245,158,11,0.05);
-  box-shadow: 0 0 0 3px rgba(245,158,11,0.14);
-}
-.signup-card .chk-row input[type="checkbox"] { accent-color: var(--apt-primary); }
-.signup-card .chk-row a { color: var(--apt-light); }
+/* ---------- Form controls (self-contained — this page does not load admin-shell.css) ---------- */
+.signup-card { background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025)); border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 30px 80px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06); }
+.signup-card .a-field { display: flex; flex-direction: column; gap: 7px; }
+.signup-card .a-field label { font-size: 12.5px; font-weight: 600; color: var(--n-300); letter-spacing: .01em; }
+.signup-card .a-field label .req { color: var(--apt-primary); margin-left: 2px; }
+.signup-card .a-field .hint { font-size: 11px; font-weight: 400; color: var(--n-600); }
 
-.dept-count { font-size: 11px; color: var(--n-600); margin-top: 8px; }
-.dept-count b { color: var(--apt-light); }
+.signup-card .a-input, .signup-card .a-select {
+  width: 100%; height: 46px; padding: 0 14px; border-radius: 12px;
+  background: rgba(8, 12, 24, 0.55); border: 1px solid rgba(255,255,255,0.12);
+  color: #f8fafc; font-size: 14px; font-family: var(--font-body);
+  outline: none; transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.signup-card .a-input::placeholder { color: rgba(148,163,184,0.55); }
+.signup-card .a-input:hover, .signup-card .a-select:hover { border-color: rgba(255,255,255,0.22); }
+.signup-card .a-input:focus, .signup-card .a-select:focus {
+  border-color: rgba(245,158,11,0.65); background: rgba(245,158,11,0.05);
+  box-shadow: 0 0 0 4px rgba(245,158,11,0.13);
+}
+.signup-card .a-input.invalid, .signup-card .a-select.invalid { border-color: rgba(248,113,113,.7); box-shadow: 0 0 0 4px rgba(239,68,68,.10); }
+
+/* Chrome autofill would otherwise paint the field white/yellow */
+.signup-card .a-input:-webkit-autofill {
+  -webkit-text-fill-color: #f8fafc; caret-color: #fff;
+  -webkit-box-shadow: 0 0 0 100px #0b1220 inset; transition: background-color 9999s;
+}
+
+.signup-card .a-select {
+  appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer; color-scheme: dark;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5L6 6.5L11 1.5' fill='none' stroke='%23f59e0b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat; background-position: right 15px center;
+}
+.signup-card .a-select:invalid { color: rgba(148,163,184,0.7); }
+.signup-card .a-select option { background: #0f172a; color: #f1f5f9; }
+
+/* Password field with show/hide + strength meter */
+.pw-wrap { position: relative; }
+.pw-wrap .a-input { padding-right: 62px; }
+.pw-toggle {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); color: var(--n-400);
+  font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: 8px; cursor: pointer;
+}
+.pw-toggle:hover { color: #fff; background: rgba(255,255,255,0.12); }
+.pw-meter { display: flex; gap: 5px; margin-top: 2px; }
+.pw-meter i { flex: 1; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.09); transition: background .2s; }
+.pw-meter.s1 i:nth-child(-n+1) { background: #ef4444; }
+.pw-meter.s2 i:nth-child(-n+2) { background: #f59e0b; }
+.pw-meter.s3 i:nth-child(-n+3) { background: #84cc16; }
+.pw-meter.s4 i:nth-child(-n+4) { background: #22c55e; }
+.pw-label { font-size: 11px; color: var(--n-500); min-height: 14px; }
+
+/* Terms checkbox */
+.signup-card .chk-row { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); }
+.signup-card .chk-row input[type="checkbox"] { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: var(--apt-primary); cursor: pointer; }
+.signup-card .chk-row label { font-size: 12.5px; color: var(--n-400); line-height: 1.55; cursor: pointer; }
+.signup-card .chk-row a { color: var(--apt-light); text-decoration: underline; text-underline-offset: 2px; }
+
+/* Submit + approval note */
+.signup-card .btn-amber { height: 50px; font-size: 14.5px; border-radius: 13px; box-shadow: 0 10px 30px -10px rgba(245,158,11,.6); }
+.signup-card .btn-amber:disabled { opacity: .6; cursor: not-allowed; }
+.approval-note { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 26px; padding: 12px 14px; border-radius: 12px; font-size: 12px; line-height: 1.55; color: var(--n-300); background: rgba(6,182,212,.07); border: 1px solid rgba(6,182,212,.25); }
+.signup-card .auth-err, .signup-card .auth-ok { margin-bottom: 20px; }
+.signup-card .auth-ok { display: none; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); color: #4ade80; font-size: 12.5px; padding: 10px 12px; border-radius: 10px; }
+.form-section-head .n { width: 24px; height: 24px; border-radius: 8px; font-size: 12px; }
+.form-section-head h2 { font-size: 14px; }
+
+/* Even vertical rhythm */
+.form-section { display: flex; flex-direction: column; gap: 16px; margin-bottom: 30px; }
+.form-section-head { margin-bottom: 0; }
+.signup-card .signup-grid { margin-bottom: 0 !important; gap: 16px; }
+.signup-card .a-field, .signup-card .a-field:last-child { margin-bottom: 0; }
+.approval-note + .auth-err, .approval-note + .auth-err + .auth-ok { margin-top: -6px; }
+
+/* Dark custom checkbox */
+.signup-card .chk-row input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; border-radius: 6px;
+  background: rgba(8,12,24,.6); border: 1.5px solid rgba(255,255,255,.25); display: grid; place-content: center;
+}
+.signup-card .chk-row input[type="checkbox"]:checked { background: var(--apt-primary); border-color: var(--apt-primary); }
+.signup-card .chk-row input[type="checkbox"]:checked::after { content: "✓"; color: #1c1206; font-size: 12px; font-weight: 800; line-height: 1; }
+.signup-card .chk-row input[type="checkbox"]:focus-visible { box-shadow: 0 0 0 4px rgba(245,158,11,.18); outline: none; }

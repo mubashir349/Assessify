@@ -5,7 +5,9 @@
 
 const A_NAV = [
   { key: 'dashboard',  icon: '🏠', label: 'Dashboard',        href: 'dashboard.html' },
-  { key: 'fields',     icon: '🗂️', label: 'Fields & Subjects', href: 'fields-subjects.html' },
+  { key: 'fields',     icon: '🗂️', label: 'Fields & Departments', href: 'fields-subjects.html' },
+  { key: 'generate',   icon: '✦',  label: 'Generate Questions', href: 'generate.html' },
+  { key: 'drafts',     icon: '📝', label: 'Draft Review',      href: 'draft-review.html' },
   { key: 'bank',       icon: '📚', label: 'Question Bank',     href: 'question-bank.html' },
   { key: 'roster',     icon: '🧾', label: 'Candidate Roster',  href: 'roster.html' },
   { key: 'tests',      icon: '📝', label: 'Aptitude Tests',    href: 'create-test.html' },
@@ -14,6 +16,9 @@ const A_NAV = [
 ];
 
 // Demo session context (in a real build this comes from the backend session)
+const A_NAV_SUPER = [
+  { key: 'super', icon: '🛡️', label: 'Institutions', href: 'super-admin.html' },
+];
 const A_SESSION = {
   institution: 'NED University of Engineering & Technology',
   initials: 'NU',
@@ -38,7 +43,7 @@ function initAdminShell() {
         <div class="txt"><b>AssessAI</b><span>APTITUDE ADMIN</span></div>
       </div>
       <nav class="a-nav">
-        ${A_NAV.map(n => `
+        ${(document.body.dataset.role === 'super' ? A_NAV_SUPER : A_NAV).map(n => `
           <a href="${n.href}" class="${n.key === page ? 'active' : ''}">
             <span class="ic">${n.icon}</span><span>${n.label}</span>
           </a>`).join('')}

@@ -1,202 +1,122 @@
 // ============================================================
 // create-test.html — 4-step Aptitude Test creation wizard
+// Step 1: degree level -> fields/departments (incl. General Test)
+// Step 2: paper composition with random-pool sufficiency
 // ============================================================
-
-// ---- Reference data: this Institution's Fields, their subjects, and each
-//      subject's currently APPROVED question-bank size (used for the live
-//      sufficiency check). "shared: true" subjects draw from one Institution-
-//      level pool, so their requirement is the MAX across Fields, not the sum
-//      (SRS FR-4.14.17 / BR-26). ----
-const FIELDS = {
-  'Pre-Engineering': { candidates: 340, subjects: [
-    { name: 'Mathematics', shared: false, pool: 48 },
-    { name: 'Chemistry',   shared: false, pool: 40 },
-    { name: 'Physics',     shared: false, pool: 40 },
-    { name: 'English',     shared: true,  pool: 160 },
-  ]},
-  'Pre-Medical': { candidates: 298, subjects: [
-    { name: 'Biology',   shared: false, pool: 7 },   // intentionally short, for the demo
-    { name: 'Chemistry', shared: false, pool: 40 },
-    { name: 'Physics',   shared: false, pool: 40 },
-    { name: 'English',   shared: true,  pool: 160 },
-  ]},
-  'Computer Science': { candidates: 412, subjects: [
-    { name: 'Mathematics',      shared: false, pool: 44 },
-    { name: 'Computer Science', shared: false, pool: 48 },
-    { name: 'Physics',          shared: false, pool: 40 },
-    { name: 'English',          shared: true,  pool: 160 },
-  ]},
-  'Commerce': { candidates: 234, subjects: [
-    { name: 'Accounting',    shared: false, pool: 38 },
-    { name: 'General Math',  shared: false, pool: 40 },
-    { name: 'English',       shared: true,  pool: 160 },
-  ]},
-};
 const TYPES = ['MCQ', 'True/False'];
-const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
+const DIFFICULTIES = ['Any', 'Easy', 'Medium', 'Hard'];
+const POOL_FACTOR = 1.5; // pool needed = per-candidate count x 1.5, so each candidate gets a different random paper
 
-// ---- Wizard state ----
-let currentStep = 1;
-let rowIdSeq = 1;
-const state = {
-  selectedFields: new Set(['Pre-Engineering', 'Pre-Medical', 'Computer Science']),
-  activeTab: 'Pre-Engineering',
-  compositions: {}, // { fieldName: [ {id, subject, type, difficulty, count} ] }
-  release: { mode: 'scheduled' },
-};
+let currentStep = 1, rowIdSeq = 1, nameDirty = false;
+const state = { level: 'Undergraduate', selected: new Set(), activeTab: null, compositions: {}, release: { mode: 'scheduled' }, timeMode: 'flex' };
+const DEPT = name => AA.depts().find(d => d.name === name && d.level === state.level);
+const T = (plural) => AA.term(state.level, plural);
 
-function defaultRowsFor(field) {
-  const subjects = FIELDS[field].subjects;
-  return subjects.map(s => ({
-    id: rowIdSeq++,
-    subject: s.name,
-    type: 'MCQ',
-    difficulty: s.name === 'Biology' ? 'Hard' : 'Medium',
-    count: s.name === 'Biology' ? 10 : 15,
-  }));
-}
-[...state.selectedFields].forEach(f => { state.compositions[f] = defaultRowsFor(f); });
-
-// ---- Sufficiency logic ----
-function subjectDef(field, subjectName) {
-  return FIELDS[field].subjects.find(s => s.name === subjectName);
+function defaultRowsFor(name) {
+  return DEPT(name).subjects.map(s => ({ id: rowIdSeq++, subject: s, type: 'MCQ', difficulty: 'Any', count: 10 }));
 }
 
-// For a shared subject, the required count for a given type/difficulty combo
-// is the LARGEST count requested by any selected Field using that subject —
-// not the sum — since every candidate still only draws their own Field's count.
-function requiredFor(field, row) {
-  const def = subjectDef(field, row.subject);
-  if (!def.shared) return row.count;
-  let max = row.count;
-  state.selectedFields.forEach(f => {
-    (state.compositions[f] || []).forEach(r => {
-      if (r.subject === row.subject && r.type === row.type && r.difficulty === row.difficulty) {
-        max = Math.max(max, r.count);
-      }
-    });
-  });
-  return max;
+// ---- Sufficiency: approved questions in the bank vs pool needed ----
+function poolSize(name, row) {
+  return AA.seedQ.concat(AA.bank()).filter(q => q.status === 'approved' && q.dept === name && q.level === state.level &&
+    q.subject === row.subject && q.type === row.type && (row.difficulty === 'Any' || q.difficulty === row.difficulty)).length;
 }
-
-function rowStatus(field, row) {
-  const def = subjectDef(field, row.subject);
-  const required = requiredFor(field, row);
-  const sufficient = def.pool >= required;
-  return { sufficient, pool: def.pool, required, shared: def.shared };
+function rowStatus(name, row) {
+  const needed = Math.ceil(row.count * POOL_FACTOR), pool = poolSize(name, row);
+  return { needed, pool, sufficient: pool >= needed, short: Math.max(0, needed - pool) };
 }
-
 function collectAllShortfalls() {
-  const seen = new Set();
-  const shortfalls = [];
-  state.selectedFields.forEach(field => {
-    (state.compositions[field] || []).forEach(row => {
-      const st = rowStatus(field, row);
-      const key = st.shared ? `SHARED::${row.subject}::${row.type}::${row.difficulty}` : `${field}::${row.subject}::${row.type}::${row.difficulty}`;
-      if (!st.sufficient && !seen.has(key)) {
-        seen.add(key);
-        shortfalls.push({
-          label: st.shared ? `${row.subject} (Shared) · ${row.type}, ${row.difficulty}` : `${field} → ${row.subject} · ${row.type}, ${row.difficulty}`,
-          pool: st.pool, required: st.required,
-        });
-      }
-    });
-  });
-  return shortfalls;
+  const out = [];
+  state.selected.forEach(name => (state.compositions[name] || []).forEach(row => {
+    const st = rowStatus(name, row);
+    if (!st.sufficient) out.push({ label: `${name} → ${row.subject} · ${row.type}, ${row.difficulty}`, pool: st.pool, required: st.needed, short: st.short });
+  }));
+  return out;
 }
 
-// ---- Step 1: Field selection ----
+// ---- Step 1: level, then fields / departments ----
+function defaultName() { return `${state.level} Admission Test — Fall 2026`; }
 function renderStep1() {
-  const wrap = document.getElementById('fieldToggleList');
-  wrap.innerHTML = Object.keys(FIELDS).map(field => {
-    const checked = state.selectedFields.has(field);
-    return `
-      <label class="field-toggle ${checked ? 'checked' : ''}" onclick="toggleField(event,'${field}')">
-        <span><b style="color:#fff;">${field}</b> <span class="muted">· ${FIELDS[field].candidates} candidates</span></span>
-        <input type="checkbox" ${checked ? 'checked' : ''} />
-      </label>`;
-  }).join('');
+  document.getElementById('levelSeg').innerHTML = AA.LEVELS.map(l => `<label><input type="radio" name="lvl" value="${l}" ${l === state.level ? 'checked' : ''} onchange="setLevel('${l}')" />${l}</label>`).join('');
+  document.getElementById('step1Lbl').textContent = 'Level & ' + T(true);
+  document.getElementById('selTitle').textContent = '2 · Select ' + T(true).toLowerCase();
+  const list = AA.depts().filter(d => d.level === state.level).sort((a, b) => (b.mode === 'general') - (a.mode === 'general'));
+  document.getElementById('fieldToggleList').innerHTML = list.map(d => {
+    const checked = state.selected.has(d.name), gen = d.mode === 'general';
+    return `<label class="field-toggle ${checked ? 'checked' : ''}" onclick="toggleField(event,'${AA.esc(d.name).replace(/'/g, "\\'")}')">
+      <span><b style="color:#fff;">${AA.esc(d.name)}</b>${gen ? '<span class="lvl-pill">General test — same paper subjects for everyone</span>' : ''}
+      <span class="muted">· ${d.subjects.length} subjects · ${AA.candidates(d.name)} candidates</span></span>
+      <input type="checkbox" ${checked ? 'checked' : ''} /></label>`;
+  }).join('') || `<div class="a-empty"><p>No ${T(true).toLowerCase()} exist for ${state.level} yet. Create one under Fields &amp; Departments (or add a General Test).</p></div>`;
+  const nm = document.getElementById('testName'); if (!nameDirty) nm.value = defaultName();
 }
-
-function toggleField(e, field) {
+function setLevel(l) {
+  state.level = l; state.selected.clear(); state.compositions = {}; state.activeTab = null; renderStep1();
+}
+function toggleField(e, name) {
   e.preventDefault();
-  if (state.selectedFields.has(field)) {
-    state.selectedFields.delete(field);
-    delete state.compositions[field];
-  } else {
-    state.selectedFields.add(field);
-    if (!state.compositions[field]) state.compositions[field] = defaultRowsFor(field);
-  }
-  if (!state.selectedFields.has(state.activeTab)) {
-    state.activeTab = [...state.selectedFields][0] || null;
-  }
+  if (state.selected.has(name)) { state.selected.delete(name); delete state.compositions[name]; }
+  else { state.selected.add(name); state.compositions[name] = defaultRowsFor(name); }
   renderStep1();
 }
 
-// ---- Step 2: Paper composition ----
+// ---- Step 2: paper composition ----
 function renderStep2() {
-  const tabsEl = document.getElementById('fieldTabs');
-  const fields = [...state.selectedFields];
-  if (!fields.includes(state.activeTab)) state.activeTab = fields[0] || null;
-
-  tabsEl.innerHTML = fields.map(f => {
-    const hasShortfall = (state.compositions[f] || []).some(row => !rowStatus(f, row).sufficient);
-    return `<div class="field-tab ${f === state.activeTab ? 'active' : ''}" onclick="switchFieldTab('${f}')">
-      ${f}${hasShortfall ? '<span class="shortfall-dot"></span>' : ''}
-    </div>`;
+  document.getElementById('compSub').textContent = `Questions per candidate, and the ${POOL_FACTOR}× pool needed so each candidate gets a different random paper`;
+  const tabsEl = document.getElementById('fieldTabs'), names = [...state.selected];
+  if (!names.includes(state.activeTab)) state.activeTab = names[0] || null;
+  tabsEl.innerHTML = names.map(n => {
+    const bad = (state.compositions[n] || []).some(r => !rowStatus(n, r).sufficient);
+    return `<div class="field-tab ${n === state.activeTab ? 'active' : ''}" data-n="${AA.esc(n)}" onclick="switchFieldTab(this.dataset.n)">${AA.esc(n)}${bad ? '<span class="shortfall-dot"></span>' : ''}</div>`;
   }).join('');
-
   const area = document.getElementById('compositionArea');
-  if (!state.activeTab) { area.innerHTML = '<div class="a-empty"><p>Select at least one Field in Step 1.</p></div>'; return; }
-
-  const rows = state.compositions[state.activeTab] || [];
-  const subjectOptions = FIELDS[state.activeTab].subjects.map(s => `<option value="${s.name}">${s.name}${s.shared ? ' (Shared)' : ''}</option>`).join('');
-
+  if (!state.activeTab) { area.innerHTML = `<div class="a-empty"><p>Select at least one ${T().toLowerCase()} in Step 1.</p></div>`; return; }
+  const d = DEPT(state.activeTab), rows = state.compositions[state.activeTab] || [];
+  const totalQ = rows.reduce((a, r) => a + r.count, 0), totalPool = rows.reduce((a, r) => a + rowStatus(state.activeTab, r).needed, 0);
+  const subjOpts = d.subjects.map(s => `<option>${AA.esc(s)}</option>`).join('');
   area.innerHTML = `
-    <div class="comp-table-head"><span>Subject</span><span>Type</span><span>Difficulty</span><span>Count</span><span>Status</span><span></span></div>
-    <div id="compRows">
-      ${rows.map(row => renderCompRow(state.activeTab, row, subjectOptions)).join('')}
-    </div>
-    <button class="a-btn a-btn-ghost a-btn-sm comp-add-row" onclick="addRow('${state.activeTab}')">+ Add row</button>
-  `;
+    <div class="comp-table-head"><span>Subject</span><span>Type</span><span>Difficulty</span><span>Per candidate</span><span>Pool needed</span><span>In bank</span><span>Status</span><span></span></div>
+    ${rows.map(r => renderCompRow(state.activeTab, r, subjOpts)).join('')}
+    <button class="a-btn a-btn-ghost a-btn-sm comp-add-row" data-n="${AA.esc(state.activeTab)}" onclick="addRow(this.dataset.n)">+ Add row</button>
+    <div class="rand-note">🎲 <b>Randomization:</b> each candidate receives <b style="color:#fff;">${totalQ}</b> questions, drawn at random from a pool of at least <b style="color:#fff;">${totalPool}</b>
+      (${POOL_FACTOR}× per subject). ${d.mode === 'general' ? 'This is a <b>general test</b> — every candidate is tested on the same subjects.' : `Papers are assembled only from this ${T().toLowerCase()}'s approved questions.`}
+      ${rows.some(r => !rowStatus(state.activeTab, r).sufficient) ? ' <a href="generate.html" style="color:var(--apt-light);text-decoration:underline;">Generate more questions →</a>' : ''}</div>`;
 }
-
-function renderCompRow(field, row, subjectOptions) {
-  const st = rowStatus(field, row);
-  const statusHtml = st.sufficient
-    ? `<span class="badge badge-approved">Sufficient</span>`
-    : `<span class="badge badge-draft">${st.pool} of ${st.required}</span>`;
-  return `
-    <div class="comp-row" data-row-id="${row.id}">
-      <select class="a-select" onchange="updateRow('${field}',${row.id},'subject',this.value)">${subjectOptions.replace(`value="${row.subject}"`, `value="${row.subject}" selected`)}</select>
-      <select class="a-select" onchange="updateRow('${field}',${row.id},'type',this.value)">${TYPES.map(t => `<option ${t === row.type ? 'selected' : ''}>${t}</option>`).join('')}</select>
-      <select class="a-select" onchange="updateRow('${field}',${row.id},'difficulty',this.value)">${DIFFICULTIES.map(d => `<option ${d === row.difficulty ? 'selected' : ''}>${d}</option>`).join('')}</select>
-      <input class="a-input" type="number" min="1" value="${row.count}" onchange="updateRow('${field}',${row.id},'count',parseInt(this.value)||1)" />
-      <span class="status-cell">${statusHtml}</span>
-      <button class="rm-btn" onclick="removeRow('${field}',${row.id})" title="Remove row">✕</button>
-    </div>`;
+function renderCompRow(name, row, subjOpts) {
+  const st = rowStatus(name, row), n = AA.esc(name).replace(/'/g, "\\'");
+  const badge = st.sufficient ? '<span class="badge badge-approved">Sufficient</span>' : `<span class="badge badge-draft">Short by ${st.short}</span>`;
+  return `<div class="comp-row">
+    <select class="a-select" onchange="updateRow('${n}',${row.id},'subject',this.value)">${subjOpts.replace(`<option>${AA.esc(row.subject)}</option>`, `<option selected>${AA.esc(row.subject)}</option>`)}</select>
+    <select class="a-select" onchange="updateRow('${n}',${row.id},'type',this.value)">${TYPES.map(t => `<option ${t === row.type ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    <select class="a-select" onchange="updateRow('${n}',${row.id},'difficulty',this.value)">${DIFFICULTIES.map(x => `<option ${x === row.difficulty ? 'selected' : ''}>${x}</option>`).join('')}</select>
+    <input class="a-input" type="number" min="1" value="${row.count}" onchange="updateRow('${n}',${row.id},'count',parseInt(this.value)||1)" />
+    <span class="num-cell">${st.needed}</span><span class="num-cell ${st.sufficient ? '' : 'bad'}">${st.pool}</span>
+    <span class="status-cell">${badge}</span>
+    <button class="rm-btn" onclick="removeRow('${n}',${row.id})" title="Remove row">✕</button></div>`;
 }
-
-function switchFieldTab(field) { state.activeTab = field; renderStep2(); }
-
-function updateRow(field, id, key, value) {
-  const row = state.compositions[field].find(r => r.id === id);
-  if (row) row[key] = value;
-  renderStep2(); // re-render to refresh sufficiency across any shared-subject siblings too
-}
-
-function addRow(field) {
-  const firstSubject = FIELDS[field].subjects[0].name;
-  state.compositions[field].push({ id: rowIdSeq++, subject: firstSubject, type: 'MCQ', difficulty: 'Medium', count: 10 });
-  renderStep2();
-}
-
-function removeRow(field, id) {
-  state.compositions[field] = state.compositions[field].filter(r => r.id !== id);
-  renderStep2();
-}
+function switchFieldTab(n) { state.activeTab = n; renderStep2(); }
+function updateRow(name, id, key, value) { const r = state.compositions[name].find(x => x.id === id); if (r) r[key] = value; renderStep2(); }
+function addRow(name) { state.compositions[name].push({ id: rowIdSeq++, subject: DEPT(name).subjects[0], type: 'MCQ', difficulty: 'Any', count: 10 }); renderStep2(); }
+function removeRow(name, id) { state.compositions[name] = state.compositions[name].filter(r => r.id !== id); renderStep2(); }
 
 // ---- Step 3: Schedule & release ----
+function toMin(t) { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + m; }
+function fmt12(t) { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`; }
+function updFixed() {
+  const a = document.getElementById('fixStart').value, b = document.getElementById('fixEnd').value, d = toMin(b) - toMin(a);
+  document.getElementById('fixedNote').innerHTML = d > 0
+    ? `⏰ Test runs <b style="color:#fff;">${fmt12(a)} → ${fmt12(b)}</b> (${Math.floor(d / 60)}h ${d % 60}m).<br/>• Candidates <b>cannot start before ${fmt12(a)}</b>.<br/>• The test <b>ends for everyone at ${fmt12(b)}</b> and is auto-submitted — a candidate who starts at ${fmt12(String(Math.floor((toMin(a) + 30) / 60)).padStart(2, '0') + ':' + String((toMin(a) + 30) % 60).padStart(2, '0'))} gets 30 minutes less, not a full timer.`
+    : '<span style="color:#f87171;">End time must be after the start time.</span>';
+}
+function setTimeMode(m) {
+  state.timeMode = m;
+  document.getElementById('modeFlex').classList.toggle('sel', m === 'flex');
+  document.getElementById('modeFixed').classList.toggle('sel', m === 'fixed');
+  document.getElementById('flexFields').style.display = m === 'flex' ? 'block' : 'none';
+  document.getElementById('fixedFields').style.display = m === 'fixed' ? 'block' : 'none';
+  document.getElementById('timeTitle').textContent = m === 'flex' ? 'Time limit & window' : 'Fixed start & end time';
+  if (m === 'fixed') updFixed();
+}
 function setRelease(mode) {
   state.release.mode = mode;
   document.getElementById('relImmediate').classList.toggle('sel', mode === 'immediate');
@@ -207,31 +127,32 @@ function setRelease(mode) {
 // ---- Step 4: Review & publish ----
 function renderStep4() {
   const reviewFields = document.getElementById('reviewFields');
-  reviewFields.innerHTML = [...state.selectedFields].map(field => {
+  reviewFields.innerHTML = [...state.selected].map(field => {
     const rows = state.compositions[field] || [];
     const rowsHtml = rows.map(row => {
       const st = rowStatus(field, row);
-      const statusHtml = st.sufficient ? `<span class="badge badge-approved">Sufficient</span>` : `<span class="badge badge-draft">${st.pool} of ${st.required}</span>`;
-      return `<tr><td>${row.subject}${st.shared ? ' <span class="a-chip shared" style="padding:2px 7px;font-size:10px;">Shared</span>' : ''}</td><td>${row.type}</td><td>${row.difficulty}</td><td>${row.count}</td><td>${statusHtml}</td></tr>`;
+      const statusHtml = st.sufficient ? `<span class="badge badge-approved">Sufficient</span>` : `<span class="badge badge-draft">Short by ${st.short}</span>`;
+      return `<tr><td>${AA.esc(row.subject)}</td><td>${row.type}</td><td>${row.difficulty}</td><td>${row.count}</td><td>${st.pool} / ${st.needed}</td><td>${statusHtml}</td></tr>`;
     }).join('');
     return `
       <div class="a-card review-field-card">
-        <div class="review-field-head"><h3>${field}</h3><span class="muted">${FIELDS[field].candidates} candidates</span></div>
+        <div class="review-field-head"><h3>${AA.esc(field)}</h3><span class="muted">${AA.candidates(field)} candidates · ${state.level}</span></div>
         <div class="a-table-wrap"><table class="a-table">
-          <thead><tr><th>Subject</th><th>Type</th><th>Difficulty</th><th>Count</th><th>Status</th></tr></thead>
-          <tbody>${rowsHtml || '<tr><td colspan="5" class="muted">No subjects configured.</td></tr>'}</tbody>
+          <thead><tr><th>Subject</th><th>Type</th><th>Difficulty</th><th>Per candidate</th><th>Bank / needed</th><th>Status</th></tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="6" class="muted">No subjects configured.</td></tr>'}</tbody>
         </table></div>
       </div>`;
   }).join('');
 
-  const timeLimit = document.getElementById('timeLimit').value;
-  const testDate = document.getElementById('testDate').value;
-  const winOpen = document.getElementById('winOpen').value;
-  const winClose = document.getElementById('winClose').value;
-  document.getElementById('reviewSchedule').innerHTML = `
-    <div>Time limit: <b style="color:#fff;">${timeLimit} minutes</b></div>
-    <div>Date: <b style="color:#fff;">${testDate}</b></div>
-    <div>Window: <b style="color:#fff;">${winOpen} – ${winClose}</b></div>`;
+  const sc = getSchedule();
+  document.getElementById('reviewSchedule').innerHTML = sc.mode === 'fixed' ? `
+    <div>Mode: <b style="color:#fff;">Fixed time</b></div>
+    <div>Date: <b style="color:#fff;">${sc.date}</b></div>
+    <div>Runs: <b style="color:#fff;">${fmt12(sc.start)} – ${fmt12(sc.end)}</b> (hard stop, auto-submit)</div>` : `
+    <div>Mode: <b style="color:#fff;">Flexible window</b></div>
+    <div>Time limit: <b style="color:#fff;">${sc.limit} minutes</b></div>
+    <div>Date: <b style="color:#fff;">${sc.date}</b></div>
+    <div>Window: <b style="color:#fff;">${fmt12(sc.start)} – ${fmt12(sc.end)}</b></div>`;
 
   const relText = state.release.mode === 'immediate'
     ? 'Score shown immediately on submission'
@@ -247,7 +168,7 @@ function renderStep4() {
 
   if (shortfalls.length) {
     banner.style.display = 'block';
-    list.innerHTML = shortfalls.map(s => `<li>⚠ ${s.label} — ${s.pool} of ${s.required} approved</li>`).join('');
+    list.innerHTML = shortfalls.map(s => `<li>⚠ ${s.label} — ${s.pool} in bank, ${s.required} needed (short by ${s.short})</li>`).join('');
     publishBtn.setAttribute('disabled', 'true');
     publishBtn.title = 'Resolve every shortfall first';
     title.textContent = 'Publish is blocked';
@@ -261,8 +182,15 @@ function renderStep4() {
   }
 }
 
+function getSchedule() {
+  const v = id => document.getElementById(id).value;
+  return state.timeMode === 'fixed'
+    ? { mode: 'fixed', date: v('testDate'), start: v('fixStart'), end: v('fixEnd'), name: v('testName') }
+    : { mode: 'flex', date: v('testDate'), start: v('winOpen'), end: v('winClose'), limit: +v('timeLimit'), name: v('testName') };
+}
 function publishTest() {
   if (document.getElementById('publishBtn').hasAttribute('disabled')) return;
+  AA.set('schedule', getSchedule());
   aToast('Aptitude test published — candidates can now log in within the scheduled window.');
   setTimeout(() => { window.location.href = 'monitor.html'; }, 900);
 }
@@ -290,17 +218,21 @@ function renderStep() {
 
 function validateStep(step) {
   if (step === 1) {
-    if (state.selectedFields.size === 0) { aToast('Select at least one Field to continue.', '⚠'); return false; }
+    if (state.selected.size === 0) { aToast(`Select at least one ${T().toLowerCase()} to continue.`, '⚠'); return false; }
     if (!document.getElementById('testName').value.trim()) { aToast('Give this test a name.', '⚠'); return false; }
     return true;
   }
   if (step === 2) {
-    const empty = [...state.selectedFields].find(f => (state.compositions[f] || []).length === 0);
+    const empty = [...state.selected].find(f => (state.compositions[f] || []).length === 0);
     if (empty) { aToast(`${empty} needs at least one subject row.`, '⚠'); return false; }
     return true;
   }
   if (step === 3) {
-    if (!document.getElementById('timeLimit').value || !document.getElementById('testDate').value) { aToast('Set a time limit and test date.', '⚠'); return false; }
+    if (!document.getElementById('testDate').value) { aToast('Set the test date.', '⚠'); return false; }
+    if (state.timeMode === 'fixed') {
+      const a = document.getElementById('fixStart').value, b = document.getElementById('fixEnd').value;
+      if (!a || !b || toMin(b) <= toMin(a)) { aToast('End time must be after the start time.', '⚠'); return false; }
+    } else if (!document.getElementById('timeLimit').value || toMin(document.getElementById('winClose').value) <= toMin(document.getElementById('winOpen').value)) { aToast('Set a time limit and a valid window.', '⚠'); return false; }
     return true;
   }
   return true;
@@ -315,5 +247,5 @@ function wizBack() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(renderStep, 0); // wait one tick for admin-shell.js to inject the template content
+  setTimeout(() => { document.getElementById('testName').addEventListener('input', () => nameDirty = true); renderStep(); }, 0); // wait one tick for admin-shell.js to inject the template content
 });

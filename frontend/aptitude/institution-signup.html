@@ -23,13 +23,13 @@
 
       <h1>Register your Institution</h1>
       <p class="lead">
-        Set up your university or institute on AssessAI's Aptitude Test Portal — add your
-        fields of study, then generate and run large-scale aptitude tests with roster-based
-        access and fullscreen integrity locking.
+        Set up your university or institute on AssessAI's Aptitude Test Portal. Once the platform team approves your account, you can add your own fields and departments, generate questions, and run large-scale aptitude tests with fullscreen integrity locking.
       </p>
 
+      <div class="approval-note"><span>🛡️</span><span>New institutions are reviewed by the AssessAI platform team. You'll be able to sign in as soon as your account is approved.</span></div>
+
       <div class="auth-err" id="signupErr"></div>
-      <div class="auth-ok" id="signupOk">Institution registered — redirecting you to sign in…</div>
+      <div class="auth-ok" id="signupOk">Registration submitted — it is now awaiting Super Admin approval. Redirecting you to sign in…</div>
 
       <!-- Section 1: Institution details -->
       <div class="form-section">
@@ -39,13 +39,13 @@
         </div>
 
         <div class="a-field">
-          <label for="instName">Institution name</label>
+          <label for="instName">Institution name <span class="req">*</span></label>
           <input class="a-input" id="instName" placeholder="e.g. NED University of Engineering &amp; Technology" required />
         </div>
 
         <div class="signup-grid" style="margin-bottom:14px;">
           <div class="a-field">
-            <label for="instType">Institution type</label>
+            <label for="instType">Institution type <span class="req">*</span></label>
             <select class="a-select" id="instType" required>
               <option value="" disabled selected>Select type</option>
               <option>University</option>
@@ -55,7 +55,7 @@
             </select>
           </div>
           <div class="a-field">
-            <label for="instCity">City / Location</label>
+            <label for="instCity">City / Location <span class="req">*</span></label>
             <input class="a-input" id="instCity" placeholder="e.g. Karachi, Pakistan" required />
           </div>
         </div>
@@ -75,18 +75,18 @@
 
         <div class="signup-grid" style="margin-bottom:14px;">
           <div class="a-field">
-            <label for="adminName">Full name</label>
+            <label for="adminName">Full name <span class="req">*</span></label>
             <input class="a-input" id="adminName" placeholder="e.g. Dr. Ayesha Khan" required />
           </div>
           <div class="a-field">
-            <label for="adminEmail">Work email</label>
+            <label for="adminEmail">Work email <span class="req">*</span></label>
             <input class="a-input" id="adminEmail" type="email" placeholder="admissions@your-institution.edu" required />
           </div>
         </div>
 
         <div class="signup-grid">
           <div class="a-field">
-            <label for="adminPhone">Phone</label>
+            <label for="adminPhone">Phone <span class="req">*</span></label>
             <input class="a-input" id="adminPhone" type="tel" placeholder="e.g. 0300 1234567" required />
           </div>
           <div class="a-field">
@@ -96,43 +96,22 @@
         </div>
       </div>
 
-      <!-- Section 3: Fields & Departments -->
+      <!-- Section 3: Security -->
       <div class="form-section">
         <div class="form-section-head">
           <span class="n">3</span>
-          <div><h2>Fields &amp; Departments</h2><p>What will you be testing candidates in?</p></div>
-        </div>
-
-        <div class="a-field">
-          <label for="deptEntry">Add a field of study, then press Enter</label>
-          <div class="chip-input-box" id="deptBox">
-            <input id="deptEntry" placeholder="e.g. Pre-Engineering" />
-          </div>
-          <div class="chip-suggest" id="deptSuggest">
-            <button type="button" data-dept="Pre-Engineering">+ Pre-Engineering</button>
-            <button type="button" data-dept="Pre-Medical">+ Pre-Medical</button>
-            <button type="button" data-dept="Computer Science">+ Computer Science</button>
-            <button type="button" data-dept="Commerce">+ Commerce</button>
-          </div>
-          <p class="dept-count"><b id="deptCount">0</b> field(s) added — you can rename these, add subjects, and add more anytime from Fields &amp; Subjects after logging in.</p>
-        </div>
-      </div>
-
-      <!-- Section 4: Security -->
-      <div class="form-section">
-        <div class="form-section-head">
-          <span class="n">4</span>
           <div><h2>Security</h2><p>For the primary Admin's sign-in</p></div>
         </div>
 
         <div class="signup-grid">
           <div class="a-field">
-            <label for="pw1">Password</label>
-            <input class="a-input" id="pw1" type="password" placeholder="••••••••" required />
+            <label for="pw1">Password <span class="req">*</span></label>
+            <div class="pw-wrap"><input class="a-input" id="pw1" type="password" placeholder="At least 6 characters" autocomplete="new-password" required /><button type="button" class="pw-toggle" data-for="pw1">Show</button></div>
+            <div class="pw-meter" id="pwMeter"><i></i><i></i><i></i><i></i></div><div class="pw-label" id="pwLabel"></div>
           </div>
           <div class="a-field">
-            <label for="pw2">Confirm password</label>
-            <input class="a-input" id="pw2" type="password" placeholder="••••••••" required />
+            <label for="pw2">Confirm password <span class="req">*</span></label>
+            <div class="pw-wrap"><input class="a-input" id="pw2" type="password" placeholder="Re-enter password" autocomplete="new-password" required /><button type="button" class="pw-toggle" data-for="pw2">Show</button></div>
           </div>
         </div>
       </div>
@@ -148,6 +127,7 @@
     </form>
   </div>
 
+  <script src="../assets/js/store.js"></script>
   <script src="../assets/js/main.js"></script>
   <script src="../assets/js/institution-signup.js"></script>
 </body>

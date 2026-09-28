@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Draft Review — Institution Admin</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" /><link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/question-bank.css" />
+</head>
+<body data-page="drafts" data-title="Draft Review" data-sub="Review each generation attempt — only approved questions enter the bank">
+<template id="a-actions-template"><a class="a-btn a-btn-amber" href="generate.html">✦ New generation</a></template>
+<template id="a-content-template"><div id="view"></div></template>
+
+<div class="a-modal-bg" id="editModal"><div class="a-modal">
+  <div class="a-modal-head"><h3>Edit question</h3><button class="a-modal-x" onclick="closeEdit()">✕</button></div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div class="a-field"><label>Question</label><textarea class="a-textarea" id="eText"></textarea></div>
+    <div class="a-field"><label>Options (one per line)</label><textarea class="a-textarea" id="eOpts" style="min-height:100px"></textarea></div>
+    <div class="a-field"><label>Correct option number</label><input class="a-input" type="number" id="eAns" min="1" /></div>
+    <button class="btn btn-amber" onclick="saveEdit()">Save changes</button>
+  </div></div></div>
+
+<script src="../../assets/js/store.js"></script><script src="../../assets/js/admin-shell.js"></script>
+<script>
+let cur=null, editQ=null;
+const $=id=>document.getElementById(id);
+const stBadge={pending:'badge-draft',approved:'badge-approved',rejected:'badge-rejected'};
+function counts(a){const c={pending:0,approved:0,rejected:0};a.questions.forEach(q=>c[q.status]++);return c;}
+function fmt(t){return new Date(t).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function save(at){const all=AA.attempts(); all[all.findIndex(a=>a.id===at.id)]=at; AA.saveAttempts(all);}
+function list(keep){
+  cur=null; const q=keep?$('sq').value.toLowerCase():''; const all=AA.attempts();
+  const rows=all.filter(a=>(a.dept+a.subject+a.source).toLowerCase().includes(q));
+  $('view').innerHTML=`<div class="filters"><input class="a-input" id="sq" placeholder="Search attempts by field, subject, source…" value="${AA.esc(q)}" oninput="list(true)" /></div>
+  <div style="display:flex;flex-direction:column;gap:10px;">${rows.map((a,i)=>{const c=counts(a);return `
+    <div class="a-card qrow attempt-row" onclick="openAttempt('${a.id}')">
+      <div class="qbody"><p class="qtext"><b>${i===0&&!q?'Latest · ':''}${AA.esc(a.dept)} → ${AA.esc(a.subject)}</b></p>
+        <div class="qmeta"><span class="a-chip">${a.level}</span><span class="a-chip">${a.type}</span><span class="a-chip">Source: ${AA.esc(a.source)}</span><span class="a-chip">🕒 ${fmt(a.created)}</span></div></div>
+      <div class="qmeta"><span class="badge badge-draft">${c.pending} pending</span><span class="badge badge-approved">${c.approved} approved</span><span class="badge badge-rejected">${c.rejected} rejected</span></div>
+    </div>`}).join('')||'<div class="a-card a-empty">No generation attempts yet. Use “New generation” to create one.</div>'}</div>`;
+  if(keep){const s=$('sq'); s.focus(); s.setSelectionRange(q.length,q.length);}
+}
+function openAttempt(id){cur=AA.attempts().find(a=>a.id===id); if(!cur) return list(); history.replaceState(null,'','?attempt='+id); detail();}
+function detail(){
+  const c=counts(cur);
+  $('view').innerHTML=`<button class="a-btn a-btn-ghost a-btn-sm" onclick="history.replaceState(null,'','draft-review.html');list()" style="margin-bottom:14px;">← All attempts</button>
+  <div class="a-card" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <div><h2 style="font-size:16px;">${AA.esc(cur.dept)} → ${AA.esc(cur.subject)}</h2><p class="muted">${cur.level} · ${cur.type} · ${fmt(cur.created)} · ${AA.esc(cur.source)}</p></div>
+    <div style="display:flex;gap:8px;align-items:center;"><span class="badge badge-draft">${c.pending} pending</span><span class="badge badge-approved">${c.approved} approved</span>
+    <button class="a-btn a-btn-amber a-btn-sm" onclick="approveAll()">Approve all pending</button></div></div>
+  <div style="display:flex;flex-direction:column;gap:10px;">${cur.questions.map((q,i)=>`
+   <div class="a-card qrow"><div class="qbody"><p class="qtext">${i+1}. ${AA.esc(q.text)}</p>
+     <div class="opt-view">${q.options.map((o,j)=>`<span class="${j===q.answer?'ok':''}">${'ABCD'[j]}. ${AA.esc(o)}${j===q.answer?' ✓':''}</span>`).join('')}</div>
+     <div class="qmeta"><span class="badge ${stBadge[q.status]}">${q.status}</span><span class="a-chip">${q.difficulty}</span><span class="a-chip">${q.marks} mark${q.marks>1?'s':''}</span></div></div>
+     <div class="qactions" style="flex-direction:column;">
+       <button class="a-btn a-btn-amber a-btn-sm" onclick="act('${q.id}','approve')" ${q.status==='approved'?'disabled':''}>Approve</button>
+       <button class="a-btn a-btn-ghost a-btn-sm" onclick="openEdit('${q.id}')">Edit</button>
+       <button class="a-btn a-btn-ghost a-btn-sm" onclick="act('${q.id}','regen')">Regenerate</button>
+       <button class="a-btn a-btn-danger a-btn-sm" onclick="act('${q.id}','reject')" ${q.status==='rejected'?'disabled':''}>Reject</button></div></div>`).join('')}</div>`;
+}
+function addToBank(q){const b=AA.bank(); b.push({...q,status:'approved',dept:cur.dept,level:cur.level}); AA.saveBank(b);}
+function rmFromBank(id){AA.saveBank(AA.bank().filter(x=>x.id!==id));}
+function act(id,what){
+  const i=cur.questions.findIndex(q=>q.id===id), q=cur.questions[i];
+  if(what==='approve'){q.status='approved'; rmFromBank(id); addToBank(q); aToast('Approved — added to Question Bank.');}
+  if(what==='reject'){q.status='rejected'; rmFromBank(id); aToast('Rejected.','✕');}
+  if(what==='regen'){rmFromBank(id); const n=aaMakeQuestion(q.subject,q.type,q.marks,q.difficulty,Math.floor(Math.random()*8)); n.text+=' ✦'; cur.questions[i]=n; aToast('Question regenerated.');}
+  save(cur); detail();
+}
+function approveAll(){cur.questions.forEach(q=>{if(q.status==='pending'){q.status='approved';addToBank(q);}}); save(cur); detail(); aToast('All pending questions approved.');}
+function openEdit(id){editQ=cur.questions.find(q=>q.id===id); eText.value=editQ.text; eOpts.value=editQ.options.join('\n'); eAns.value=editQ.answer+1; $('editModal').classList.add('open');}
+function closeEdit(){$('editModal').classList.remove('open');}
+function saveEdit(){const o=eOpts.value.split('\n').map(x=>x.trim()).filter(Boolean); if(o.length<2) return aToast('Need at least 2 options.','⚠');
+  editQ.text=eText.value.trim(); editQ.options=o; editQ.answer=Math.min(o.length,Math.max(1,+eAns.value||1))-1;
+  if(editQ.status==='approved'){rmFromBank(editQ.id); addToBank(editQ);} save(cur); closeEdit(); detail(); aToast('Question updated.');}
+document.addEventListener('DOMContentLoaded',()=>{const id=new URLSearchParams(location.search).get('attempt'); id?openAttempt(id):list();});
+</script></body></html>
