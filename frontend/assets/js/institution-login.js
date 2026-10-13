@@ -1,22 +1,34 @@
-// institution-login.html — sign in (institution or Super Admin)
-// Registration lives on institution-signup.html.
-// Demo Super Admin: superadmin@assessai.com (any password). Replace with backend auth.
-const SUPER_ADMIN_EMAIL = 'superadmin@assessai.com';
+// institution-login.html — sign in (institution admin or platform Super Admin)
+// Registration lives on institution-signup.html. Role is decided by the server.
 
 document.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
-  const show = msg => { $('authErr').style.display = msg ? 'block' : 'none'; $('authErr').textContent = msg || ''; };
+  const err = $('authErr'), okBox = $('authOk'), btn = $('submitBtn');
+  const showErr = msg => { okBox.style.display = 'none'; err.textContent = msg; err.style.display = msg ? 'block' : 'none'; };
 
-  $('loginForm').addEventListener('submit', e => {
+  const dest = role => role === 'super_admin' ? 'admin/super-admin.html' : 'admin/dashboard.html';
+
+  if (new URLSearchParams(location.search).has('registered')) {
+    okBox.textContent = 'Registration submitted. You can sign in once the platform team approves your institution.';
+    okBox.style.display = 'block';
+  }
+
+  // Already signed in? Skip the form.
+  api('/auth/me').then(d => { location.replace(dest(d.user.role)); }).catch(() => {});
+
+  $('loginForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const email = $('email').value.trim().toLowerCase(), pass = $('password').value.trim();
-    if (!email || !pass) return show('Enter your email and password.');
+    showErr('');
+    const email = $('email').value.trim(), password = $('password').value;
+    if (!email || !password) return showErr('Enter your email and password.');
 
-    if (email === SUPER_ADMIN_EMAIL) { AA.set('role', 'super'); return (location.href = 'admin/super-admin.html'); }
-    const su = AA.signups().find(s => s.email === email);
-    if (su && su.status === 'pending') return show('Your institution is still awaiting Super Admin approval.');
-    if (su && su.status !== 'approved') return show('This institution account is ' + su.status + '. Contact the platform administrator.');
-    AA.set('role', 'institution'); if (su) AA.set('me', su);
-    location.href = 'admin/dashboard.html';
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    try {
+      const { user } = await api('/auth/login', { method: 'POST', body: { email, password } });
+      location.href = dest(user.role);
+    } catch (ex) {
+      showErr(ex.message);
+      btn.disabled = false; btn.textContent = 'Sign in →';
+    }
   });
 });
