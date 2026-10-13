@@ -53,7 +53,7 @@ function initAdminShell() {
           <div class="av">${A_SESSION.initials}</div>
           <div class="meta"><b>${A_SESSION.institution}</b><span>${A_SESSION.admin}</span></div>
         </div>
-        <a href="../institution-login.html" class="a-logout">Log out</a>
+        <a href="../institution-login.html" class="a-logout" id="a-logout">Log out</a>
       </div>
     </aside>
     <div class="a-main">
@@ -74,11 +74,42 @@ function initAdminShell() {
     document.getElementById('a-content').innerHTML = existingContent.innerHTML;
     existingContent.remove();
   }
+  document.getElementById('a-logout').addEventListener('click', async (e) => {
+    e.preventDefault();
+    try { await api('/auth/logout', { method: 'POST' }); } catch (err) { /* leave anyway */ }
+    window.location.href = '../institution-login.html';
+  });
+  guardSession();
+
   const actionsTpl = document.getElementById('a-actions-template');
   if (actionsTpl) {
     document.getElementById('a-topbar-actions').innerHTML = actionsTpl.innerHTML;
     actionsTpl.remove();
   }
+}
+
+// Checks the login cookie with the server. No/expired session -> back to the login page.
+// While checking, the page is hidden so protected screens never flash for logged-out visitors.
+async function guardSession() {
+  if (typeof api !== 'function') return;            // api.js not loaded on this page
+  const wantSuper = document.body.dataset.role === 'super';
+  document.body.style.visibility = 'hidden';
+  try {
+    const { user } = await api('/auth/me');
+    if (wantSuper && user.role !== 'super_admin') return window.location.replace('dashboard.html');
+    if (!wantSuper && user.role === 'super_admin') return window.location.replace('super-admin.html');
+    const chip = document.querySelector('.a-inst-chip');
+    if (chip) {
+      const name = user.institution ? user.institution.name : 'AssessAI Platform';
+      chip.querySelector('.av').textContent = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+      chip.querySelector('.meta b').textContent = name;
+      chip.querySelector('.meta span').textContent = user.full_name;
+    }
+  } catch (e) {
+    if (e.status === 401 || e.status === 403) return window.location.replace('../institution-login.html');
+    aToast(e.message, '⚠');                          // server unreachable: show the page, tell the user
+  }
+  document.body.style.visibility = '';
 }
 
 function aToast(msg, icon = '✓') {
