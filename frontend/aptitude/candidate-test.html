@@ -13,39 +13,37 @@
   <div class="test-shell active" id="testShell">
     <div class="test-top">
       <div class="cand-brand"><div class="mark">Σ</div><span>Pre-Engineering · Undergraduate Admission Test</span></div>
-      <div style="display:flex;align-items:center;gap:14px;">
-        <span style="font-size:12px;color:var(--n-500);" id="progressLabel">0 of 60 answered</span>
-        <div class="timer" id="timer">02:30:00</div>
-      </div>
+      <div class="top-mid"><div class="prog-track"><div class="prog-fill" id="progFill"></div></div><span id="progressLabel">0 of 20 answered</span></div>
+      <div class="timer" id="timer">⏱ 02:30:00</div>
     </div>
+    <div class="sec-tabs" id="secTabs"></div>
 
     <div class="test-body">
       <aside class="q-nav">
-        <h4>Questions</h4>
+        <h4>Question map</h4>
         <div class="q-grid" id="qGrid"></div>
         <div class="q-legend">
           <div><span class="sw" style="background:rgba(34,197,94,.5);"></span>Answered</div>
+          <div><span class="sw" style="background:rgba(245,158,11,.6);"></span>Flagged for review</div>
           <div><span class="sw" style="background:rgba(255,255,255,.08);"></span>Unanswered</div>
           <div><span class="sw" style="background:transparent;border:1.5px solid var(--apt-primary);"></span>Current</div>
         </div>
-        <button class="a-btn a-btn-amber" style="width:100%;margin-top:18px;" onclick="openSubmitConfirm()">Submit test</button>
+        <button class="btn btn-amber" style="width:100%;margin-top:18px;" onclick="openSubmitConfirm()">Submit test</button>
       </aside>
 
       <main class="q-panel">
-        <div class="qn" id="qNum">Question 7 of 60 · Mathematics · Medium</div>
-        <p class="qtext" id="qText">A train travels 120 km at a uniform speed. If the speed had been 10 km/h more, it would have taken 1 hour less for the same journey. What is the original speed of the train?</p>
-        <div id="optList">
-          <div class="opt" onclick="selectOpt(this)"><span class="radio"></span><span class="t">30 km/h</span></div>
-          <div class="opt" onclick="selectOpt(this)"><span class="radio"></span><span class="t">40 km/h</span></div>
-          <div class="opt sel" onclick="selectOpt(this)"><span class="radio"></span><span class="t">50 km/h</span></div>
-          <div class="opt" onclick="selectOpt(this)"><span class="radio"></span><span class="t">60 km/h</span></div>
+        <div class="q-card">
+          <div class="q-card-head"><span class="qn" id="qNum"></span><button class="flag-btn" id="flagBtn" onclick="toggleFlag()">⚑ Flag for review</button></div>
+          <p class="qtext" id="qText"></p>
+          <div id="optList"></div>
         </div>
       </main>
     </div>
 
     <div class="test-foot">
-      <button class="a-btn a-btn-ghost" onclick="aToastCand('Moved to previous question.')">← Previous</button>
-      <button class="a-btn a-btn-amber" onclick="aToastCand('Moved to next question.')">Next →</button>
+      <button class="btn btn-ghost" id="prevBtn" onclick="go(-1)">← Previous</button>
+      <button class="btn btn-ghost" onclick="clearAns()">Clear answer</button>
+      <button class="btn btn-amber" id="nextBtn" onclick="go(1)">Next →</button>
     </div>
   </div>
 
@@ -64,7 +62,7 @@
   <div class="a-modal-bg" id="submitModal">
     <div class="a-modal" style="max-width:380px;text-align:center;">
       <h3 style="margin-bottom:8px;">Submit your test?</h3>
-      <p class="muted" style="margin-bottom:20px;">You've answered 47 of 60 questions. Unanswered questions will be marked incorrect. This cannot be undone.</p>
+      <p class="muted" style="margin-bottom:20px;" id="submitMsg">Unanswered questions will be marked incorrect. This cannot be undone.</p>
       <div style="display:flex;gap:10px;">
         <button class="a-btn a-btn-ghost" style="flex:1;" onclick="closeSubmitConfirm()">Go back</button>
         <button class="a-btn a-btn-amber" style="flex:1;" onclick="window.location.href='candidate-result.html'">Submit</button>
@@ -72,6 +70,7 @@
     </div>
   </div>
 
+  <script src="../assets/js/store.js"></script>
   <script src="../assets/js/admin-shell.js"></script>
   <script src="../assets/js/candidate-test.js"></script>
 </body>

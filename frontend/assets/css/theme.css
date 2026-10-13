@@ -159,75 +159,9 @@ input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible
 .btn-ghost { background: rgba(255,255,255,.06); color: #fff; border: 1px solid rgba(255,255,255,.12); }
 .btn-ghost:hover { background: rgba(255,255,255,.12); }
 
-/* ============================================================
-   Shared form controls — used on every page (admin, auth, candidate).
-   Kept here (not admin-shell.css) so pages that don't load the admin
-   shell still get properly styled inputs.
-   ============================================================ */
-.a-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 0; }
-.a-field label {
-  font-size: 12.5px; font-weight: 600; color: var(--n-300);
-  display: flex; align-items: center; gap: 5px;
-}
-.a-field label .req { color: var(--apt-light); font-size: 11px; }
-.a-field .hint { font-size: 11.5px; color: var(--n-600); line-height: 1.5; }
-
-.a-input, .a-select, .a-textarea {
-  background: rgba(255,255,255,0.04);
-  border: 1.5px solid rgba(255,255,255,0.10);
-  color: #fff;
-  padding: 12px 14px;
-  border-radius: 11px;
-  font-size: 13.5px;
-  font-family: var(--font-body);
-  width: 100%;
-  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
-}
-.a-input::placeholder, .a-textarea::placeholder { color: var(--n-600); }
-.a-textarea { resize: vertical; min-height: 90px; line-height: 1.55; }
-
-.a-input:hover, .a-select:hover, .a-textarea:hover { border-color: rgba(255,255,255,0.22); }
-.a-input:focus, .a-select:focus, .a-textarea:focus {
-  outline: none;
-  background: rgba(255,255,255,0.06);
-  border-color: var(--input-accent, var(--primary));
-  box-shadow: 0 0 0 4px var(--input-accent-glow, rgba(99,102,241,0.16));
-}
-
-/* Aptitude-scoped pages (admin shell + candidate flow) get an amber focus
-   ring instead of the default indigo, to match that side's accent. */
-body.admin-body, .cand-auth-wrap, .instr-wrap {
-  --input-accent: var(--apt-primary);
-  --input-accent-glow: rgba(245,158,11,0.16);
-}
-
-.a-select {
-  appearance: none; cursor: pointer;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0L5 6L10 0Z' fill='%2394a3b8'/></svg>");
-  background-repeat: no-repeat; background-position: right 14px center;
-  padding-right: 34px;
-}
-
-.a-input.invalid, .a-select.invalid, .a-textarea.invalid {
-  border-color: rgba(239,68,68,0.55);
-  box-shadow: 0 0 0 4px rgba(239,68,68,0.12);
-}
-.a-field .err-msg { font-size: 11.5px; color: #f87171; display: none; }
-.a-field.has-error .err-msg { display: block; }
-
-/* Repeatable-row "card" used for dynamic add/remove lists (Fields, subjects, etc.) */
-.rep-row {
-  position: relative; border: 1.5px solid rgba(255,255,255,0.09); border-radius: 14px;
-  padding: 18px 46px 18px 18px; margin-bottom: 12px; background: rgba(255,255,255,0.02);
-  transition: border-color .15s ease;
-}
-.rep-row:hover { border-color: rgba(255,255,255,0.16); }
-.rep-row .rep-remove {
-  position: absolute; top: 14px; right: 14px; width: 26px; height: 26px; border-radius: 8px;
-  background: rgba(239,68,68,0.1); color: #f87171; display: flex; align-items: center; justify-content: center; font-size: 13px;
-}
-.rep-row .rep-remove:hover { background: rgba(239,68,68,0.2); }
-.rep-row .rep-index {
-  font-family: var(--font-mono); font-size: 11px; color: var(--apt-light);
-  margin-bottom: 12px; display: block; letter-spacing: .04em;
-}
+/* ---- Native dropdowns: opaque dark option list so text is always readable ---- */
+select, .a-select { color-scheme: dark; }
+.a-select { color: #fff; padding-right: 34px; text-overflow: ellipsis; }
+select option, select optgroup, .a-select option, .a-select optgroup { background-color: #0f172a; color: #f1f5f9; }
+select optgroup { color: #fbbf24; font-style: normal; font-weight: 600; }
+select option:checked { background-color: #b45309; color: #fff; }

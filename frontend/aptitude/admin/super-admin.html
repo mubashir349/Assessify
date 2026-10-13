@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Super Admin — AssessAI</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" /><link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+</head>
+<body data-page="super" data-role="super" data-title="Platform Super Admin" data-sub="Approve institutions and manage platform access">
+<template id="a-content-template">
+  <div class="a-grid a-grid-3" style="margin-bottom:20px;">
+    <div class="a-card a-stat"><div class="lbl">Pending approval</div><div class="num" id="sPend">0</div></div>
+    <div class="a-card a-stat"><div class="lbl">Active institutions</div><div class="num" id="sAct">0</div></div>
+    <div class="a-card a-stat"><div class="lbl">Total registered</div><div class="num" id="sTot">0</div></div>
+  </div>
+  <div class="filters">
+    <input class="a-input" id="q" placeholder="Search institution or email…" oninput="renderInst()" />
+    <select class="a-select" id="st" onchange="renderInst()"><option value="">All statuses</option><option>pending</option><option>approved</option><option>rejected</option><option>suspended</option></select>
+  </div>
+  <div class="a-card"><div class="a-table-wrap"><table class="a-table">
+    <thead><tr><th>Institution</th><th>Type</th><th>Admin</th><th>Email</th><th>Registered</th><th>Status</th><th></th></tr></thead>
+    <tbody id="instBody"></tbody></table></div></div>
+</template>
+<script src="../../assets/js/store.js"></script>
+<script src="../../assets/js/admin-shell.js"></script>
+<script>
+const SEED=[{id:'s1',inst:'NED University of Engineering & Technology',type:'University',admin:'Aptitude Cell',email:'admissions@ned.edu.pk',status:'approved',date:'2026-01-10'}];
+function all(){const s=AA.signups(); return SEED.concat(s);}
+function setStatus(id,st){const s=AA.signups(); const x=s.find(i=>i.id===id); if(x){x.status=st;AA.saveSignups(s);aToast('Institution '+st+'.');renderInst();}}
+function renderInst(){
+  const q=document.getElementById('q').value.toLowerCase(), st=document.getElementById('st').value, a=all();
+  document.getElementById('sPend').textContent=a.filter(i=>i.status==='pending').length;
+  document.getElementById('sAct').textContent=a.filter(i=>i.status==='approved').length;
+  document.getElementById('sTot').textContent=a.length;
+  const cls={approved:'badge-approved',pending:'badge-draft',rejected:'badge-rejected',suspended:'badge-locked'};
+  document.getElementById('instBody').innerHTML=a.filter(i=>(!st||i.status===st)&&(i.inst+i.email).toLowerCase().includes(q)).map(i=>`<tr>
+    <td class="name">${AA.esc(i.inst)}</td><td>${i.type}</td><td>${AA.esc(i.admin)}</td><td>${AA.esc(i.email)}</td><td class="mono">${i.date}</td>
+    <td><span class="badge ${cls[i.status]}">${i.status}</span></td>
+    <td>${i.id==='s1'?'':i.status==='approved'?`<button class="a-btn a-btn-danger a-btn-sm" onclick="setStatus('${i.id}','suspended')">Suspend</button>`:`<button class="a-btn a-btn-amber a-btn-sm" onclick="setStatus('${i.id}','approved')">Approve</button> ${i.status==='pending'?`<button class="a-btn a-btn-ghost a-btn-sm" onclick="setStatus('${i.id}','rejected')">Reject</button>`:''}`}</td></tr>`).join('')||'<tr><td colspan="7" class="muted">No institutions found.</td></tr>';
+}
+document.addEventListener('DOMContentLoaded',renderInst);
+</script></body></html>

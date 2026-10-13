@@ -9,143 +9,45 @@
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/fields-subjects.css" />
 </head>
-<body data-page="fields" data-title="Fields &amp; Subjects" data-sub="Define what this institution tests, and for which programs">
+<body data-page="fields" data-title="Fields &amp; Departments" data-sub="Fields for Undergraduate · Departments for Masters &amp; PhD — or one general test for everyone">
 
 <template id="a-actions-template">
-  <button class="a-btn a-btn-amber" onclick="openModal('fieldModal')">+ New Field</button>
-  <button class="a-btn a-btn-ghost" onclick="openModal('sharedModal')">+ Shared Subject</button>
+  <button class="a-btn a-btn-amber" onclick="openDeptModal()">+ New Field / Department</button>
 </template>
 
 <template id="a-content-template">
-
-  <div class="tabs">
-    <div class="tab active" data-tab="fields" onclick="switchTab('fields')">Fields (4)</div>
-    <div class="tab" data-tab="shared" onclick="switchTab('shared')">Shared Subjects (1)</div>
+  <div class="filters">
+    <select class="a-select" id="lvlFilter" onchange="renderDepts()"><option value="">All levels</option><option>Undergraduate</option><option>Masters</option><option>PhD</option></select>
+    <input class="a-input" id="dSearch" placeholder="Search fields / departments…" oninput="renderDepts()" />
   </div>
-
-  <div class="tabpanel active" id="tab-fields">
-    <div class="a-grid a-grid-2">
-
-      <div class="a-card field-card">
-        <div class="field-card-head">
-          <div><h3>Pre-Engineering</h3><p class="muted">4 subjects · 168 approved questions</p></div>
-          <button class="a-btn a-btn-ghost a-btn-sm">Edit</button>
-        </div>
-        <div class="subj-list">
-          <span class="a-chip">English <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-          <span class="a-chip">Mathematics <span class="mono" style="color:var(--n-600)">· 48 Q</span></span>
-          <span class="a-chip">Chemistry <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-          <span class="a-chip">Physics <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-        </div>
-      </div>
-
-      <div class="a-card field-card">
-        <div class="field-card-head">
-          <div><h3>Pre-Medical</h3><p class="muted">4 subjects · 154 approved questions</p></div>
-          <button class="a-btn a-btn-ghost a-btn-sm">Edit</button>
-        </div>
-        <div class="subj-list">
-          <span class="a-chip">English <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-          <span class="a-chip">Biology <span class="mono" style="color:var(--n-600)">· 34 Q</span></span>
-          <span class="a-chip">Chemistry <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-          <span class="a-chip">Physics <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-        </div>
-      </div>
-
-      <div class="a-card field-card">
-        <div class="field-card-head">
-          <div><h3>Computer Science</h3><p class="muted">4 subjects · 172 approved questions</p></div>
-          <button class="a-btn a-btn-ghost a-btn-sm">Edit</button>
-        </div>
-        <div class="subj-list">
-          <span class="a-chip">English <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-          <span class="a-chip">Mathematics <span class="mono" style="color:var(--n-600)">· 44 Q</span></span>
-          <span class="a-chip">Computer Science <span class="mono" style="color:var(--n-600)">· 48 Q</span></span>
-          <span class="a-chip">Physics <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-        </div>
-      </div>
-
-      <div class="a-card field-card">
-        <div class="field-card-head">
-          <div><h3>Commerce</h3><p class="muted">3 subjects · 118 approved questions</p></div>
-          <button class="a-btn a-btn-ghost a-btn-sm">Edit</button>
-        </div>
-        <div class="subj-list">
-          <span class="a-chip">English <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-          <span class="a-chip">Accounting <span class="mono" style="color:var(--n-600)">· 38 Q</span></span>
-          <span class="a-chip">General Math <span class="mono" style="color:var(--n-600)">· 40 Q</span></span>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <div class="tabpanel" id="tab-shared">
-    <div class="a-card">
-      <div class="section-head">
-        <div><h2>English</h2><p>Shared Subject · single pool, generated &amp; approved once</p></div>
-        <span class="a-chip shared">160 approved questions</span>
-      </div>
-      <p class="muted" style="margin-bottom:12px;">Linked Fields — every Field below draws from this one pool:</p>
-      <div class="subj-list">
-        <span class="a-chip shared">Pre-Engineering <button title="Unlink">✕</button></span>
-        <span class="a-chip shared">Pre-Medical <button title="Unlink">✕</button></span>
-        <span class="a-chip shared">Computer Science <button title="Unlink">✕</button></span>
-        <span class="a-chip shared">Commerce <button title="Unlink">✕</button></span>
-      </div>
-      <p class="muted" style="margin-top:14px;font-size:11.5px;">
-        Sufficiency for this pool is evaluated once, using the largest per-Field requirement among
-        Fields drawn on by the same test — not the sum.
-      </p>
-    </div>
-  </div>
-
+  <div class="a-grid a-grid-2" id="deptGrid"></div>
 </template>
 
-<!-- New Field modal -->
 <div class="a-modal-bg" id="fieldModal">
   <div class="a-modal">
     <div class="a-modal-head">
-      <div><h3>New Field of study</h3><p class="muted" style="font-size:12px;">e.g. Pre-Engineering, Computer Science</p></div>
+      <div><h3 id="mTitle">New field / department</h3><p class="muted" style="font-size:12px;">Any name — Pre-Med, Law, Data Science, or a General Test</p></div>
       <button class="a-modal-x" onclick="closeModal('fieldModal')">✕</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
-      <div class="a-field"><label>Field name</label><input class="a-input" placeholder="e.g. Pre-Engineering" /></div>
-      <div class="a-field">
-        <label>Field-specific subjects</label>
-        <input class="a-input" placeholder="e.g. Mathematics, Chemistry, Physics (comma-separated)" />
-        <span class="hint">Shared Subjects are linked separately below.</span>
-      </div>
-      <div class="a-field">
-        <label>Link Shared Subjects</label>
-        <div class="subj-list"><span class="a-chip shared">+ English</span></div>
-      </div>
-      <button class="btn btn-amber" style="width:100%;" onclick="closeModal('fieldModal'); aToast('Field created — add subjects to its question bank next.')">Create Field</button>
+      <div class="a-field"><label>Assessment type</label>
+        <div class="seg">
+          <label><input type="radio" name="dmode" value="general" /> General test<br/><span class="muted">Same subjects for every student (e.g. Maths + English)</span></label>
+          <label><input type="radio" name="dmode" value="field" checked /> Specific to a field / department<br/><span class="muted">Own subjects per field</span></label>
+        </div></div>
+      <div class="a-field"><label>Degree level</label>
+        <select class="a-select" id="dLevel" onchange="lvlChange()"><option>Undergraduate</option><option>Masters</option><option>PhD</option></select></div>
+
+      <div class="a-field"><label id="nameLbl">Field name</label><input class="a-input" id="dName" placeholder="e.g. Pre-Engineering, Law, Data Science" /></div>
+      <div class="a-field"><label>Subjects</label>
+        <div class="tag-in" id="tagBox"><input id="tagInput" placeholder="Type a subject, press Enter" /></div>
+        <span class="hint">Add as many subjects as you like — nothing is fixed.</span></div>
+      <button class="btn btn-amber" style="width:100%;" onclick="saveDept()">Save department</button>
     </div>
   </div>
 </div>
 
-<!-- New Shared Subject modal -->
-<div class="a-modal-bg" id="sharedModal">
-  <div class="a-modal">
-    <div class="a-modal-head">
-      <div><h3>New Shared Subject</h3><p class="muted" style="font-size:12px;">One pool, linked to any number of Fields</p></div>
-      <button class="a-modal-x" onclick="closeModal('sharedModal')">✕</button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div class="a-field"><label>Subject name</label><input class="a-input" placeholder="e.g. English" /></div>
-      <div class="a-field">
-        <label>Link to Fields</label>
-        <div class="subj-list">
-          <span class="a-chip">Pre-Engineering</span><span class="a-chip">Pre-Medical</span>
-          <span class="a-chip">Computer Science</span><span class="a-chip">Commerce</span>
-        </div>
-      </div>
-      <button class="btn btn-amber" style="width:100%;" onclick="closeModal('sharedModal'); aToast('Shared Subject created.')">Create Shared Subject</button>
-    </div>
-  </div>
-</div>
-
+<script src="../../assets/js/store.js"></script>
 <script src="../../assets/js/admin-shell.js"></script>
 <script src="../../assets/js/fields-subjects.js"></script>
 </body>
