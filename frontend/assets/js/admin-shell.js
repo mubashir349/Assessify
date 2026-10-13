@@ -79,7 +79,7 @@ function initAdminShell() {
     try { await api('/auth/logout', { method: 'POST' }); } catch (err) { /* leave anyway */ }
     window.location.href = '../institution-login.html';
   });
-  guardSession();
+  guardSession().catch(() => { /* the guard redirects on its own errors */ });
 
   const actionsTpl = document.getElementById('a-actions-template');
   if (actionsTpl) {
