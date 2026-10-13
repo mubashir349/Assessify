@@ -30,7 +30,7 @@ async function api(path, { method = 'GET', body } = {}) {
   let json = null;
   try { json = await res.json(); } catch (e) { /* empty or non-JSON body */ }
   if (!res.ok) {
-    const err = (json && json.error) || {};
+    const err = json?.error || {};
     throw new ApiRequestError(err.code || 'HTTP_' + res.status, err.message || 'Request failed (' + res.status + ').', res.status, err.details);
   }
   return json ? json.data : null;
