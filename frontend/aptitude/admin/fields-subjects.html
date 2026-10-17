@@ -17,8 +17,8 @@
 
 <template id="a-content-template">
   <div class="filters">
-    <select class="a-select" id="lvlFilter" onchange="renderDepts()"><option value="">All levels</option><option>Undergraduate</option><option>Masters</option><option>PhD</option></select>
-    <input class="a-input" id="dSearch" placeholder="Search fields / departments…" oninput="renderDepts()" />
+    <select class="a-select" id="lvlFilter"><option value="">All levels</option></select>
+    <input class="a-input" id="dSearch" placeholder="Search fields / departments…" />
   </div>
   <div class="a-grid a-grid-2" id="deptGrid"></div>
 </template>
@@ -31,18 +31,15 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div class="a-field"><label>Assessment type</label>
-        <div class="seg">
-          <label><input type="radio" name="dmode" value="general" /> General test<br/><span class="muted">Same subjects for every student (e.g. Maths + English)</span></label>
-          <label><input type="radio" name="dmode" value="field" checked /> Specific to a field / department<br/><span class="muted">Own subjects per field</span></label>
-        </div></div>
+        <div class="seg" id="modeSeg"></div></div>
       <div class="a-field"><label>Degree level</label>
-        <select class="a-select" id="dLevel" onchange="lvlChange()"><option>Undergraduate</option><option>Masters</option><option>PhD</option></select></div>
+        <select class="a-select" id="dLevel" onchange="lvlChange()"></select></div>
 
       <div class="a-field"><label id="nameLbl">Field name</label><input class="a-input" id="dName" placeholder="e.g. Pre-Engineering, Law, Data Science" /></div>
       <div class="a-field"><label>Subjects</label>
         <div class="tag-in" id="tagBox"><input id="tagInput" placeholder="Type a subject, press Enter" /></div>
         <span class="hint">Add as many subjects as you like — nothing is fixed.</span></div>
-      <button class="btn btn-amber" style="width:100%;" onclick="saveDept()">Save department</button>
+      <button class="btn btn-amber" id="saveBtn" style="width:100%;" onclick="saveDept()">Save department</button>
     </div>
   </div>
 </div>

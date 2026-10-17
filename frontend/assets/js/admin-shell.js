@@ -15,15 +15,9 @@ const A_NAV = [
   { key: 'reports',    icon: '📊', label: 'Reports',           href: 'reports.html' },
 ];
 
-// Demo session context (in a real build this comes from the backend session)
 const A_NAV_SUPER = [
   { key: 'super', icon: '🛡️', label: 'Institutions', href: 'super-admin.html' },
 ];
-const A_SESSION = {
-  institution: 'NED University of Engineering & Technology',
-  initials: 'NU',
-  admin: 'Admin • Aptitude Cell',
-};
 
 function initAdminShell() {
   // Only build the admin shell on pages that actually authored admin content —
@@ -50,15 +44,15 @@ function initAdminShell() {
       </nav>
       <div class="a-sidebar-foot">
         <div class="a-inst-chip">
-          <div class="av">${A_SESSION.initials}</div>
-          <div class="meta"><b>${A_SESSION.institution}</b><span>${A_SESSION.admin}</span></div>
+          <div class="av"></div>
+          <div class="meta"><b></b><span></span></div>
         </div>
         <a href="../institution-login.html" class="a-logout" id="a-logout">Log out</a>
       </div>
     </aside>
     <div class="a-main">
       <div class="a-topbar">
-        <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div>
+        <div><h1>${title}</h1><div class="sub" id="a-sub"${sub ? '' : ' hidden'}>${sub}</div></div>
         <div class="a-topbar-actions" id="a-topbar-actions"></div>
       </div>
       <div class="a-content" id="a-content"></div>
@@ -79,7 +73,7 @@ function initAdminShell() {
     try { await api('/auth/logout', { method: 'POST' }); } catch (err) { /* leave anyway */ }
     window.location.href = '../institution-login.html';
   });
-  guardSession().catch(() => { /* the guard redirects on its own errors */ });
+  guardSession();
 
   const actionsTpl = document.getElementById('a-actions-template');
   if (actionsTpl) {
@@ -98,9 +92,14 @@ async function guardSession() {
     const { user } = await api('/auth/me');
     if (wantSuper && user.role !== 'super_admin') return window.location.replace('dashboard.html');
     if (!wantSuper && user.role === 'super_admin') return window.location.replace('super-admin.html');
+    window.A_USER = user;                              // pages can read the signed-in user
+    if (user.role === 'institution_admin' && typeof AA !== 'undefined' && AA.syncDepts) AA.syncDepts().catch(() => {});
+    if (document.body.dataset.subFrom === 'institution' && user.institution) {
+      const subEl = document.getElementById('a-sub'); subEl.textContent = user.institution.name; subEl.hidden = false;
+    }
     const chip = document.querySelector('.a-inst-chip');
     if (chip) {
-      const name = user.institution ? user.institution.name : 'AssessAI Platform';
+      const name = user.institution ? user.institution.name : 'AssessAI Platform';  // super admin has no institution
       chip.querySelector('.av').textContent = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
       chip.querySelector('.meta b').textContent = name;
       chip.querySelector('.meta span').textContent = user.full_name;
@@ -110,6 +109,7 @@ async function guardSession() {
     aToast(e.message, '⚠');                          // server unreachable: show the page, tell the user
   }
   document.body.style.visibility = '';
+  document.dispatchEvent(new CustomEvent('admin:ready', { detail: window.A_USER }));
 }
 
 function aToast(msg, icon = '✓') {

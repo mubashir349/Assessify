@@ -30,14 +30,20 @@ def create_app(config_class=Config) -> Flask:
 
     # ---- One line per module. Later phases add more here ----
     from app.modules.auth.routes import bp as auth_bp
+    from app.modules.dashboard.routes import bp as dashboard_bp
+    from app.modules.departments.routes import bp as departments_bp
     from app.modules.health.routes import bp as health_bp
     from app.modules.institutions.routes import bp as institutions_bp
+    from app.modules.meta.routes import bp as meta_bp
     from app.modules.super_admin.routes import bp as super_bp
 
     app.register_blueprint(health_bp, url_prefix="/api/v1/health")
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(institutions_bp, url_prefix="/api/v1/institutions")
     app.register_blueprint(super_bp, url_prefix="/api/v1/super")
+    app.register_blueprint(departments_bp, url_prefix="/api/v1/departments")
+    app.register_blueprint(dashboard_bp, url_prefix="/api/v1/dashboard")
+    app.register_blueprint(meta_bp, url_prefix="/api/v1/meta")
 
     _serve_frontend(app)
 

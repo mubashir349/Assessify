@@ -30,7 +30,7 @@ async function api(path, { method = 'GET', body } = {}) {
   let json = null;
   try { json = await res.json(); } catch (e) { /* empty or non-JSON body */ }
   if (!res.ok) {
-    const err = json?.error || {};
+    const err = (json && json.error) || {};
     throw new ApiRequestError(err.code || 'HTTP_' + res.status, err.message || 'Request failed (' + res.status + ').', res.status, err.details);
   }
   return json ? json.data : null;
@@ -39,4 +39,19 @@ async function api(path, { method = 'GET', body } = {}) {
 /** Escape text before putting it into innerHTML. */
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/** Dropdown / label lists (institution types, levels, modes...) come from the backend - nothing is hardcoded here. */
+let _metaPromise = null;
+function loadMeta() {
+  if (!_metaPromise) _metaPromise = api('/meta').catch(e => { _metaPromise = null; throw e; });
+  return _metaPromise;
+}
+/** Fills a <select> from a list of strings or {value,label} objects. Keeps an existing first placeholder <option value="">. */
+function fillSelect(select, items, { keepFirst = false } = {}) {
+  const first = keepFirst && select.options.length ? select.options[0].outerHTML : '';
+  select.innerHTML = first + items.map(i => {
+    const v = typeof i === 'string' ? i : i.value, l = typeof i === 'string' ? i : i.label;
+    return `<option value="${esc(v)}">${esc(l)}</option>`;
+  }).join('');
 }
