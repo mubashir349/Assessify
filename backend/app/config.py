@@ -15,7 +15,7 @@ def build_database_uri() -> str:
         return override
 
     driver = os.getenv("DB_DRIVER", "ODBC Driver 18 for SQL Server")
-    server = os.getenv("DB_SERVER", "localhost\\SQLEXPRESS")
+    server = os.getenv("DB_SERVER", "localhost")
     name = os.getenv("DB_NAME", "AssessifyDB")
     trusted = os.getenv("DB_TRUSTED", "yes").lower() == "yes"
 

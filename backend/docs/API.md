@@ -1,4 +1,4 @@
-# Assessify API — Phase 1 contract
+# Assessify API — Phase 1 + 2 contract
 
 Base URL (dev): `http://127.0.0.1:5000/api/v1`
 All bodies are JSON. Login is an **httpOnly cookie**, so every browser call uses `credentials: 'include'` (the frontend's `api.js` does this).
@@ -50,3 +50,22 @@ Suspending takes effect on the next request of every signed-in admin of that ins
 
 ## Health
 `GET /health` · `GET /health/db`
+
+## Meta (public) — Phase 2
+`GET /meta` → `{institution_types, institution_statuses, levels: [{value, term, term_plural, name_placeholder}], modes: [{value, label, description}], defaults: {level, mode}}`
+The frontend builds every dropdown from this; it hardcodes none of them.
+
+## Fields / Departments (role `institution_admin` only, scoped to the caller's institution) — Phase 2
+| Method | Path | Body → Result |
+|---|---|---|
+| GET | `/departments?level=&q=` | `{items: [department…]}` |
+| POST | `/departments` | `{name, level, mode, subjects: [..]}` → `201 {department}` |
+| GET | `/departments/<id>` | `{department}` |
+| PUT | `/departments/<id>` | same body as POST → `{department}` |
+| DELETE | `/departments/<id>` | `{deleted: id}` (its subjects are deleted too) |
+
+`department` = `{id, name, level, term, mode, subjects: [names], subject_count, created_at, updated_at}`
+Errors: `422 VALIDATION_ERROR` (name 2–150 chars, valid level/mode, 1–50 subjects), `409 DUPLICATE_NAME` (same name at the same level), `404 NOT_FOUND` (also returned for another institution's id).
+
+## Dashboard — Phase 2
+`GET /dashboard/summary` (institution_admin) → `{institution: {name}, departments: {total, by_level, general_tests, recent: [..]}, subjects: {total}}`

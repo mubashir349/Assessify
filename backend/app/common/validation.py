@@ -5,7 +5,7 @@ from flask import request
 
 from app.common.errors import ApiError
 
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 PHONE_RE = re.compile(r"^[0-9+\-\s()]{7,20}$")
 
 

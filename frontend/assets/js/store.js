@@ -1,19 +1,21 @@
 // ============================================================
-// Shared demo store (localStorage) — stands in for the backend
+// Shared demo store — ONLY for pages whose backend phase is not built yet (questions, tests, candidates).
+// Fields / departments, accounts and institutions are NOT stored here any more: they come from the API.
 // ============================================================
 const AA = {
   LEVELS: ['Undergraduate', 'Masters', 'PhD'],
   get(k, d) { try { const v = localStorage.getItem('aa_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('aa_' + k, JSON.stringify(v)); } catch (e) {} },
   uid() { return Math.random().toString(36).slice(2, 8); },
-  depts() {
-    return this.get('depts', [
-      { id: 'gen', name: 'General Test (all candidates)', level: 'Undergraduate', mode: 'general', subjects: ['Mathematics', 'English'] },
-      { id: 'pe', name: 'Pre-Engineering', level: 'Undergraduate', mode: 'field', subjects: ['Mathematics', 'Physics', 'Chemistry', 'English'] },
-      { id: 'pm', name: 'Pre-Medical', level: 'Undergraduate', mode: 'field', subjects: ['Biology', 'Physics', 'Chemistry', 'English'] },
-    ]);
+  // Fields / departments live in the database. This is only a read cache of what GET /departments returned,
+  // kept in sessionStorage so the later-phase pages (generate, tests...) can read it synchronously.
+  depts() { try { return JSON.parse(sessionStorage.getItem('aa_depts_cache') || '[]'); } catch (e) { return []; } },
+  async syncDepts() {
+    const { items } = await api('/departments');
+    const list = items.map(d => ({ ...d, id: String(d.id) }));
+    try { sessionStorage.setItem('aa_depts_cache', JSON.stringify(list)); } catch (e) {}
+    return list;
   },
-  saveDepts(d) { this.set('depts', d); },
   attempts() { return this.get('attempts', []); },
   saveAttempts(a) { this.set('attempts', a); },
   bank() { return this.get('bank', []); },

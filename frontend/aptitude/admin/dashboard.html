@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="../../assets/css/theme.css" />
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 </head>
-<body data-page="dashboard" data-title="Dashboard" data-sub="NED University of Engineering &amp; Technology">
+<body data-page="dashboard" data-title="Dashboard" data-sub-from="institution">
 
 <template id="a-actions-template">
   <a href="create-test.html" class="a-btn a-btn-amber">+ New Aptitude Test</a>
@@ -16,90 +16,34 @@
 
 <template id="a-content-template">
 
-  <div class="a-grid a-grid-4" style="margin-bottom:22px;">
+  <div class="a-grid a-grid-3" style="margin-bottom:22px;">
     <div class="a-card a-stat">
       <div class="lbl">Fields &amp; departments configured</div>
-      <div class="num">4</div>
-      <div class="delta"><span>Pre-Eng · Pre-Med · CS · Commerce</span></div>
+      <div class="num" id="sDepts">–</div>
+      <div class="delta"><span id="sDeptsSub">&nbsp;</span></div>
     </div>
     <div class="a-card a-stat">
-      <div class="lbl">Approved questions</div>
-      <div class="num">612</div>
-      <div class="delta up">▲ 48 pending review</div>
+      <div class="lbl">Subjects across all fields</div>
+      <div class="num" id="sSubjects">–</div>
+      <div class="delta"><span>&nbsp;</span></div>
     </div>
     <div class="a-card a-stat">
-      <div class="lbl">Candidates on roster</div>
-      <div class="num">1,284</div>
-      <div class="delta"><span>Across 4 fields</span></div>
-    </div>
-    <div class="a-card a-stat">
-      <div class="lbl">Upcoming test window</div>
-      <div class="num" style="font-size:1.3rem;">Oct 5, 9:00 AM</div>
-      <div class="delta warn">⚠ 3 combinations short of target</div>
+      <div class="lbl">General tests</div>
+      <div class="num" id="sGeneral">–</div>
+      <div class="delta"><span>One test for every candidate</span></div>
     </div>
   </div>
 
-  <div class="a-grid a-grid-2" style="align-items:start;">
-    <div class="a-card">
-      <div class="section-head">
-        <div><h2>Upcoming &amp; recent tests</h2><p>Scheduled aptitude test windows across all fields</p></div>
-      </div>
-      <div class="a-table-wrap">
-        <table class="a-table">
-          <thead><tr><th>Test</th><th>Fields / Departments</th><th>Window</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr>
-              <td class="name">Undergraduate Admission Test — Fall 2026</td>
-              <td>Pre-Eng, Pre-Med, CS</td>
-              <td class="mono">Oct 5, 9:00–11:30 AM</td>
-              <td><span class="badge badge-draft">Scheduled</span></td>
-            </tr>
-            <tr>
-              <td class="name">Commerce Placement Test — Batch 12</td>
-              <td>Commerce</td>
-              <td class="mono">Sep 18, 10:00 AM</td>
-              <td><span class="badge badge-completed">Completed</span></td>
-            </tr>
-            <tr>
-              <td class="name">Spring Intake Aptitude Test</td>
-              <td>Pre-Eng, CS</td>
-              <td class="mono">Mar 2, 9:00 AM</td>
-              <td><span class="badge badge-completed">Completed</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+  <div class="a-card">
+    <div class="section-head">
+      <div><h2>Recently added fields &amp; departments</h2><p>Your latest configuration</p></div>
+      <a href="fields-subjects.html" class="a-btn a-btn-ghost a-btn-sm">Manage →</a>
     </div>
-
-    <div class="a-card">
-      <div class="section-head">
-        <div><h2>Needs your attention</h2><p>Blocking items before the next publish</p></div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div class="a-card" style="padding:14px 16px;border-color:rgba(245,158,11,.35);">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:13px;color:#fff;font-weight:600;">Pre-Medical → Biology (Hard, MCQ)</span>
-            <span class="badge badge-draft">7 of 10</span>
-          </div>
-          <p class="muted" style="margin-top:6px;">3 more approved questions needed before this test can publish.</p>
-          <a href="question-bank.html" class="a-btn a-btn-ghost a-btn-sm" style="margin-top:10px;">Review draft questions →</a>
-        </div>
-        <div class="a-card" style="padding:14px 16px;border-color:rgba(245,158,11,.35);">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:13px;color:#fff;font-weight:600;">14 roster rows failed import</span>
-            <span class="badge badge-locked">Errors</span>
-          </div>
-          <p class="muted" style="margin-top:6px;">Unrecognized Field or unparseable date of birth.</p>
-          <a href="roster.html" class="a-btn a-btn-ghost a-btn-sm" style="margin-top:10px;">Fix roster rows →</a>
-        </div>
-        <div class="a-card" style="padding:14px 16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:13px;color:#fff;font-weight:600;">Result email batch — Sep 18 test</span>
-            <span class="badge badge-approved">Sent 1,190 / 1,190</span>
-          </div>
-          <p class="muted" style="margin-top:6px;">All roster candidates emailed successfully.</p>
-        </div>
-      </div>
+    <div class="a-table-wrap">
+      <table class="a-table">
+        <thead><tr><th>Name</th><th>Level</th><th>Subjects</th></tr></thead>
+        <tbody id="recentBody"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+      </table>
     </div>
   </div>
 
@@ -107,5 +51,23 @@
 
 <script src="../../assets/js/api.js"></script>
 <script src="../../assets/js/admin-shell.js"></script>
+<script>
+// Every number on this page is computed by the backend (GET /dashboard/summary) from the database.
+const $ = id => document.getElementById(id);
+async function loadSummary() {
+  try {
+    const d = await api('/dashboard/summary');
+    $('sDepts').textContent = d.departments.total;
+    $('sSubjects').textContent = d.subjects.total;
+    $('sGeneral').textContent = d.departments.general_tests;
+    const parts = Object.entries(d.departments.by_level).map(([lvl, n]) => `${esc(lvl)} ${n}`);
+    $('sDeptsSub').innerHTML = parts.length ? parts.join(' · ') : 'None yet';
+    $('recentBody').innerHTML = d.departments.recent.map(r =>
+      `<tr><td class="name">${esc(r.name)}</td><td>${esc(r.level)}</td><td class="mono">${r.subject_count}</td></tr>`).join('')
+      || '<tr><td colspan="3" class="muted">Nothing configured yet — <a href="fields-subjects.html">add your first field / department</a>.</td></tr>';
+  } catch (e) { $('recentBody').innerHTML = `<tr><td colspan="3" style="color:#f87171;">${esc(e.message)}</td></tr>`; }
+}
+document.addEventListener('DOMContentLoaded', () => setTimeout(loadSummary, 0));   // after the shell injects the template
+</script>
 </body>
 </html>
