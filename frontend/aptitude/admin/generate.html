@@ -4,55 +4,266 @@
 <link rel="stylesheet" href="../../assets/css/theme.css" /><link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/question-bank.css" />
 </head>
-<body data-page="generate" data-title="Generate Questions" data-sub="Create AI drafts from a topic, description, or your own book / PDF">
+<body data-page="generate" data-title="Generate Questions" data-sub="Upload PDFs (or describe the topic) — the AI writes draft questions from them">
 <template id="a-content-template">
+  <div class="gen-banner" id="aiBanner" hidden></div>
   <div class="a-card" style="max-width:920px;border-color:rgba(245,158,11,.35);">
     <div class="a-grid a-grid-3" style="margin-bottom:14px;">
       <div class="a-field"><label id="deptLbl">Field / Department</label><select class="a-select" id="gDept" onchange="fillSubjects()"></select></div>
       <div class="a-field"><label>Degree level (set by selection)</label><input class="a-input" id="gLevel" readonly tabindex="-1" style="opacity:.75;cursor:not-allowed;" /></div>
       <div class="a-field"><label>Subject</label><select class="a-select" id="gSubj"></select></div>
-      <div class="a-field"><label>Difficulty (admin only)</label><select class="a-select" id="gDiff"><option>Easy</option><option selected>Medium</option><option>Hard</option></select></div>
-      <div class="a-field"><label>Question type</label><select class="a-select" id="gType"><option>MCQ</option><option>True/False</option></select></div>
-      <div class="a-field"><label>Questions to generate</label><input class="a-input" type="number" id="gCount" value="10" min="1" max="50" /></div>
-      <div class="a-field"><label>Marks per question</label><input class="a-input" type="number" id="gMarks" value="1" min="1" /></div>
+      <div class="a-field"><label>Difficulty (admin only)</label><select class="a-select" id="gDiff"></select></div>
+      <div class="a-field"><label>Question type</label><select class="a-select" id="gType"></select></div>
+      <div class="a-field"><label>Questions to generate</label><input class="a-input" type="number" id="gCount" value="10" min="1" max="100" oninput="countHint()" /><div class="desc-hint" id="countHint"></div></div>
+      <div class="a-field"><label>Marks per question</label><input class="a-input" type="number" id="gMarks" value="1" min="1" max="100" /></div>
     </div>
     <div class="a-field" style="margin-bottom:14px;">
-      <label>Source material (optional)</label>
+      <label id="srcLbl">Source PDFs</label>
       <div class="a-dropzone" id="drop" onclick="document.getElementById('gFile').click()">
-        <b>📄 Upload a book or PDF</b>
-        <span class="muted">Drag &amp; drop or click — PDF, EPUB, DOCX, TXT (questions will be drawn from this content)</span>
-        <div class="file" id="fileName"></div>
+        <b>📄 Upload book chapters or notes (PDF) — you can add several</b>
+        <span class="muted" id="dropHint">Drag &amp; drop or click — PDFs of typed text, or photos / scans of pages.</span>
       </div>
-      <input type="file" id="gFile" accept=".pdf,.epub,.docx,.txt" style="display:none" onchange="setFile(this.files[0])" />
+      <input type="file" id="gFile" accept=".pdf,application/pdf" multiple style="display:none" onchange="addFiles(this.files); this.value=''" />
+      <ul class="file-list" id="fileList"></ul>
     </div>
     <div class="a-field" style="margin-bottom:14px;">
-      <label>Description / focus (optional)</label>
-      <textarea class="a-textarea" id="gDesc" placeholder="e.g. Focus on algebra and trigonometry, HSC-1 level…"></textarea>
+      <label id="descLbl">Description / instructions (optional)</label>
+      <textarea class="a-textarea" id="gDesc" maxlength="500" oninput="refreshDesc()" placeholder="e.g. Make the test based on these PDFs; focus on the light reactions and the Calvin cycle…"></textarea>
+      <div class="desc-hint" id="descHint"></div>
+      <div class="chips" id="chips"></div>
     </div>
-    <button class="btn btn-amber" onclick="doGenerate()">✦ Generate drafts →</button>
+    <button class="btn btn-amber" id="genBtn" onclick="doGenerate()" disabled>✦ Generate drafts →</button>
     <span class="hint" style="margin-left:10px;">Drafts go to <b>Draft Review</b> — nothing reaches the question bank until you approve it.</span>
+    <div class="gen-progress" id="genProgress" hidden><span class="spin"></span><span>Reading the PDF and asking the AI… this can take up to a minute. Please keep this page open.</span></div>
   </div>
 </template>
-<script src="../../assets/js/store.js"></script><script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/api.js"></script>
 <script src="../../assets/js/admin-shell.js"></script>
 <script>
-let file=null;
-function setFile(f){file=f;document.getElementById('fileName').textContent=f?('✓ '+f.name+' · '+(f.size/1024).toFixed(0)+' KB'):'';}
-function fillSubjects(){const d=AA.depts().find(x=>x.id===gDept.value); gSubj.innerHTML=(d?d.subjects:[]).map(s=>`<option>${AA.esc(s)}</option>`).join(''); if(d){gLevel.value=d.level; deptLbl.textContent=AA.term(d.level);}}
-function deptOptions(){const all=AA.depts(); return AA.LEVELS.map(l=>{const g=all.filter(d=>d.level===l); return g.length?`<optgroup label="${l} — ${AA.term(l,true)}">${g.map(d=>`<option value="${d.id}">${AA.esc(d.name)}</option>`).join('')}</optgroup>`:'';}).join('');}
-document.addEventListener('DOMContentLoaded',()=>{
-  gDept.innerHTML=deptOptions(); fillSubjects();
-  const dz=document.getElementById('drop');
-  ['dragover','dragenter'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag');}));
-  ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag');}));
-  dz.addEventListener('drop',ev=>setFile(ev.dataTransfer.files[0]));
-});
-function doGenerate(){
-  const n=Math.min(50,Math.max(1,+gCount.value||10)), subj=gSubj.value, type=gType.value, marks=+gMarks.value||1, diff=gDiff.value;
-  const d=AA.depts().find(x=>x.id===gDept.value); if(!d||!subj) return aToast('Pick a field / department and subject.','⚠');
-  const qs=Array.from({length:n},(_,i)=>aaMakeQuestion(subj,type,marks,diff,i));
-  const at=AA.attempts(); const id=AA.uid();
-  at.unshift({id,dept:d.name,level:gLevel.value,subject:subj,type,difficulty:diff,source:file?file.name:(gDesc.value.trim()?'Description':'Topic only'),created:new Date().toISOString(),questions:qs});
-  AA.saveAttempts(at); aToast(n+' draft questions generated.'); setTimeout(()=>location.href='draft-review.html?attempt='+id,700);
+// Phase 3: everything here goes through the real backend (POST /questions/generate). The only thing kept in the browser is
+// a 'generation started at' time (sessionStorage), so a reload during generation can still open the result.
+let DEPTS = [], META = null, MAX_MB = 50, MAX_FILES = 5, MIN_WORDS = 8, busy = false, READS_IMAGES = false;
+const $ = id => document.getElementById(id);
+let FILES = [], nextId = 1;           // [{id, f, status: 'checking'|'ok'|'bad', info, msg}]
+const okFiles = () => FILES.filter(x => x.status === 'ok');
+const pl = n => n + ' page' + (n === 1 ? '' : 's');
+const wordCount = t => (t.match(/\p{L}{2,}/gu) || []).length;      // same rule as the server
+
+// ---------------- files: each one is checked by the server as soon as it is added (no AI call, no quota)
+function addFiles(list) {
+  for (const f of Array.from(list || [])) {
+    if (FILES.length >= MAX_FILES) { aToast(`You can add at most ${MAX_FILES} PDFs.`, '⚠'); break; }
+    const item = { id: nextId++, f, status: 'checking', info: null, msg: 'Checking…' };
+    FILES.push(item);
+    if (!/\.pdf$/i.test(f.name)) bad(item, 'Only PDF files are supported.');
+    else if (!f.size) bad(item, 'The file is empty.');
+    else if (totalSize() > MAX_MB * 1024 * 1024) bad(item, `All PDFs together must be under ${MAX_MB} MB.`);
+    else checkFile(item);
+  }
+  render();
 }
+const totalSize = () => FILES.filter(x => x.status !== 'bad').reduce((s, x) => s + x.f.size, 0);
+function bad(item, msg) {
+  item.status = 'bad'; item.msg = msg;
+  aToast(esc(`"${item.f.name}": ${msg} Please choose another PDF.`), '⚠');
+}
+async function checkFile(item) {
+  const fd = new FormData(); fd.append('file', item.f);
+  try {
+    const r = await api('/questions/check-pdf', { method: 'POST', body: fd });
+    if (!FILES.includes(item)) return;                       // removed meanwhile
+    item.status = 'ok'; item.info = r;
+    let msg = pl(r.pages);
+    if (r.needs_ocr && r.typed_pages) msg += `: ${r.typed_pages} typed + ${r.image_pages} photo/scan — the AI reads the photo pages when you generate`;
+    else if (r.needs_ocr) msg += ' of photos / scans — the AI reads the pictures when you generate (extra free quota; handwriting may be misread)';
+    else msg += ` · ${r.characters.toLocaleString()} characters of readable text`;
+    if (r.skipped_photo_pages) msg += ` · ⚠ ${pl(r.skipped_photo_pages)} of photos skipped` + (r.needs_ocr ? ' (page limit)' : ' (needs AI_PROVIDER=gemini)');
+    item.msg = msg;
+  } catch (e) {
+    if (e.status === 401) return handleApiError(e);
+    if (FILES.includes(item)) bad(item, e.status === 0 ? e.message : (e.message || 'This PDF could not be read.'));
+  }
+  render();
+}
+function removeFile(id) { FILES = FILES.filter(x => x.id !== id); render(); }
+function render() {
+  $('fileList').innerHTML = FILES.map(x => `<li class="${x.status}">
+      <span class="fl-name">${x.status === 'bad' ? '✕' : x.status === 'ok' ? (x.info.needs_ocr ? '📷' : '✓') : '…'} ${esc(x.f.name)}
+        <span class="muted">· ${Math.max(1, Math.round(x.f.size / 1024)).toLocaleString()} KB</span></span>
+      <span class="fl-msg">${x.status === 'bad' ? esc(x.msg.replace(/\.$/, '')) + ' — this file will not be used; please choose another PDF.' : esc(x.msg)}</span>
+      <button class="a-modal-x" title="Remove" onclick="removeFile(${x.id})">✕</button></li>`).join('');
+  $('drop').classList.toggle('bad', FILES.some(x => x.status === 'bad'));
+  refreshDesc();
+}
+
+// ---------------- description: required (with enough detail) only when there is no PDF; suggestions otherwise
+const GENERIC = n => [
+  n > 1 ? 'Make the test based on these PDFs' : 'Make the test based on this PDF',
+  'Cover all chapters / sections evenly', 'Focus on key definitions and concepts',
+  'Include numerical / calculation questions', 'Test understanding and application, not memorisation',
+];
+function refreshDesc() {
+  const n = okFiles().length, text = $('gDesc').value, words = wordCount(text), hint = $('descHint');
+  if (n) {
+    $('descLbl').textContent = 'Description / instructions (optional)';
+    hint.className = 'desc-hint'; hint.textContent = 'Optional — tell the AI what to focus on, or click a suggestion:';
+    const heads = [...new Set(okFiles().flatMap(x => x.info.headings || []))].slice(0, 6).map(h => 'Focus on: ' + h);
+    $('chips').innerHTML = GENERIC(n).concat(heads).map(c => `<button type="button" class="chip" onclick="useChip(this)">${esc(c)}</button>`).join('');
+  } else {
+    $('descLbl').textContent = 'Description / scope (required when no PDF is uploaded)';
+    const okNow = words >= MIN_WORDS;
+    hint.className = 'desc-hint ' + (text.trim() ? (okNow ? 'good' : 'bad') : '');
+    hint.textContent = okNow ? `✓ ${words} words — enough to describe the scope. Questions will come from the AI's general knowledge, so check them carefully.`
+      : `No PDF? Describe the scope in at least ${MIN_WORDS} words — topics or chapters, and what to focus on (${words}/${MIN_WORDS} words).`;
+    $('chips').innerHTML = ['Topics: … ; Chapters: … ; Focus on: …',
+      'Photosynthesis: light reactions, Calvin cycle and factors affecting the rate, first-year biology']
+      .map(c => `<button type="button" class="chip" onclick="useChip(this)">${esc(c)}</button>`).join('');
+  }
+  refreshButton();
+}
+function useChip(btn) {
+  const t = $('gDesc'), add = btn.textContent;
+  if (t.value.includes(add)) return;
+  t.value = (t.value.trim() ? t.value.trim().replace(/[.;]?$/, '; ') : '') + add;
+  t.value = t.value.slice(0, 500); t.focus(); refreshDesc();
+}
+function canGenerate() {
+  if (FILES.some(x => x.status === 'checking')) return false;
+  return okFiles().length > 0 || wordCount($('gDesc').value) >= MIN_WORDS;
+}
+function countHint() {
+  const n = +$('gCount').value || 0;
+  $('countHint').textContent = n > 60 ? `Large set: about ${Math.ceil(n / 10)}+ AI requests — can take 3–5 minutes and uses more of the free quota.`
+    : n > 30 ? 'Bigger sets take a few minutes.' : '';
+}
+function refreshButton() { if (!busy) $('genBtn').disabled = !canGenerate(); }
+function termFor(level) { const l = META && META.levels.find(x => x.value === level); return l ? l.term : 'Field / Department'; }
+function fillSubjects() {
+  const d = DEPTS.find(x => String(x.id) === $('gDept').value);
+  $('gSubj').innerHTML = (d ? d.subjects : []).map(s => `<option>${esc(s)}</option>`).join('');
+  $('gLevel').value = d ? d.level : '';
+  $('deptLbl').textContent = d ? termFor(d.level) : 'Field / Department';
+}
+function deptOptions() {
+  return META.levels.map(l => {
+    const g = DEPTS.filter(d => d.level === l.value);
+    return g.length ? `<optgroup label="${esc(l.value)} — ${esc(l.term_plural)}">${g.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('')}</optgroup>` : '';
+  }).join('');
+}
+function banner(html, kind) { const b = $('aiBanner'); b.className = 'gen-banner ' + (kind || ''); b.innerHTML = html; b.hidden = !html; }
+
+async function load() {
+  try {
+    const [meta, depts, ai] = await Promise.all([loadMeta(), api('/departments'), api('/questions/ai-status')]);
+    META = meta; DEPTS = depts.items;
+    const lim = meta.generation_limits;
+    MAX_MB = lim.max_upload_mb; MAX_FILES = lim.max_files; MIN_WORDS = lim.description_min_words; READS_IMAGES = ai.reads_images;
+    $('gCount').max = lim.max_questions;
+    $('srcLbl').textContent = `Source PDFs (up to ${MAX_FILES}, ${MAX_MB} MB in total)`;
+    $('dropHint').textContent = 'Drag & drop or click — PDFs of typed text' + (ai.reads_images ? ', or photos / scans of pages' : '')
+      + '. Questions are spread over all the uploaded material. No PDF? Describe the topic below instead.';
+    refreshDesc();
+    fillSelect($('gDiff'), meta.difficulties); $('gDiff').value = 'medium';
+    fillSelect($('gType'), meta.question_types);
+    $('gDept').innerHTML = deptOptions(); fillSubjects();
+    if (!DEPTS.length) banner('No fields / departments yet. <a href="fields-subjects.html">Create one first</a> — questions are filed under a field and subject.', 'warn');
+    else if (!ai.configured) banner('<b>AI generation is not set up on the server.</b> ' + esc(ai.message || '') + ' Draft Review and the Question Bank still work.', 'warn');
+    else banner(`AI: <b>${esc(ai.provider)}</b> · model <code>${esc(ai.model)}</code>` + (ai.provider === 'ollama' ? ' (runs on this computer)' : ' (free tier — rate and daily limits apply)'), 'info');
+  } catch (e) { handleApiError(e); }
+}
+
+async function doGenerate() {
+  if (busy) return;
+  const d = DEPTS.find(x => String(x.id) === $('gDept').value);
+  if (!d || !$('gSubj').value) return aToast('Pick a field / department and subject.', '⚠');
+  if (FILES.some(x => x.status === 'checking')) return aToast('Please wait — the PDFs are still being checked.', '⚠');
+  const use = okFiles();
+  if (!use.length && wordCount($('gDesc').value) < MIN_WORDS) {
+    $('gDesc').focus(); refreshDesc();
+    return aToast(`Upload a PDF, or describe the scope in at least ${MIN_WORDS} words.`, '⚠');
+  }
+  const max = +$('gCount').max || 30, n = +$('gCount').value;
+  if (!Number.isInteger(n) || n < 1 || n > max) return aToast('Questions to generate must be 1–' + max + '.', '⚠');
+
+  const fd = new FormData();
+  use.forEach(x => fd.append('files', x.f));
+  fd.append('department_id', d.id);
+  fd.append('subject', $('gSubj').value);
+  fd.append('difficulty', $('gDiff').value);
+  fd.append('question_type', $('gType').value);
+  fd.append('count', n);
+  fd.append('marks', $('gMarks').value || 1);
+  fd.append('focus', $('gDesc').value.trim());
+
+  const photos = use.some(x => x.info.needs_ocr);
+  const mins = Math.max(1, Math.ceil(n / 25)) + (photos ? 2 : 0);   // rough: ~25 questions a minute, photos add time
+  const wait = ` This can take up to ${mins} minute${mins > 1 ? 's' : ''} for ${n} questions. Please keep this page open.`;
+  setBusy(true, (photos ? 'The AI is reading the photographed pages, then writing questions…'
+                : use.length ? `Reading ${use.length > 1 ? use.length + ' PDFs' : 'the PDF'} and asking the AI…`
+                : 'Asking the AI to write questions from your description…') + wait);
+  markPending(Date.now());
+  try {
+    const { attempt } = await api('/questions/generate', { method: 'POST', body: fd });
+    markPending(null);
+    const note = attempt.status === 'partial' ? ` (${attempt.generated_count} of ${attempt.requested_count} — some AI answers were unusable)` : '';
+    aToast(esc(attempt.generated_count + ' draft questions generated' + note + '.'));
+    setTimeout(() => location.href = 'draft-review.html?attempt=' + attempt.id, 800);
+  } catch (e) {
+    if (leaving) return;           // page is reloading/closing: keep the marker so the reloaded page picks up the result
+    markPending(null);
+    handleApiError(e);
+    const m = /^"(.+?)": /.exec(e.message || '');                 // server names the PDF that failed
+    const culprit = m ? FILES.find(x => x.f.name === m[1]) : (e.details && e.details.file && okFiles().length === 1 ? okFiles()[0] : null);
+    if (culprit && e.details && e.details.file) { culprit.status = 'bad'; culprit.msg = e.message.replace(/^".+?": /, ''); render(); }
+    if (e.details && e.details.focus) { const h = $('descHint'); h.className = 'desc-hint bad'; h.textContent = e.details.focus; }
+    if (e.details && e.details.attempt_id) {
+      banner(`${esc(e.message)} The attempt was saved — you can retry it later from <a href="draft-review.html?attempt=${+e.details.attempt_id}">Draft Review</a>.`, 'warn');
+    }
+    setBusy(false);
+  }
+}
+function setBusy(on, text) {
+  busy = on;
+  $('genBtn').disabled = on || !canGenerate();
+  $('genBtn').textContent = on ? 'Generating…' : '✦ Generate drafts →';
+  $('genProgress').hidden = !on;
+  if (text) $('genProgress').lastElementChild.textContent = text;
+}
+
+// ---- recovery: if the page was reloaded while the AI was working, wait for that attempt and open it
+const PENDING_KEY = 'aa_generation_started';
+let leaving = false;
+window.addEventListener('pagehide', () => { leaving = true; });
+function markPending(t) { try { t ? sessionStorage.setItem(PENDING_KEY, String(t)) : sessionStorage.removeItem(PENDING_KEY); } catch (e) {} }
+function pendingSince() { try { return +sessionStorage.getItem(PENDING_KEY) || 0; } catch (e) { return 0; } }
+async function resumePending() {
+  const since = pendingSince();
+  if (!since) return;
+  if (Date.now() - since > 15 * 60 * 1000) return markPending(null);
+  setBusy(true, 'The page was reloaded while questions were being generated — waiting for them to finish…');
+  for (let i = 0; i < 200; i++) {                       // up to ~10 minutes (100 questions can take a while)
+    try {
+      const { items } = await api('/questions/attempts?per_page=1');
+      const a = items[0];
+      const fresh = a && Date.parse(a.created_at) >= since - 60 * 1000;   // started by this click (1 min clock tolerance)
+      if (fresh && a.status !== 'processing') {
+        markPending(null);
+        if (a.status === 'failed') { setBusy(false); return banner(esc(a.error ? a.error.message : 'Generation failed.') + ` <a href="draft-review.html?attempt=${+a.id}">Open the attempt</a> to retry it.`, 'warn'); }
+        aToast(esc(a.generated_count + ' draft questions generated.'));
+        return setTimeout(() => location.href = 'draft-review.html?attempt=' + a.id, 600);
+      }
+    } catch (e) { if (e.status === 401) return handleApiError(e); }
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  markPending(null); setBusy(false);
+  banner('Still no result. Check <a href="draft-review.html">Draft Review</a> — the questions may already be there.', 'warn');
+}
+
+document.addEventListener('admin:ready', async () => { await load(); refreshButton(); resumePending(); });
+document.addEventListener('DOMContentLoaded', () => {
+  const dz = $('drop');
+  ['dragover', 'dragenter'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', ev => addFiles(ev.dataTransfer.files));
+});
 </script></body></html>

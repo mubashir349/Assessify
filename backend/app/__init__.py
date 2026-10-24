@@ -35,6 +35,7 @@ def create_app(config_class=Config) -> Flask:
     from app.modules.health.routes import bp as health_bp
     from app.modules.institutions.routes import bp as institutions_bp
     from app.modules.meta.routes import bp as meta_bp
+    from app.modules.questions.routes import bp as questions_bp
     from app.modules.super_admin.routes import bp as super_bp
 
     app.register_blueprint(health_bp, url_prefix="/api/v1/health")
@@ -44,6 +45,7 @@ def create_app(config_class=Config) -> Flask:
     app.register_blueprint(departments_bp, url_prefix="/api/v1/departments")
     app.register_blueprint(dashboard_bp, url_prefix="/api/v1/dashboard")
     app.register_blueprint(meta_bp, url_prefix="/api/v1/meta")
+    app.register_blueprint(questions_bp, url_prefix="/api/v1/questions")
 
     _serve_frontend(app)
 

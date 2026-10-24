@@ -6,70 +6,203 @@
 </head>
 <body data-page="drafts" data-title="Draft Review" data-sub="Review each generation attempt — only approved questions enter the bank">
 <template id="a-actions-template"><a class="a-btn a-btn-amber" href="generate.html">✦ New generation</a></template>
-<template id="a-content-template"><div id="view"></div></template>
+<template id="a-content-template"><div id="view"><div class="a-card a-empty">Loading…</div></div></template>
 
 <div class="a-modal-bg" id="editModal"><div class="a-modal">
-  <div class="a-modal-head"><h3>Edit question</h3><button class="a-modal-x" onclick="closeEdit()">✕</button></div>
+  <div class="a-modal-head"><h3>Edit draft question</h3><button class="a-modal-x" onclick="closeModal('editModal')">✕</button></div>
   <div style="display:flex;flex-direction:column;gap:12px;">
-    <div class="a-field"><label>Question</label><textarea class="a-textarea" id="eText"></textarea></div>
-    <div class="a-field"><label>Options (one per line)</label><textarea class="a-textarea" id="eOpts" style="min-height:100px"></textarea></div>
-    <div class="a-field"><label>Correct option number</label><input class="a-input" type="number" id="eAns" min="1" /></div>
-    <button class="btn btn-amber" onclick="saveEdit()">Save changes</button>
+    <div class="a-field"><label>Question</label><textarea class="a-textarea" id="eText"></textarea><div class="field-err" id="err-text"></div></div>
+    <div class="a-field" id="eOptsWrap"><label>Options (one per line, 2–6)</label><textarea class="a-textarea" id="eOpts" style="min-height:100px"></textarea><div class="field-err" id="err-options"></div></div>
+    <div class="a-grid a-grid-3" style="gap:10px;">
+      <div class="a-field"><label>Correct option</label><select class="a-select" id="eAns"></select><div class="field-err" id="err-correct_index"></div></div>
+      <div class="a-field"><label>Difficulty</label><select class="a-select" id="eDiff"></select></div>
+      <div class="a-field"><label>Marks</label><input class="a-input" type="number" id="eMarks" min="1" max="100" /><div class="field-err" id="err-marks"></div></div>
+    </div>
+    <div class="a-field"><label>Topic (optional)</label><input class="a-input" id="eTopic" maxlength="120" /></div>
+    <div class="a-field"><label>Explanation (optional)</label><textarea class="a-textarea" id="eExpl"></textarea><div class="field-err" id="err-explanation"></div></div>
+    <button class="btn btn-amber" id="eSave" onclick="saveEdit()">Save changes</button>
   </div></div></div>
 
-<script src="../../assets/js/store.js"></script><script src="../../assets/js/api.js"></script>
+<div class="a-modal-bg" id="rejectModal"><div class="a-modal">
+  <div class="a-modal-head"><h3>Reject question</h3><button class="a-modal-x" onclick="closeModal('rejectModal')">✕</button></div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div class="a-field"><label>Reason (optional)</label><textarea class="a-textarea" id="rReason" maxlength="500" placeholder="e.g. Answer is not supported by the PDF"></textarea></div>
+    <button class="btn btn-amber" onclick="confirmReject()">Reject question</button>
+  </div></div></div>
+
+<script src="../../assets/js/api.js"></script>
 <script src="../../assets/js/admin-shell.js"></script>
 <script>
-let cur=null, editQ=null;
-const $=id=>document.getElementById(id);
-const stBadge={pending:'badge-draft',approved:'badge-approved',rejected:'badge-rejected'};
-function counts(a){const c={pending:0,approved:0,rejected:0};a.questions.forEach(q=>c[q.status]++);return c;}
-function fmt(t){return new Date(t).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
-function save(at){const all=AA.attempts(); all[all.findIndex(a=>a.id===at.id)]=at; AA.saveAttempts(all);}
-function list(keep){
-  cur=null; const q=keep?$('sq').value.toLowerCase():''; const all=AA.attempts();
-  const rows=all.filter(a=>(a.dept+a.subject+a.source).toLowerCase().includes(q));
-  $('view').innerHTML=`<div class="filters"><input class="a-input" id="sq" placeholder="Search attempts by field, subject, source…" value="${AA.esc(q)}" oninput="list(true)" /></div>
-  <div style="display:flex;flex-direction:column;gap:10px;">${rows.map((a,i)=>{const c=counts(a);return `
-    <div class="a-card qrow attempt-row" onclick="openAttempt('${a.id}')">
-      <div class="qbody"><p class="qtext"><b>${i===0&&!q?'Latest · ':''}${AA.esc(a.dept)} → ${AA.esc(a.subject)}</b></p>
-        <div class="qmeta"><span class="a-chip">${a.level}</span><span class="a-chip">${a.type}</span><span class="a-chip">Source: ${AA.esc(a.source)}</span><span class="a-chip">🕒 ${fmt(a.created)}</span></div></div>
-      <div class="qmeta"><span class="badge badge-draft">${c.pending} pending</span><span class="badge badge-approved">${c.approved} approved</span><span class="badge badge-rejected">${c.rejected} rejected</span></div>
-    </div>`}).join('')||'<div class="a-card a-empty">No generation attempts yet. Use “New generation” to create one.</div>'}</div>`;
-  if(keep){const s=$('sq'); s.focus(); s.setSelectionRange(q.length,q.length);}
+// Phase 3: attempts and questions come from the backend (GET /questions/attempts...). Nothing is kept in localStorage.
+let META = null, cur = null, editQ = null, rejectId = null, showHistory = false, busy = false;
+const listState = { q: '', status: '', page: 1 };
+const $ = id => document.getElementById(id);
+const L = (list, v) => { const x = (list || []).find(i => i.value === v); return x ? x.label : v; };
+const stBadge = { draft: 'badge-draft', approved: 'badge-approved', rejected: 'badge-rejected', replaced: 'badge-replaced' };
+const LETTER = 'ABCDEF';
+function fmt(t) { return t ? new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
+function openModal(id) { $(id).classList.add('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
+async function withBusy(fn) {            // stops double clicks while a request is running
+  if (busy) return; busy = true; document.body.style.cursor = 'progress';
+  try { await fn(); } catch (e) { handleApiError(e); } finally { busy = false; document.body.style.cursor = ''; }
 }
-function openAttempt(id){cur=AA.attempts().find(a=>a.id===id); if(!cur) return list(); history.replaceState(null,'','?attempt='+id); detail();}
-function detail(){
-  const c=counts(cur);
-  $('view').innerHTML=`<button class="a-btn a-btn-ghost a-btn-sm" onclick="history.replaceState(null,'','draft-review.html');list()" style="margin-bottom:14px;">← All attempts</button>
+
+// ---------------- list of attempts
+let searchTimer;
+function onSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(() => { listState.q = $('sq').value.trim(); listState.page = 1; list(); }, 300); }
+async function list() {
+  cur = null;
+  let d;
+  try {
+    const qs = new URLSearchParams({ page: listState.page, per_page: 10 });
+    if (listState.q) qs.set('q', listState.q);
+    if (listState.status) qs.set('status', listState.status);
+    d = await api('/questions/attempts?' + qs);
+  } catch (e) { return handleApiError(e); }
+  const searching = document.activeElement && document.activeElement.id === 'sq';
+  $('view').innerHTML = `<div class="filters">
+      <input class="a-input" id="sq" placeholder="Search by field, subject or PDF name…" value="${esc(listState.q)}" oninput="onSearch()" />
+      <select class="a-select" id="sst" onchange="listState.status=this.value;listState.page=1;list()">
+        <option value="">All statuses</option>${['completed', 'partial', 'failed', 'processing'].map(s => `<option value="${s}" ${listState.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select></div>
+    <div style="display:flex;flex-direction:column;gap:10px;">${d.items.map(a => `
+      <div class="a-card qrow attempt-row" onclick="openAttempt(${a.id})">
+        <div class="qbody"><p class="qtext"><b>${esc(a.department_name)} → ${esc(a.subject)}</b></p>
+          <div class="qmeta"><span class="badge badge-${esc(a.status)}">${esc(a.status)}</span><span class="a-chip">${esc(a.level)}</span>
+          <span class="a-chip">${esc(L(META.question_types, a.question_type))} · ${esc(L(META.difficulties, a.difficulty))}</span>
+          <span class="a-chip">${a.source.kind === 'description' ? '✎ Description only' : (a.source.ocr ? '📷 ' : '📄 ') + esc(a.source.filename)}</span><span class="a-chip">🕒 ${fmt(a.created_at)}</span></div>
+          ${a.error ? `<div class="q-reason">${esc(a.error.message)}</div>` : ''}</div>
+        <div class="qmeta"><span class="badge badge-draft">${a.counts.draft} draft</span><span class="badge badge-approved">${a.counts.approved} approved</span><span class="badge badge-rejected">${a.counts.rejected} rejected</span></div>
+      </div>`).join('') || '<div class="a-card a-empty">No generation attempts yet. Use “New generation” to create one.</div>'}</div>
+    ${pager(d)}`;
+  if (searching) { const s = $('sq'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+}
+function pager(d) {
+  if (d.pages <= 1) return '';
+  return `<div class="pager"><button class="a-btn a-btn-ghost a-btn-sm" ${d.page <= 1 ? 'disabled' : ''} onclick="listState.page--;list()">← Prev</button>
+    <span>Page ${d.page} of ${d.pages} · ${d.total} attempts</span>
+    <button class="a-btn a-btn-ghost a-btn-sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="listState.page++;list()">Next →</button></div>`;
+}
+
+// ---------------- one attempt
+async function openAttempt(id) {
+  try {
+    const { attempt } = await api(`/questions/attempts/${+id}` + (showHistory ? '?include_replaced=1' : ''));
+    cur = attempt; history.replaceState(null, '', '?attempt=' + attempt.id); detail();
+  } catch (e) {
+    if (e.status === 404) { aToast('That attempt was not found.', '⚠'); history.replaceState(null, '', 'draft-review.html'); return list(); }
+    handleApiError(e);
+  }
+}
+function back() { history.replaceState(null, '', 'draft-review.html'); list(); }
+function questionCard(q, i) {
+  const editable = q.status === 'draft', regen = q.status === 'draft' || q.status === 'rejected';
+  return `<div class="a-card qrow"><div class="qbody">
+    <p class="qtext">${i + 1}. ${esc(q.text)}</p>
+    <div class="opt-view">${q.options.map((o, j) => `<span class="${j === q.correct_index ? 'ok' : ''}">${LETTER[j]}. ${esc(o)}${j === q.correct_index ? ' ✓' : ''}</span>`).join('')}</div>
+    ${q.explanation ? `<div class="q-expl">💡 ${esc(q.explanation)}</div>` : ''}
+    ${q.rejection_reason ? `<div class="q-reason">Rejected: ${esc(q.rejection_reason)}</div>` : ''}
+    <div class="qmeta"><span class="badge ${stBadge[q.status] || ''}">${esc(q.status)}</span>
+      <span class="a-chip">${esc(L(META.difficulties, q.difficulty))}</span><span class="a-chip">${q.marks} mark${q.marks > 1 ? 's' : ''}</span>
+      ${q.topic ? `<span class="a-chip">${esc(q.topic)}</span>` : ''}${q.is_edited ? '<span class="a-chip">✎ edited</span>' : ''}
+      ${q.regenerated_from_id ? '<span class="a-chip">↻ regenerated</span>' : ''}
+      ${q.reviewed_by ? `<span class="a-chip">by ${esc(q.reviewed_by)}</span>` : ''}</div></div>
+    ${q.status === 'replaced' || q.status === 'approved' ? '' : `<div class="qactions" style="flex-direction:column;">
+      <button class="a-btn a-btn-amber a-btn-sm" onclick="act(${q.id},'approve')" ${editable ? '' : 'disabled'}>Approve</button>
+      <button class="a-btn a-btn-ghost a-btn-sm" onclick="openEdit(${q.id})" ${editable ? '' : 'disabled'}>Edit</button>
+      <button class="a-btn a-btn-ghost a-btn-sm" onclick="act(${q.id},'regenerate')" ${regen ? '' : 'disabled'}>Regenerate</button>
+      <button class="a-btn a-btn-danger a-btn-sm" onclick="openReject(${q.id})" ${editable ? '' : 'disabled'}>Reject</button></div>`}
+  </div>`;
+}
+function detail() {
+  const c = cur.counts, src = cur.source;
+  const canRegen = c.rejected > 0 || (c.draft + c.approved + c.rejected) < cur.requested_count;
+  $('view').innerHTML = `<button class="a-btn a-btn-ghost a-btn-sm" onclick="back()" style="margin-bottom:14px;">← All attempts</button>
   <div class="a-card" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-    <div><h2 style="font-size:16px;">${AA.esc(cur.dept)} → ${AA.esc(cur.subject)}</h2><p class="muted">${cur.level} · ${cur.type} · ${fmt(cur.created)} · ${AA.esc(cur.source)}</p></div>
-    <div style="display:flex;gap:8px;align-items:center;"><span class="badge badge-draft">${c.pending} pending</span><span class="badge badge-approved">${c.approved} approved</span>
-    <button class="a-btn a-btn-amber a-btn-sm" onclick="approveAll()">Approve all pending</button></div></div>
-  <div style="display:flex;flex-direction:column;gap:10px;">${cur.questions.map((q,i)=>`
-   <div class="a-card qrow"><div class="qbody"><p class="qtext">${i+1}. ${AA.esc(q.text)}</p>
-     <div class="opt-view">${q.options.map((o,j)=>`<span class="${j===q.answer?'ok':''}">${'ABCD'[j]}. ${AA.esc(o)}${j===q.answer?' ✓':''}</span>`).join('')}</div>
-     <div class="qmeta"><span class="badge ${stBadge[q.status]}">${q.status}</span><span class="a-chip">${q.difficulty}</span><span class="a-chip">${q.marks} mark${q.marks>1?'s':''}</span></div></div>
-     <div class="qactions" style="flex-direction:column;">
-       <button class="a-btn a-btn-amber a-btn-sm" onclick="act('${q.id}','approve')" ${q.status==='approved'?'disabled':''}>Approve</button>
-       <button class="a-btn a-btn-ghost a-btn-sm" onclick="openEdit('${q.id}')">Edit</button>
-       <button class="a-btn a-btn-ghost a-btn-sm" onclick="act('${q.id}','regen')">Regenerate</button>
-       <button class="a-btn a-btn-danger a-btn-sm" onclick="act('${q.id}','reject')" ${q.status==='rejected'?'disabled':''}>Reject</button></div></div>`).join('')}</div>`;
+    <div><h2 style="font-size:16px;">${esc(cur.department_name)} → ${esc(cur.subject)} <span class="badge badge-${esc(cur.status)}">${esc(cur.status)}</span></h2>
+      <p class="muted">${esc(cur.level)} · ${esc(L(META.question_types, cur.question_type))} · ${esc(L(META.difficulties, cur.difficulty))} · ${fmt(cur.created_at)} · by ${esc(cur.created_by || '—')}</p>
+      ${src.kind === 'description'
+        ? `<p class="muted">✎ No PDF — generated from your description · ${esc(cur.provider || '')} ${esc(cur.model || '')}</p>
+           <p class="muted" style="color:#fbbf24;">These questions come from the AI's general knowledge, not from a document — check every answer carefully.</p>`
+        : `<p class="muted">📄 ${src.files > 1 ? src.files + ' PDFs: ' : ''}${esc(src.filename)} · ${src.pages} page${src.pages === 1 ? '' : 's'} · ${src.characters.toLocaleString()} characters${src.truncated ? ' (very long — only part of it was kept)' : ''} · ${esc(cur.provider || '')} ${esc(cur.model || '')}</p>`}
+      ${cur.focus ? `<p class="muted">Instructions: “${esc(cur.focus)}”</p>` : ''}
+      ${src.ocr ? '<p class="muted" style="color:#fbbf24;">📷 Some pages were photos / scans — the AI read the text from the pictures first, so check spellings, numbers and formulas extra carefully.</p>' : ''}
+      ${cur.error ? `<p class="q-reason">${esc(cur.error.message)}</p>` : ''}
+      <p class="muted">AI-generated questions can contain mistakes — check each answer against the PDF before approving.</p></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span class="badge badge-draft">${c.draft} draft</span><span class="badge badge-approved">${c.approved} approved</span><span class="badge badge-rejected">${c.rejected} rejected</span>
+      <button class="a-btn a-btn-ghost a-btn-sm" onclick="regenAttempt()" ${canRegen ? '' : 'disabled'} title="Replace rejected questions / fill up to ${cur.requested_count}">↻ Regenerate rejected</button>
+      <button class="a-btn a-btn-amber a-btn-sm" onclick="approveAll()" ${c.draft ? '' : 'disabled'}>Approve all drafts</button></div></div>
+  <label class="muted" style="display:flex;gap:6px;align-items:center;margin-bottom:10px;cursor:pointer;">
+    <input type="checkbox" ${showHistory ? 'checked' : ''} onchange="showHistory=this.checked;openAttempt(cur.id)" /> Show replaced (history) questions (${c.replaced})</label>
+  <div style="display:flex;flex-direction:column;gap:10px;">${cur.questions.map(questionCard).join('') ||
+    '<div class="a-card a-empty">No questions in this attempt. Use “Regenerate” to try again with the same PDF.</div>'}</div>`;
 }
-function addToBank(q){const b=AA.bank(); b.push({...q,status:'approved',dept:cur.dept,level:cur.level}); AA.saveBank(b);}
-function rmFromBank(id){AA.saveBank(AA.bank().filter(x=>x.id!==id));}
-function act(id,what){
-  const i=cur.questions.findIndex(q=>q.id===id), q=cur.questions[i];
-  if(what==='approve'){q.status='approved'; rmFromBank(id); addToBank(q); aToast('Approved — added to Question Bank.');}
-  if(what==='reject'){q.status='rejected'; rmFromBank(id); aToast('Rejected.','✕');}
-  if(what==='regen'){rmFromBank(id); const n=aaMakeQuestion(q.subject,q.type,q.marks,q.difficulty,Math.floor(Math.random()*8)); n.text+=' ✦'; cur.questions[i]=n; aToast('Question regenerated.');}
-  save(cur); detail();
+function act(id, what) {
+  return withBusy(async () => {
+    if (what === 'regenerate') aToast('Asking the AI for a new question…', '✦');
+    await api(`/questions/${+id}/${what}`, { method: 'POST' });
+    aToast(what === 'approve' ? 'Approved — added to the Question Bank.' : 'Question regenerated as a new draft.');
+    await openAttempt(cur.id);
+  });
 }
-function approveAll(){cur.questions.forEach(q=>{if(q.status==='pending'){q.status='approved';addToBank(q);}}); save(cur); detail(); aToast('All pending questions approved.');}
-function openEdit(id){editQ=cur.questions.find(q=>q.id===id); eText.value=editQ.text; eOpts.value=editQ.options.join('\n'); eAns.value=editQ.answer+1; $('editModal').classList.add('open');}
-function closeEdit(){$('editModal').classList.remove('open');}
-function saveEdit(){const o=eOpts.value.split('\n').map(x=>x.trim()).filter(Boolean); if(o.length<2) return aToast('Need at least 2 options.','⚠');
-  editQ.text=eText.value.trim(); editQ.options=o; editQ.answer=Math.min(o.length,Math.max(1,+eAns.value||1))-1;
-  if(editQ.status==='approved'){rmFromBank(editQ.id); addToBank(editQ);} save(cur); closeEdit(); detail(); aToast('Question updated.');}
-document.addEventListener('DOMContentLoaded',()=>{const id=new URLSearchParams(location.search).get('attempt'); id?openAttempt(id):list();});
+function openReject(id) { rejectId = id; $('rReason').value = ''; openModal('rejectModal'); }
+function confirmReject() {
+  return withBusy(async () => {
+    await api(`/questions/${+rejectId}/reject`, { method: 'POST', body: { reason: $('rReason').value.trim() } });
+    closeModal('rejectModal'); aToast('Rejected.', '✕'); await openAttempt(cur.id);
+  });
+}
+function approveAll() {
+  return withBusy(async () => {
+    const r = await api(`/questions/attempts/${cur.id}/approve-all`, { method: 'POST' });
+    cur = r.attempt; detail();
+    aToast(r.approved.length + ' approved' + (r.skipped.length ? ` · ${r.skipped.length} need fixing first` : '') + '.');
+  });
+}
+function regenAttempt() {
+  return withBusy(async () => {
+    aToast('Asking the AI for replacement questions…', '✦');
+    const r = await api(`/questions/attempts/${cur.id}/regenerate`, { method: 'POST', body: {} });
+    cur = r.attempt; if (showHistory) await openAttempt(cur.id); else detail();
+    aToast(`${r.replaced} replaced, ${r.added} added.`);
+  });
+}
+
+// ---------------- edit
+function fillAnswers(opts, sel) { $('eAns').innerHTML = opts.map((o, j) => `<option value="${j}" ${j === sel ? 'selected' : ''}>${LETTER[j] || j + 1}. ${esc(o.slice(0, 60))}</option>`).join(''); }
+function openEdit(id) {
+  editQ = cur.questions.find(q => q.id === id); if (!editQ) return;
+  document.querySelectorAll('.field-err').forEach(e => e.textContent = '');
+  $('eText').value = editQ.text; $('eOpts').value = editQ.options.join('\n');
+  $('eOptsWrap').hidden = editQ.question_type === 'true_false';
+  fillAnswers(editQ.options, editQ.correct_index);
+  fillSelect($('eDiff'), META.difficulties); $('eDiff').value = editQ.difficulty;
+  $('eMarks').value = editQ.marks; $('eTopic').value = editQ.topic || ''; $('eExpl').value = editQ.explanation || '';
+  openModal('editModal');
+}
+document.addEventListener('input', e => {
+  if (e.target.id === 'eOpts') fillAnswers(e.target.value.split('\n').map(x => x.trim()).filter(Boolean), +$('eAns').value || 0);
+});
+async function saveEdit() {
+  document.querySelectorAll('.field-err').forEach(e => e.textContent = '');
+  const body = { text: $('eText').value.trim(), correct_index: +$('eAns').value, difficulty: $('eDiff').value,
+    marks: +$('eMarks').value, topic: $('eTopic').value.trim(), explanation: $('eExpl').value.trim() };
+  if (editQ.question_type !== 'true_false') body.options = $('eOpts').value.split('\n').map(x => x.trim()).filter(Boolean);
+  $('eSave').disabled = true;
+  try {
+    await api(`/questions/${editQ.id}`, { method: 'PUT', body });
+    closeModal('editModal'); aToast('Question updated.'); await openAttempt(cur.id);
+  } catch (e) {
+    if (e.status === 422 && e.details) Object.entries(e.details).forEach(([k, v]) => { const el = $('err-' + k); if (el) el.textContent = v; });
+    handleApiError(e);
+  } finally { $('eSave').disabled = false; }
+}
+
+document.addEventListener('admin:ready', async () => {
+  try { META = await loadMeta(); } catch (e) { return handleApiError(e); }
+  const id = new URLSearchParams(location.search).get('attempt');
+  id ? openAttempt(id) : list();
+});
 </script></body></html>

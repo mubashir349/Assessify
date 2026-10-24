@@ -17,12 +17,14 @@ class ApiRequestError extends Error {
 
 async function api(path, { method = 'GET', body } = {}) {
   let res;
+  // FormData (file uploads) is sent as-is: the browser sets the multipart Content-Type + boundary itself.
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   try {
     res = await fetch(API_BASE + path, {
       method,
       credentials: 'include',                       // sends / receives the httpOnly login cookie
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      headers: body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {},
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch (e) {
     throw new ApiRequestError('NETWORK_ERROR', 'Cannot reach the server. Is the backend running?', 0);
@@ -54,4 +56,11 @@ function fillSelect(select, items, { keepFirst = false } = {}) {
     const v = typeof i === 'string' ? i : i.value, l = typeof i === 'string' ? i : i.label;
     return `<option value="${esc(v)}">${esc(l)}</option>`;
   }).join('');
+}
+
+/** Shared error handling for admin pages: expired session -> login page, otherwise a toast with the server's message. */
+function handleApiError(e, fallbackIcon = '⚠') {
+  if (e && e.status === 401) { window.location.replace('../institution-login.html'); return; }
+  const field = e && e.details && Object.values(e.details).find(v => typeof v === 'string');
+  if (typeof aToast === 'function') aToast(esc(field || (e && e.message) || 'Something went wrong.'), fallbackIcon);
 }

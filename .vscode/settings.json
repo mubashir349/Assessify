@@ -1,0 +1,13 @@
+{
+  // Live Server reloads the page when ANY file in the folder changes. Python writes cache files inside backend/
+  // (e.g. backend/venv) while the server runs, which reloaded the Generate page in the middle of a request.
+  // Only reload for frontend changes:
+  "liveServer.settings.ignoreFiles": [
+    ".vscode/**",
+    "backend/**",
+    "**/__pycache__/**",
+    "**/*.pyc",
+    "**/venv/**",
+    "**/.venv/**"
+  ]
+}

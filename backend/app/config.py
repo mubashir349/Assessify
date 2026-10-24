@@ -57,3 +57,31 @@ class Config:
     JWT_COOKIE_SAMESITE = "Lax"
     # CSRF double-submit is off for local dev (frontend + API share a host). Turn ON in production.
     JWT_COOKIE_CSRF_PROTECT = _flag("JWT_COOKIE_CSRF")
+
+    # ---- Phase 3: PDF upload + AI question generation ----
+    # Flask rejects any request body bigger than this with HTTP 413 (we turn that into FILE_TOO_LARGE).
+    MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "200"))          # total for all PDFs in one request
+    MAX_CONTENT_LENGTH = MAX_UPLOAD_MB * 1024 * 1024
+    PDF_MAX_PAGES = int(os.getenv("PDF_MAX_PAGES", "300"))          # pages read from one PDF
+    PDF_MIN_TEXT_CHARS = int(os.getenv("PDF_MIN_TEXT_CHARS", "300"))  # less text than this -> "no usable text"
+    MAX_PDFS_PER_GENERATION = int(os.getenv("MAX_PDFS_PER_GENERATION", "10"))
+    SOURCE_MAX_CHARS = int(os.getenv("SOURCE_MAX_CHARS", "300000"))   # text kept from all PDFs together (~120 typed pages)
+    AI_MAX_SOURCE_CHARS = int(os.getenv("AI_MAX_SOURCE_CHARS", "12000"))  # one part of it, sent per AI request
+    AI_MAX_REQUESTS_PER_GENERATION = int(os.getenv("AI_MAX_REQUESTS_PER_GENERATION", "10"))  # parts used per attempt
+    DESCRIPTION_MIN_WORDS = int(os.getenv("DESCRIPTION_MIN_WORDS", "8"))  # no PDF -> description must say this much
+
+    # Which AI service writes the drafts. One of: gemini | groq | ollama | none   (see README "Phase 3")
+    AI_PROVIDER = os.getenv("AI_PROVIDER", "none").strip().lower()
+    AI_MODEL = os.getenv("AI_MODEL", "").strip()          # empty -> the provider's default model
+    AI_BASE_URL = os.getenv("AI_BASE_URL", "").strip()    # empty -> the provider's default URL
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+    AI_TIMEOUT_SECONDS = int(os.getenv("AI_TIMEOUT_SECONDS", "90"))
+    AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "2"))      # extra tries after the first one (bounded)
+    AI_BATCH_SIZE = int(os.getenv("AI_BATCH_SIZE", "10"))       # questions asked for in one AI request
+    AI_MAX_OUTPUT_TOKENS = os.getenv("AI_MAX_OUTPUT_TOKENS", "").strip()  # empty -> provider default
+    MAX_QUESTIONS_PER_ATTEMPT = int(os.getenv("MAX_QUESTIONS_PER_ATTEMPT", "100"))
+    # PDFs made of photos / scans: the AI (Gemini) reads the page pictures. Limits keep free-quota use small.
+    OCR_MAX_PAGES = int(os.getenv("OCR_MAX_PAGES", "60"))                  # pictures read from one PDF
+    OCR_PAGES_PER_REQUEST = int(os.getenv("OCR_PAGES_PER_REQUEST", "4"))   # pictures sent in one AI request
+    OCR_IMAGE_MAX_SIDE = int(os.getenv("OCR_IMAGE_MAX_SIDE", "1600"))      # pixels; bigger photos are shrunk
