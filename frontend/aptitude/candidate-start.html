@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Instructions — Aptitude Test</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../assets/css/theme.css" />
+<link rel="stylesheet" href="../assets/css/candidate.css" />
+</head>
+<body class="mesh-bg">
+  <div class="blob-field"></div>
+
+  <div class="cand-topbar">
+    <div class="cand-brand"><div class="mark">Σ</div><span>Aptitude Test Portal</span></div>
+    <div class="cand-inst" id="candInst"></div>
+  </div>
+
+  <div class="instr-wrap">
+    <div class="instr-card glass fade-up">
+      <span class="eyebrow"><span class="dot"></span><span id="welcome">Welcome, Candidate</span></span>
+      <h1 style="margin-top:12px;">Before you begin</h1>
+      <p style="color:var(--n-400);font-size:13.5px;">Your paper is drawn from the <b style="color:#fff;" id="candDept">your field's</b> question bank. Read every rule below — your timer starts when you press Start.</p>
+
+      <div class="instr-meta">
+        <span class="m">⏱ Time limit: <b style="color:#fff;" id="mTime">—</b></span>
+        <span class="m">📚 Subjects: <b style="color:#fff;" id="mSubj">—</b></span>
+        <span class="m">🔢 Questions: <b style="color:#fff;" id="mCount">—</b></span>
+      </div>
+
+      <div class="rule-list">
+        <div class="rule">
+          <span class="ic">🖥️</span>
+          <div><b>Fullscreen is required</b><p>The test opens in fullscreen and stays there for the full duration. This is a browser requirement, not optional.</p></div>
+        </div>
+        <div class="rule warn">
+          <span class="ic">🔒</span>
+          <div><b>Exiting fullscreen locks your attempt immediately</b><p id="lockRule">Pressing Esc, switching tabs, or minimizing the window freezes your progress and remaining time instantly. Only your test proctor / Institution Admin can unlock it — you cannot resume it yourself.</p></div>
+        </div>
+        <div class="rule">
+          <span class="ic">📶</span>
+          <div><b>If you lose connection</b><p>Every answer is saved on the server as you click it. Reconnect, sign in again if asked, and your attempt continues where you left it.</p></div>
+        </div>
+        <div class="rule">
+          <span class="ic">🏁</span>
+          <div><b>Time runs out automatically</b><p>If the time limit or window elapses while you're still attempting, your test is submitted automatically using what you've answered so far.</p></div>
+        </div>
+      </div>
+
+      <label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:20px;cursor:pointer;">
+        <input type="checkbox" id="ack" style="margin-top:3px;accent-color:var(--apt-primary);width:16px;height:16px;" />
+        <span style="font-size:12.5px;color:var(--n-300);">I understand fullscreen exit will lock my attempt, and only my Institution Admin can unlock it.</span>
+      </label>
+
+      <div class="rule" id="schedBanner" style="display:none;margin-bottom:16px;"></div>
+      <button class="btn btn-amber" id="startBtn" style="width:100%;" disabled>Start test →</button>
+    </div>
+  </div>
+
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/main.js"></script>
+  <script src="../assets/js/candidate-start.js"></script>
+</body>
+</html>

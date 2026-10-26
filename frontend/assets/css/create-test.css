@@ -1,0 +1,60 @@
+/* create-test.html — wizard styles */
+
+/* Step indicator */
+.wiz-steps { display:flex; gap:6px; margin-bottom:26px; }
+.wiz-step {
+  flex:1; display:flex; align-items:center; gap:9px; padding:11px 14px; border-radius:12px;
+  font-size:12.5px; font-weight:600; color:var(--n-500); border:1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.02);
+}
+.wiz-step .wiz-num {
+  width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background: rgba(255,255,255,.06); font-size:11.5px; flex-shrink:0;
+}
+.wiz-step.active { color:#fff; border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
+.wiz-step.active .wiz-num { background: var(--apt-primary); color:#1c1206; }
+.wiz-step.done { color: var(--n-300); }
+.wiz-step.done .wiz-num { background: rgba(34,197,94,.2); color:#22c55e; }
+@media (max-width: 720px) { .wiz-step span:not(.wiz-num) { display:none; } }
+
+/* Panels */
+.wiz-panel { display:none; }
+.wiz-panel.active { display:block; animation: fadeSlideUp .3s ease; }
+
+/* Field toggle (step 1) */
+.field-toggle { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border:1px solid rgba(255,255,255,.1); border-radius:12px; margin-bottom:10px; cursor:pointer; transition: all .15s; }
+.field-toggle.checked { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.06); }
+.field-toggle input { accent-color: var(--apt-primary); width:16px; height:16px; pointer-events:none; }
+
+/* Field tabs (step 2) */
+.field-tabs { display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap; }
+.field-tab { padding:8px 15px; border-radius:9px; font-size:12.5px; font-weight:600; color:var(--n-400); background: rgba(255,255,255,.04); cursor:pointer; border:1px solid transparent; }
+.field-tab.active { background: var(--apt-primary); color:#1c1206; }
+.field-tab .shortfall-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#ef4444; margin-left:6px; }
+
+/* Composition rows */
+.comp-table-head { display:grid; grid-template-columns: 1.3fr .9fr .9fr .8fr .9fr .8fr 1.1fr 36px; gap:10px; padding: 0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--n-500); border-bottom:1px solid rgba(255,255,255,.1); }
+.comp-row { display:grid; grid-template-columns: 1.3fr .9fr .9fr .8fr .9fr .8fr 1.1fr 36px; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.comp-row select, .comp-row input { font-size:12.5px; padding:8px 10px; }
+.comp-row .status-cell { font-size:11.5px; }
+.comp-row .rm-btn { width:30px;height:30px;border-radius:8px;background:rgba(239,68,68,.1); color:#f87171; display:flex;align-items:center;justify-content:center; font-size:13px; }
+.comp-row .rm-btn:hover { background:rgba(239,68,68,.2); }
+.comp-add-row { margin-top:12px; }
+
+/* Radio group (release mode) */
+.radio-group { display:flex; gap:10px; }
+.radio-opt { flex:1; padding:12px 14px; border:1px solid rgba(255,255,255,.12); border-radius:12px; cursor:pointer; font-size:12.5px; color:var(--n-300); }
+.radio-opt.sel { border-color: var(--apt-primary); background: rgba(245,158,11,.08); color:#fff; }
+
+/* Wizard nav */
+.wiz-nav { display:flex; justify-content:space-between; margin-top:22px; }
+
+/* Review (step 4) */
+.review-field-card { margin-bottom:16px; }
+.review-field-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.review-field-head h3 { font-size:14.5px; }
+.rand-note { margin-top:14px; padding:12px 14px; border-radius:12px; font-size:12px; line-height:1.6; color:var(--n-300); background:rgba(6,182,212,.07); border:1px solid rgba(6,182,212,.25); }
+.comp-row .num-cell { font-family:var(--font-mono); font-size:12.5px; color:#fff; }
+.comp-row .num-cell.bad { color:#f87171; }
+.lvl-pill { display:inline-block; font-size:10.5px; padding:2px 8px; border-radius:20px; background:rgba(245,158,11,.14); color:var(--apt-light); margin-left:6px; }
+@media (max-width:1000px){ .comp-table-head,.comp-row{ grid-template-columns:1fr 1fr 1fr; } }

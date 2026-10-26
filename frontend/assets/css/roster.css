@@ -1,0 +1,20 @@
+/* roster.html — page-specific styles */
+
+.drop {
+  border: 2px dashed rgba(255,255,255,0.15); border-radius: 16px; padding: 34px; text-align: center;
+  color: var(--n-400); font-size: 13px; margin-bottom: 20px; transition: border-color .15s, background .15s;
+}
+.drop:hover { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.04); }
+.drop .ic { font-size: 26px; margin-bottom: 8px; }
+.reveal { font-family: var(--font-mono); font-size: 12px; color: var(--n-600); cursor: pointer; user-select: none; }
+.reveal.shown { color: var(--n-300); }
+.drop { display: block; cursor: pointer; }
+.drop.over { border-color: rgba(245,158,11,0.6); background: rgba(245,158,11,0.07); }
+.drop.busy { opacity: .6; pointer-events: none; }
+.test-pick { display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px; }
+.test-meta { font-size: 12.5px; line-height: 1.6; text-align: right; }
+.preview-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; border-color: rgba(245,158,11,.35); }
+.dept-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.pager { display:flex; gap:8px; align-items:center; justify-content:center; margin-top:16px; font-size:12.5px; color:var(--n-400); }
+#a-content [hidden], .a-topbar-actions [hidden] { display: none !important; }   /* .a-card / .preview-bar set display */
+.a-table td.mono { white-space: nowrap; }
