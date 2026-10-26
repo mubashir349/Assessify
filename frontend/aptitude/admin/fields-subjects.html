@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fields &amp; Subjects — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/fields-subjects.css" />
+</head>
+<body data-page="fields" data-title="Fields &amp; Departments" data-sub="Fields for Undergraduate · Departments for Masters &amp; PhD — or one general test for everyone">
+
+<template id="a-actions-template">
+  <button class="a-btn a-btn-amber" onclick="openDeptModal()">+ New Field / Department</button>
+</template>
+
+<template id="a-content-template">
+  <div class="filters">
+    <select class="a-select" id="lvlFilter"><option value="">All levels</option></select>
+    <input class="a-input" id="dSearch" placeholder="Search fields / departments…" />
+  </div>
+  <div class="a-grid a-grid-2" id="deptGrid"></div>
+</template>
+
+<div class="a-modal-bg" id="fieldModal">
+  <div class="a-modal">
+    <div class="a-modal-head">
+      <div><h3 id="mTitle">New field / department</h3><p class="muted" style="font-size:12px;">Any name — Pre-Med, Law, Data Science, or a General Test</p></div>
+      <button class="a-modal-x" onclick="closeModal('fieldModal')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="a-field"><label>Assessment type</label>
+        <div class="seg" id="modeSeg"></div></div>
+      <div class="a-field"><label>Degree level</label>
+        <select class="a-select" id="dLevel" onchange="lvlChange()"></select></div>
+
+      <div class="a-field"><label id="nameLbl">Field name</label><input class="a-input" id="dName" placeholder="e.g. Pre-Engineering, Law, Data Science" /></div>
+      <div class="a-field"><label>Subjects</label>
+        <div class="tag-in" id="tagBox"><input id="tagInput" placeholder="Type a subject, press Enter" /></div>
+        <span class="hint">Add as many subjects as you like — nothing is fixed.</span></div>
+      <button class="btn btn-amber" id="saveBtn" style="width:100%;" onclick="saveDept()">Save department</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../assets/js/store.js"></script>
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/admin-shell.js"></script>
+<script src="../../assets/js/fields-subjects.js"></script>
+</body>
+</html>

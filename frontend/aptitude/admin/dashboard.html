@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+</head>
+<body data-page="dashboard" data-title="Dashboard" data-sub-from="institution">
+
+<template id="a-actions-template">
+  <a href="create-test.html" class="a-btn a-btn-amber">+ New Aptitude Test</a>
+</template>
+
+<template id="a-content-template">
+
+  <div class="a-grid a-grid-3" style="margin-bottom:22px;">
+    <div class="a-card a-stat">
+      <div class="lbl">Fields &amp; departments configured</div>
+      <div class="num" id="sDepts">–</div>
+      <div class="delta"><span id="sDeptsSub">&nbsp;</span></div>
+    </div>
+    <div class="a-card a-stat">
+      <div class="lbl">Subjects across all fields</div>
+      <div class="num" id="sSubjects">–</div>
+      <div class="delta"><span>&nbsp;</span></div>
+    </div>
+    <div class="a-card a-stat">
+      <div class="lbl">General tests</div>
+      <div class="num" id="sGeneral">–</div>
+      <div class="delta"><span>One test for every candidate</span></div>
+    </div>
+  </div>
+
+  <div class="a-card">
+    <div class="section-head">
+      <div><h2>Recently added fields &amp; departments</h2><p>Your latest configuration</p></div>
+      <a href="fields-subjects.html" class="a-btn a-btn-ghost a-btn-sm">Manage →</a>
+    </div>
+    <div class="a-table-wrap">
+      <table class="a-table">
+        <thead><tr><th>Name</th><th>Level</th><th>Subjects</th></tr></thead>
+        <tbody id="recentBody"><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</template>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/admin-shell.js"></script>
+<script>
+// Every number on this page is computed by the backend (GET /dashboard/summary) from the database.
+const $ = id => document.getElementById(id);
+async function loadSummary() {
+  try {
+    const d = await api('/dashboard/summary');
+    $('sDepts').textContent = d.departments.total;
+    $('sSubjects').textContent = d.subjects.total;
+    $('sGeneral').textContent = d.departments.general_tests;
+    const parts = Object.entries(d.departments.by_level).map(([lvl, n]) => `${esc(lvl)} ${n}`);
+    $('sDeptsSub').innerHTML = parts.length ? parts.join(' · ') : 'None yet';
+    $('recentBody').innerHTML = d.departments.recent.map(r =>
+      `<tr><td class="name">${esc(r.name)}</td><td>${esc(r.level)}</td><td class="mono">${r.subject_count}</td></tr>`).join('')
+      || '<tr><td colspan="3" class="muted">Nothing configured yet — <a href="fields-subjects.html">add your first field / department</a>.</td></tr>';
+  } catch (e) { $('recentBody').innerHTML = `<tr><td colspan="3" style="color:#f87171;">${esc(e.message)}</td></tr>`; }
+}
+document.addEventListener('DOMContentLoaded', () => setTimeout(loadSummary, 0));   // after the shell injects the template
+</script>
+</body>
+</html>

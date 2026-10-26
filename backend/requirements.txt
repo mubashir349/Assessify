@@ -1,0 +1,12 @@
+Flask>=3.0.3
+Flask-SQLAlchemy>=3.1.1
+Flask-Migrate>=4.0.7
+Flask-Cors>=4.0.1
+Flask-JWT-Extended>=4.6.0
+SQLAlchemy>=2.0.44
+pyodbc>=5.3.0
+python-dotenv>=1.0.1
+waitress>=3.0.0
+pypdf>=6.0          # Phase 3: PDF text extraction (pure Python, no system packages)
+requests>=2.32      # Phase 3: calls the free AI provider's HTTP API
+Pillow>=10.0        # Phase 3: reads page pictures from photographed / scanned PDFs (sent to Gemini)

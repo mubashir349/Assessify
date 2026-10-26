@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Candidate Roster — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/roster.css" />
+</head>
+<body data-page="roster" data-title="Candidate Roster" data-sub="1,284 candidates · no candidate holds a persistent account">
+
+<template id="a-actions-template">
+  <button class="a-btn a-btn-ghost">Download template CSV</button>
+  <button class="a-btn a-btn-amber">Import roster</button>
+</template>
+
+<template id="a-content-template">
+
+  <div class="drop">
+    <div class="ic">🧾</div>
+    <b style="color:#fff;">Drag a roster file here, or click to browse</b>
+    <p style="margin-top:6px;">CSV with: name, email, roll number, access code (optional), date of birth, field</p>
+  </div>
+
+  <div class="a-grid a-grid-3" style="margin-bottom:20px;">
+    <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Imported successfully</div><div class="num" style="font-size:1.5rem;color:var(--success);">1,284</div></div>
+    <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Rows with errors</div><div class="num" style="font-size:1.5rem;color:#f87171;">14</div></div>
+    <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Access codes auto-generated</div><div class="num" style="font-size:1.5rem;">312</div></div>
+  </div>
+
+  <div class="a-card" style="margin-bottom:20px;border-color:rgba(239,68,68,.3);">
+    <div class="section-head"><div><h2>Rows that need fixing (14)</h2><p>Reported individually so nothing silently drops</p></div></div>
+    <div class="a-table-wrap">
+      <table class="a-table">
+        <thead><tr><th>Row</th><th>Name</th><th>Issue</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="mono">#118</td><td class="name">Hassan Ali</td><td style="color:#f87171;">Field "Pre-Eng" not recognized (did you mean "Pre-Engineering"?)</td><td><button class="a-btn a-btn-ghost a-btn-sm">Fix</button></td></tr>
+          <tr><td class="mono">#204</td><td class="name">Areeba Khan</td><td style="color:#f87171;">Date of birth unparseable ("2007/13/40")</td><td><button class="a-btn a-btn-ghost a-btn-sm">Fix</button></td></tr>
+          <tr><td class="mono">#390</td><td class="name">M. Bilal</td><td style="color:#f87171;">Duplicate roll number (also row #57)</td><td><button class="a-btn a-btn-ghost a-btn-sm">Fix</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <div><h2>Roster</h2><p>DOB and access codes are masked here and never shown on the monitoring dashboard, emails, or reports</p></div>
+    <input class="a-input" style="width:220px;" placeholder="Search name or roll no…" />
+  </div>
+  <div class="a-table-wrap">
+    <table class="a-table">
+      <thead><tr><th>Name</th><th>Roll No.</th><th>Email</th><th>Field / Department</th><th>Access code</th><th>Date of birth</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="name">Ahmed Raza</td><td class="mono">PE-2026-014</td><td>ahmed.raza@mail.com</td><td><span class="a-chip">Pre-Engineering</span></td>
+          <td class="mono reveal" onclick="toggleReveal(this,'8K4Q-2P1X')">••••-••••</td>
+          <td class="mono reveal" onclick="toggleReveal(this,'14-Mar-2008')">••-•••-••••</td>
+          <td><button class="a-btn a-btn-ghost a-btn-sm">Correct</button></td>
+        </tr>
+        <tr>
+          <td class="name">Sana Fatima</td><td class="mono">PM-2026-091</td><td>sana.fatima@mail.com</td><td><span class="a-chip">Pre-Medical</span></td>
+          <td class="mono reveal" onclick="toggleReveal(this,'9M2R-7T3L')">••••-••••</td>
+          <td class="mono reveal" onclick="toggleReveal(this,'02-Jul-2007')">••-•••-••••</td>
+          <td><button class="a-btn a-btn-ghost a-btn-sm">Correct</button></td>
+        </tr>
+        <tr>
+          <td class="name">Bilal Hussain</td><td class="mono">CS-2026-208</td><td>bilal.h@mail.com</td><td><span class="a-chip">Computer Science</span></td>
+          <td class="mono reveal" onclick="toggleReveal(this,'5W8N-4D6Y')">••••-••••</td>
+          <td class="mono reveal" onclick="toggleReveal(this,'19-Nov-2007')">••-•••-••••</td>
+          <td><button class="a-btn a-btn-ghost a-btn-sm">Correct</button></td>
+        </tr>
+        <tr>
+          <td class="name">Mehak Iqbal</td><td class="mono">CM-2026-033</td><td>mehak.iqbal@mail.com</td><td><span class="a-chip">Commerce</span></td>
+          <td class="mono reveal" onclick="toggleReveal(this,'2F9V-6H1Z')">••••-••••</td>
+          <td class="mono reveal" onclick="toggleReveal(this,'27-Jan-2008')">••-•••-••••</td>
+          <td><button class="a-btn a-btn-ghost a-btn-sm">Correct</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" style="margin-top:12px;font-size:11.5px;">Showing 4 of 1,284 · roster data is used only for login, Field-based paper assignment, dashboard identification, and result delivery.</p>
+
+</template>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/admin-shell.js"></script>
+<script src="../../assets/js/roster.js"></script>
+</body>
+</html>
