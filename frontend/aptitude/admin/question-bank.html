@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Question Bank — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/question-bank.css" />
+</head>
+<body data-page="bank" data-title="Question Bank" data-sub="Approved questions only — one bank, filterable by field / department, level and subject">
+
+<template id="a-actions-template">
+  <a class="a-btn a-btn-amber" href="generate.html">✦ Generate Questions</a>
+</template>
+
+<template id="a-content-template">
+  <div class="a-card ai-card" style="margin-bottom:18px;">
+    <div class="ai-tag">✦ INSIGHTS · QUESTION BANK</div>
+    <div class="a-grid a-grid-3">
+      <div><div class="muted" style="margin-bottom:6px;">Difficulty balance</div><div id="diffBars"></div></div>
+      <div><div class="muted" style="margin-bottom:6px;">Coverage by level</div><div id="lvlBars"></div></div>
+      <div><div class="muted" style="margin-bottom:2px;">Suggestions</div><div id="aiTips"></div></div>
+    </div>
+  </div>
+  <div class="filters">
+    <select class="a-select" id="fDept" onchange="onDept()"><option value="">All fields / departments</option></select>
+    <select class="a-select" id="fLevel" onchange="relabel();applyFilters()"><option value="">All levels</option></select>
+    <select class="a-select" id="fSubj" onchange="applyFilters()"><option value="">All subjects</option></select>
+    <select class="a-select" id="fDiff" onchange="applyFilters()"><option value="">All difficulties</option></select>
+    <select class="a-select" id="fType" onchange="applyFilters()"><option value="">All types</option></select>
+    <input class="a-input" id="fQ" placeholder="Search question text…" oninput="onSearch()" />
+  </div>
+  <div id="bankList" style="display:flex;flex-direction:column;gap:10px;"><div class="a-card a-empty">Loading…</div></div>
+  <div id="bankPager"></div>
+</template>
+
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/admin-shell.js"></script>
+<script src="../../assets/js/question-bank.js"></script>
+</body>
+</html>

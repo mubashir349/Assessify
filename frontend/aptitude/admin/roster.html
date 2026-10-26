@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Candidate Roster — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/roster.css" />
+</head>
+<body data-page="roster" data-title="Candidate Roster" data-sub="Candidates sign in with a one-time access code + date of birth · no candidate holds a persistent account">
+
+<template id="a-actions-template">
+  <a class="a-btn a-btn-ghost" id="templateBtn" href="#" download>Download template CSV</a>
+  <a class="a-btn a-btn-ghost" id="exportBtn" href="#" download hidden>Export codes (CSV)</a>
+  <button class="a-btn a-btn-amber" id="addBtn" onclick="openCandModal()" hidden>+ Add candidate</button>
+</template>
+
+<template id="a-content-template">
+
+  <div class="a-card test-pick">
+    <div class="a-field" style="flex:1;min-width:240px;">
+      <label for="testSel">Test</label>
+      <select class="a-select" id="testSel"></select>
+      <span class="hint">A roster belongs to one published test. Its fields / departments decide which paper each candidate gets.</span>
+    </div>
+    <div class="test-meta muted" id="testMeta"></div>
+  </div>
+
+  <div id="noTests" class="a-card a-empty" hidden>
+    <div class="ic">📝</div><h4>No published test yet</h4>
+    <p>Publish a test in <a href="create-test.html" style="color:var(--apt-primary);">Aptitude Tests</a> first, then import its candidates here.</p>
+  </div>
+
+  <div id="rosterArea" hidden>
+    <label class="drop" id="drop">
+      <input type="file" id="csvFile" accept=".csv,text/csv" hidden />
+      <div class="ic">🧾</div>
+      <b style="color:#fff;">Drag a roster CSV here, or click to browse</b>
+      <p style="margin-top:6px;">Columns: name, email, roll number, access code (optional — generated if empty), date of birth, field</p>
+      <p class="muted" style="margin-top:4px;font-size:11.5px;">Dates as YYYY-MM-DD or DD/MM/YYYY · in Excel use File → Save As → CSV UTF-8</p>
+    </label>
+
+    <div id="importBox" hidden>
+      <div class="a-grid a-grid-3" style="margin-bottom:20px;">
+        <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl" id="okLbl">Imported successfully</div><div class="num" style="font-size:1.5rem;color:var(--success);" id="okNum">0</div></div>
+        <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Rows with errors</div><div class="num" style="font-size:1.5rem;color:#f87171;" id="errNum">0</div></div>
+        <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Access codes auto-generated</div><div class="num" style="font-size:1.5rem;" id="genNum">0</div></div>
+      </div>
+      <div class="a-card preview-bar" id="previewBar" hidden>
+        <div><b style="color:#fff;" id="previewFile"></b><p class="muted" style="font-size:12px;" id="previewText"></p></div>
+        <div style="display:flex;gap:8px;">
+          <button class="a-btn a-btn-ghost" onclick="cancelPreview()">Cancel</button>
+          <button class="a-btn a-btn-amber" id="confirmBtn" onclick="confirmImport()">Import</button>
+        </div>
+      </div>
+      <div class="a-card" id="errCard" style="margin-bottom:20px;border-color:rgba(239,68,68,.3);" hidden>
+        <div class="section-head"><div><h2 id="errTitle">Rows that need fixing</h2><p>Reported individually so nothing silently drops. Fix them in the file and import it again — rows already on the roster are not added twice.</p></div></div>
+        <div class="a-table-wrap">
+          <table class="a-table">
+            <thead><tr><th>Row</th><th>Name</th><th>Roll No.</th><th>Issue</th></tr></thead>
+            <tbody id="errRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <div><h2 id="rosterTitle">Roster</h2><p>Access codes and dates of birth are masked — click one to reveal it. They are never shown on the monitor, in emails or in reports.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select class="a-select" id="deptFilter" style="width:auto;min-width:170px;"><option value="">All fields</option></select>
+        <input class="a-input" id="search" style="width:220px;" placeholder="Search name, roll no or email…" />
+      </div>
+    </div>
+    <div class="dept-chips" id="deptChips"></div>
+    <div class="a-table-wrap">
+      <table class="a-table">
+        <thead><tr><th>Name</th><th>Roll No.</th><th>Email</th><th id="deptHead">Field</th><th>Access code</th><th>Date of birth</th><th>Signed in</th><th></th></tr></thead>
+        <tbody id="rosterRows"><tr><td colspan="8" class="a-empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <div id="pager"></div>
+    <p class="muted" style="margin-top:12px;font-size:11.5px;">Roster data is used only for login, field-based paper assignment, dashboard identification and result delivery.</p>
+  </div>
+
+</template>
+
+<div class="a-modal-bg" id="candModal">
+  <div class="a-modal">
+    <div class="a-modal-head">
+      <div><h3 id="cTitle">Add candidate</h3><p class="muted" style="font-size:12px;" id="cSub">An access code is generated automatically if you leave it empty.</p></div>
+      <button class="a-modal-x" onclick="closeModal('candModal')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="a-field"><label for="cName">Full name</label><input class="a-input" id="cName" /></div>
+      <div class="a-field"><label for="cEmail">Email</label><input class="a-input" id="cEmail" type="email" /></div>
+      <div class="a-field"><label for="cRoll">Roll number</label><input class="a-input" id="cRoll" /></div>
+      <div class="a-field"><label for="cDob">Date of birth</label><input class="a-input" id="cDob" type="date" /></div>
+      <div class="a-field"><label for="cDept" id="cDeptLbl">Field</label><select class="a-select" id="cDept"></select></div>
+      <div class="a-field" id="cCodeField"><label for="cCode">Access code (optional)</label><input class="a-input" id="cCode" placeholder="leave empty to generate" />
+        <span class="hint">6–20 letters or digits; must not be used by anyone else.</span></div>
+      <div class="auth-err" id="cErr" style="display:none;color:#f87171;font-size:12.5px;"></div>
+      <button class="btn btn-amber" id="cSave" style="width:100%;" onclick="saveCand()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../assets/js/store.js"></script>
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/admin-shell.js"></script>
+<script src="../../assets/js/roster.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+/* institution-register.html — page-specific styles */
+
+.reg-wrap { max-width: 760px; margin: 0 auto; padding: 120px 24px 70px; position: relative; z-index: 1; }
+.reg-head { text-align: center; margin-bottom: 34px; }
+.reg-head h1 { color: #fff; font-size: clamp(1.7rem, 3.4vw, 2.2rem); margin: 14px 0 10px; }
+.reg-head p { color: var(--n-400); font-size: 13.5px; max-width: 480px; margin: 0 auto; line-height: 1.6; }
+
+.reg-section { padding: 26px 28px; margin-bottom: 18px; }
+.reg-section-head { margin-bottom: 20px; }
+.reg-section-head .num {
+  display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+  border-radius: 50%; background: rgba(245,158,11,0.14); color: var(--apt-light); font-size: 11.5px; font-weight: 700;
+  font-family: var(--font-mono); margin-right: 9px;
+}
+.reg-section-head h2 { color: #fff; font-size: 1.05rem; font-weight: 700; display: inline-flex; align-items: center; }
+.reg-section-head p { color: var(--n-500); font-size: 12px; margin-top: 6px; margin-left: 33px; }
+
+.reg-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.reg-row3 { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+@media (max-width: 640px) { .reg-row2, .reg-row3 { grid-template-columns: 1fr; } }
+.reg-field-single { margin-bottom: 14px; }
+
+.field-row-grid { display: grid; grid-template-columns: 1.2fr 0.8fr 1.4fr; gap: 12px; }
+@media (max-width: 640px) { .field-row-grid { grid-template-columns: 1fr; } }
+
+.reg-add-btn { margin-top: 4px; }
+
+.reg-submit-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  padding: 22px 28px;
+}
+.reg-submit-bar p { font-size: 12px; color: var(--n-500); max-width: 340px; line-height: 1.6; }
+
+/* Confirmation state */
+.reg-confirm { display: none; text-align: center; padding: 50px 34px; }
+.reg-confirm.show { display: block; }
+.reg-confirm .ic {
+  width: 64px; height: 64px; border-radius: 20px; margin: 0 auto 20px;
+  background: rgba(34,197,94,0.14); border: 1px solid rgba(34,197,94,0.3);
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+}
+.reg-confirm h2 { color: #fff; font-size: 1.45rem; margin-bottom: 10px; }
+.reg-confirm p { color: var(--n-400); font-size: 13.5px; line-height: 1.65; max-width: 420px; margin: 0 auto 22px; }
+.reg-confirm .summary { text-align: left; max-width: 380px; margin: 0 auto; padding: 16px 18px; }
+.reg-confirm .summary div { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--n-400); padding: 6px 0; }
+.reg-confirm .summary div:not(:first-child) { border-top: 1px solid rgba(255,255,255,.06); }
+.reg-confirm .summary b { color: #fff; }
