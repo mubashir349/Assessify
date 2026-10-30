@@ -27,7 +27,7 @@ def list_institutions(status: str | None, q: str | None):
         query = query.filter(or_(Institution.name.ilike(like), Institution.city.ilike(like), Institution.id.in_(admin_ids)))
     items = query.order_by(Institution.created_at.desc(), Institution.id.desc()).limit(500).all()
 
-    counts = {s: 0 for s in STATUSES}
+    counts = dict.fromkeys(STATUSES, 0)
     for status_value, n in db.session.query(Institution.status, func.count()).group_by(Institution.status):
         counts[status_value] = n
     counts["total"] = sum(counts.values())

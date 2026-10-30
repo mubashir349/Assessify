@@ -27,7 +27,8 @@ function handleFatal(e) {
 function render() {
   const q = S.qs[S.cur];
   if (!q) return;
-  $('qNum').textContent = `Question ${q.number} of ${S.qs.length} · ${q.subject}${q.marks > 1 ? ` · ${q.marks} marks` : ''}`;
+  const marks = q.marks > 1 ? ` · ${q.marks} marks` : '';
+  $('qNum').textContent = `Question ${q.number} of ${S.qs.length} · ${q.subject}${marks}`;
   $('qText').textContent = q.text;
   $('optList').innerHTML = q.options.map((o, j) => `<div class="opt${q.choice === j ? ' sel' : ''}" data-j="${j}"><span class="letter">${'ABCDEFGH'[j]}</span><span class="t">${esc(o)}</span></div>`).join('');
   $('flagBtn').classList.toggle('on', q.flagged);
@@ -43,22 +44,30 @@ function render() {
 
 function setSaveState() {
   const el = $('saveState'), waiting = S.pending.size;
-  el.className = 'save-state' + (S.saveError ? ' error' : waiting ? ' pending' : '');
-  el.textContent = S.saveError ? `${waiting} answer(s) not saved — retrying…` : waiting ? 'Saving…' : 'All answers saved';
+  if (S.saveError) {
+    el.className = 'save-state error';
+    el.textContent = `${waiting} answer(s) not saved — retrying…`;
+  } else if (waiting) {
+    el.className = 'save-state pending';
+    el.textContent = 'Saving…';
+  } else {
+    el.className = 'save-state';
+    el.textContent = 'All answers saved';
+  }
 }
 
 // ---------------------------------------------------------------- saving answers (one request per change, retried)
 function queueSave(q, body) {
-  S.pending.set(q.number, { ...(S.pending.get(q.number) || {}), ...body });
+  S.pending.set(q.number, { ...S.pending.get(q.number), ...body });
   setSaveState();
-  flush();
+  void flush();                       // never rejects: errors are handled inside
 }
 
 async function flush() {
   if (S.flushing || S.finishing) return;
   S.flushing = true;
   try {
-    for (const [number, body] of [...S.pending]) {
+    for (const [number, body] of S.pending) {
       try {
         const d = await api(`/exam/answers/${number}`, { method: 'PUT', body });
         if (S.pending.get(number) === body) S.pending.delete(number);   // not changed again meanwhile
@@ -75,15 +84,22 @@ async function flush() {
   } finally {
     S.flushing = false;
     setSaveState();
-    if (S.pending.size && !S.saveError) flush();
+    if (S.pending.size && !S.saveError) void flush();
   }
 }
 
 function pick(j) { const q = S.qs[S.cur]; q.choice = j; render(); queueSave(q, { choice: j }); }
-function clearAns() { const q = S.qs[S.cur]; if (q.choice === null) return; q.choice = null; render(); queueSave(q, { choice: null }); }
+function clearAns() {
+  const q = S.qs[S.cur];
+  if (q.choice === null) { return; }
+  q.choice = null; render(); queueSave(q, { choice: null });
+}
 function toggleFlag() { const q = S.qs[S.cur]; q.flagged = !q.flagged; render(); queueSave(q, { flagged: q.flagged }); }
 function jump(i) { S.cur = i; render(); }
-function go(d) { if (S.cur + d >= S.qs.length) return openSubmitConfirm(); S.cur = Math.max(0, S.cur + d); render(); }
+function go(d) {
+  if (S.cur + d >= S.qs.length) { openSubmitConfirm(); return; }
+  S.cur = Math.max(0, S.cur + d); render();
+}
 
 // ---------------------------------------------------------------- timer + auto-submit
 function syncTime(attempt) {
@@ -98,7 +114,7 @@ function tick() {
   const el = $('timer');
   el.textContent = `⏱ ${pad(Math.floor(left / 3600))}:${pad(Math.floor(left % 3600 / 60))}:${pad(left % 60)}`;
   el.classList.toggle('low', left < 300);
-  if (left <= 0) autoSubmit();
+  if (left <= 0) void autoSubmit();   // never rejects: a failed submit is retried by the server
 }
 
 async function autoSubmit() {
@@ -115,7 +131,7 @@ async function resync() {      // every 30 s and while locked: picks up an unloc
   try {
     const { attempt } = await api('/exam/paper');
     if (attempt.status === 'submitted') return toResult();
-    const wasLocked = S.attempt && S.attempt.status === 'locked';
+    const wasLocked = S.attempt?.status === 'locked';
     syncTime(attempt);
     if (attempt.status === 'locked') showLocked();
     else if (wasLocked) {        // the proctor unlocked it: back to the questions through fullscreen
@@ -175,18 +191,23 @@ async function lock(reason) {
 // ---------------------------------------------------------------- submit
 function openSubmitConfirm() {
   const n = S.qs.filter(x => x.choice !== null).length, flagged = S.qs.filter(x => x.flagged).length;
-  $('submitMsg').textContent = `You've answered ${n} of ${S.qs.length} questions${flagged ? ` (${flagged} flagged for review)` : ''}. `
+  const flaggedNote = flagged ? ` (${flagged} flagged for review)` : '';
+  $('submitMsg').textContent = `You've answered ${n} of ${S.qs.length} questions${flaggedNote}. `
     + 'Unanswered questions will be marked incorrect. This cannot be undone.';
   $('submitModal').classList.add('open');
+}
+
+/** Lets the last answers reach the server first: checks every 250 ms, at most `triesLeft` times. */
+function waitForSaves(triesLeft) {
+  if (triesLeft <= 0 || !(S.pending.size || S.flushing)) return Promise.resolve();
+  void flush();
+  return new Promise(r => setTimeout(r, 250)).then(() => waitForSaves(triesLeft - 1));
 }
 
 async function submitNow() {
   const btn = $('submitConfirm');
   btn.disabled = true; btn.textContent = 'Submitting…';
-  for (let i = 0; i < 20 && (S.pending.size || S.flushing); i++) {    // let the last answers reach the server first
-    flush();
-    await new Promise(r => setTimeout(r, 250));
-  }
+  await waitForSaves(20);
   try { await api('/exam/submit', { method: 'POST' }); toResult(); }
   catch (e) {
     if (handleFatal(e) !== false) return;
@@ -230,11 +251,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (data.attempt.status === 'locked') showLocked();
   else showFsGate(data.attempt.answered_count ? 'Continue your test' : 'Enter fullscreen to begin');
 
-  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) lock('fullscreen_exit'); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) lock('tab_hidden'); });
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) void lock('fullscreen_exit'); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) void lock('tab_hidden'); });
   window.addEventListener('online', flush);
 
   tick(); setInterval(tick, 1000);
-  setInterval(() => { if (S.attempt.status === 'locked') resync(); }, 10000);
+  setInterval(() => { if (S.attempt.status === 'locked') void resync(); }, 10000);
   setInterval(resync, 30000);
 });

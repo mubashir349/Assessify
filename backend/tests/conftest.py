@@ -10,7 +10,7 @@ from app.extensions import db
 from app.models.user import ROLE_SUPER_ADMIN, User
 
 
-@pytest.fixture()
+@pytest.fixture
 def app():
     app = create_app()
     app.config.update(TESTING=True)
@@ -25,7 +25,7 @@ def app():
         db.drop_all()
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(app):
     return app.test_client()
 

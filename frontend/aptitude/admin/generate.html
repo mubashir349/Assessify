@@ -9,16 +9,16 @@
   <div class="gen-banner" id="aiBanner" hidden></div>
   <div class="a-card" style="max-width:920px;border-color:rgba(245,158,11,.35);">
     <div class="a-grid a-grid-3" style="margin-bottom:14px;">
-      <div class="a-field"><label id="deptLbl">Field / Department</label><select class="a-select" id="gDept" onchange="fillSubjects()"></select></div>
-      <div class="a-field"><label>Degree level (set by selection)</label><input class="a-input" id="gLevel" readonly tabindex="-1" style="opacity:.75;cursor:not-allowed;" /></div>
-      <div class="a-field"><label>Subject</label><select class="a-select" id="gSubj"></select></div>
-      <div class="a-field"><label>Difficulty (admin only)</label><select class="a-select" id="gDiff"></select></div>
-      <div class="a-field"><label>Question type</label><select class="a-select" id="gType"></select></div>
-      <div class="a-field"><label>Questions to generate</label><input class="a-input" type="number" id="gCount" value="10" min="1" max="100" oninput="countHint()" /><div class="desc-hint" id="countHint"></div></div>
-      <div class="a-field"><label>Marks per question</label><input class="a-input" type="number" id="gMarks" value="1" min="1" max="100" /></div>
+      <div class="a-field"><label id="deptLbl" for="gDept">Field / Department</label><select class="a-select" id="gDept" onchange="fillSubjects()"></select></div>
+      <div class="a-field"><label for="gLevel">Degree level (set by selection)</label><input class="a-input" id="gLevel" readonly tabindex="-1" style="opacity:.75;cursor:not-allowed;" /></div>
+      <div class="a-field"><label for="gSubj">Subject</label><select class="a-select" id="gSubj"></select></div>
+      <div class="a-field"><label for="gDiff">Difficulty (admin only)</label><select class="a-select" id="gDiff"></select></div>
+      <div class="a-field"><label for="gType">Question type</label><select class="a-select" id="gType"></select></div>
+      <div class="a-field"><label for="gCount">Questions to generate</label><input class="a-input" type="number" id="gCount" value="10" min="1" max="100" oninput="countHint()" /><div class="desc-hint" id="countHint"></div></div>
+      <div class="a-field"><label for="gMarks">Marks per question</label><input class="a-input" type="number" id="gMarks" value="1" min="1" max="100" /></div>
     </div>
     <div class="a-field" style="margin-bottom:14px;">
-      <label id="srcLbl">Source PDFs</label>
+      <label id="srcLbl" for="gFile">Source PDFs</label>
       <div class="a-dropzone" id="drop" onclick="document.getElementById('gFile').click()">
         <b>📄 Upload book chapters or notes (PDF) — you can add several</b>
         <span class="muted" id="dropHint">Drag &amp; drop or click — PDFs of typed text, or photos / scans of pages.</span>
@@ -27,7 +27,7 @@
       <ul class="file-list" id="fileList"></ul>
     </div>
     <div class="a-field" style="margin-bottom:14px;">
-      <label id="descLbl">Description / instructions (optional)</label>
+      <label id="descLbl" for="gDesc">Description / instructions (optional)</label>
       <textarea class="a-textarea" id="gDesc" maxlength="500" oninput="refreshDesc()" placeholder="e.g. Make the test based on these PDFs; focus on the light reactions and the Calvin cycle…"></textarea>
       <div class="desc-hint" id="descHint"></div>
       <div class="chips" id="chips"></div>
@@ -72,25 +72,39 @@ async function checkFile(item) {
   try {
     const r = await api('/questions/check-pdf', { method: 'POST', body: fd });
     if (!FILES.includes(item)) return;                       // removed meanwhile
-    item.status = 'ok'; item.info = r;
-    let msg = pl(r.pages);
-    if (r.needs_ocr && r.typed_pages) msg += `: ${r.typed_pages} typed + ${r.image_pages} photo/scan — the AI reads the photo pages when you generate`;
-    else if (r.needs_ocr) msg += ' of photos / scans — the AI reads the pictures when you generate (extra free quota; handwriting may be misread)';
-    else msg += ` · ${r.characters.toLocaleString()} characters of readable text`;
-    if (r.skipped_photo_pages) msg += ` · ⚠ ${pl(r.skipped_photo_pages)} of photos skipped` + (r.needs_ocr ? ' (page limit)' : ' (needs AI_PROVIDER=gemini)');
-    item.msg = msg;
+    item.status = 'ok'; item.info = r; item.msg = checkedMessage(r);
   } catch (e) {
     if (e.status === 401) return handleApiError(e);
-    if (FILES.includes(item)) bad(item, e.status === 0 ? e.message : (e.message || 'This PDF could not be read.'));
+    if (FILES.includes(item)) bad(item, e.message || 'This PDF could not be read.');
   }
   render();
 }
+function checkedMessage(r) {
+  let msg = pl(r.pages);
+  if (r.needs_ocr && r.typed_pages) msg += `: ${r.typed_pages} typed + ${r.image_pages} photo/scan — the AI reads the photo pages when you generate`;
+  else if (r.needs_ocr) msg += ' of photos / scans — the AI reads the pictures when you generate (extra free quota; handwriting may be misread)';
+  else msg += ` · ${r.characters.toLocaleString()} characters of readable text`;
+  if (r.skipped_photo_pages) {
+    const why = r.needs_ocr ? ' (page limit)' : ' (needs AI_PROVIDER=gemini)';
+    msg += ` · ⚠ ${pl(r.skipped_photo_pages)} of photos skipped${why}`;
+  }
+  return msg;
+}
 function removeFile(id) { FILES = FILES.filter(x => x.id !== id); render(); }
+function fileIcon(x) {
+  if (x.status === 'bad') return '✕';
+  if (x.status !== 'ok') return '…';
+  return x.info.needs_ocr ? '📷' : '✓';
+}
+function fileMessage(x) {
+  if (x.status !== 'bad') return esc(x.msg);
+  return esc(x.msg.replace(/\.$/, '')) + ' — this file will not be used; please choose another PDF.';
+}
 function render() {
   $('fileList').innerHTML = FILES.map(x => `<li class="${x.status}">
-      <span class="fl-name">${x.status === 'bad' ? '✕' : x.status === 'ok' ? (x.info.needs_ocr ? '📷' : '✓') : '…'} ${esc(x.f.name)}
+      <span class="fl-name">${fileIcon(x)} ${esc(x.f.name)}
         <span class="muted">· ${Math.max(1, Math.round(x.f.size / 1024)).toLocaleString()} KB</span></span>
-      <span class="fl-msg">${x.status === 'bad' ? esc(x.msg.replace(/\.$/, '')) + ' — this file will not be used; please choose another PDF.' : esc(x.msg)}</span>
+      <span class="fl-msg">${fileMessage(x)}</span>
       <button class="a-modal-x" title="Remove" onclick="removeFile(${x.id})">✕</button></li>`).join('');
   $('drop').classList.toggle('bad', FILES.some(x => x.status === 'bad'));
   refreshDesc();
@@ -112,7 +126,9 @@ function refreshDesc() {
   } else {
     $('descLbl').textContent = 'Description / scope (required when no PDF is uploaded)';
     const okNow = words >= MIN_WORDS;
-    hint.className = 'desc-hint ' + (text.trim() ? (okNow ? 'good' : 'bad') : '');
+    let state = '';
+    if (text.trim()) state = okNow ? 'good' : 'bad';
+    hint.className = 'desc-hint ' + state;
     hint.textContent = okNow ? `✓ ${words} words — enough to describe the scope. Questions will come from the AI's general knowledge, so check them carefully.`
       : `No PDF? Describe the scope in at least ${MIN_WORDS} words — topics or chapters, and what to focus on (${words}/${MIN_WORDS} words).`;
     $('chips').innerHTML = ['Topics: … ; Chapters: … ; Focus on: …',
@@ -133,8 +149,10 @@ function canGenerate() {
 }
 function countHint() {
   const n = +$('gCount').value || 0;
-  $('countHint').textContent = n > 60 ? `Large set: about ${Math.ceil(n / 10)}+ AI requests — can take 3–5 minutes and uses more of the free quota.`
-    : n > 30 ? 'Bigger sets take a few minutes.' : '';
+  let hint = '';
+  if (n > 60) hint = `Large set: about ${Math.ceil(n / 10)}+ AI requests — can take 3–5 minutes and uses more of the free quota.`;
+  else if (n > 30) hint = 'Bigger sets take a few minutes.';
+  $('countHint').textContent = hint;
 }
 function refreshButton() { if (!busy) $('genBtn').disabled = !canGenerate(); }
 function termFor(level) { const l = META && META.levels.find(x => x.value === level); return l ? l.term : 'Field / Department'; }
@@ -147,7 +165,9 @@ function fillSubjects() {
 function deptOptions() {
   return META.levels.map(l => {
     const g = DEPTS.filter(d => d.level === l.value);
-    return g.length ? `<optgroup label="${esc(l.value)} — ${esc(l.term_plural)}">${g.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('')}</optgroup>` : '';
+    if (!g.length) return '';
+    const options = g.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+    return `<optgroup label="${esc(l.value)} — ${esc(l.term_plural)}">${options}</optgroup>`;
   }).join('');
 }
 function banner(html, kind) { const b = $('aiBanner'); b.className = 'gen-banner ' + (kind || ''); b.innerHTML = html; b.hidden = !html; }
@@ -172,18 +192,45 @@ async function load() {
   } catch (e) { handleApiError(e); }
 }
 
+/** Returns the problem that stops generation (and shows it), or '' when the form is ready. */
+function generateProblem(d, use, n) {
+  if (!d || !$('gSubj').value) return 'Pick a field / department and subject.';
+  if (FILES.some(x => x.status === 'checking')) return 'Please wait — the PDFs are still being checked.';
+  if (!use.length && wordCount($('gDesc').value) < MIN_WORDS) {
+    $('gDesc').focus(); refreshDesc();
+    return `Upload a PDF, or describe the scope in at least ${MIN_WORDS} words.`;
+  }
+  const max = +$('gCount').max || 30;
+  if (!Number.isInteger(n) || n < 1 || n > max) return 'Questions to generate must be 1–' + max + '.';
+  return '';
+}
+function progressText(use, n) {
+  const photos = use.some(x => x.info.needs_ocr);
+  const mins = Math.max(1, Math.ceil(n / 25)) + (photos ? 2 : 0);   // rough: ~25 questions a minute, photos add time
+  const wait = ` This can take up to ${mins} minute${mins > 1 ? 's' : ''} for ${n} questions. Please keep this page open.`;
+  if (photos) return 'The AI is reading the photographed pages, then writing questions…' + wait;
+  if (!use.length) return 'Asking the AI to write questions from your description…' + wait;
+  const what = use.length > 1 ? use.length + ' PDFs' : 'the PDF';
+  return `Reading ${what} and asking the AI…` + wait;
+}
+function showGenerateError(e) {
+  const m = /^"(.+?)": /.exec(e.message || '');                 // server names the PDF that failed
+  const details = e.details || {};
+  let culprit = null;
+  if (m) culprit = FILES.find(x => x.f.name === m[1]);
+  else if (details.file && okFiles().length === 1) culprit = okFiles()[0];
+  if (culprit && details.file) { culprit.status = 'bad'; culprit.msg = e.message.replace(/^".+?": /, ''); render(); }
+  if (details.focus) { const h = $('descHint'); h.className = 'desc-hint bad'; h.textContent = details.focus; }
+  if (details.attempt_id) {
+    banner(`${esc(e.message)} The attempt was saved — you can retry it later from <a href="draft-review.html?attempt=${+details.attempt_id}">Draft Review</a>.`, 'warn');
+  }
+}
 async function doGenerate() {
   if (busy) return;
   const d = DEPTS.find(x => String(x.id) === $('gDept').value);
-  if (!d || !$('gSubj').value) return aToast('Pick a field / department and subject.', '⚠');
-  if (FILES.some(x => x.status === 'checking')) return aToast('Please wait — the PDFs are still being checked.', '⚠');
-  const use = okFiles();
-  if (!use.length && wordCount($('gDesc').value) < MIN_WORDS) {
-    $('gDesc').focus(); refreshDesc();
-    return aToast(`Upload a PDF, or describe the scope in at least ${MIN_WORDS} words.`, '⚠');
-  }
-  const max = +$('gCount').max || 30, n = +$('gCount').value;
-  if (!Number.isInteger(n) || n < 1 || n > max) return aToast('Questions to generate must be 1–' + max + '.', '⚠');
+  const use = okFiles(), n = +$('gCount').value;
+  const problem = generateProblem(d, use, n);
+  if (problem) return aToast(problem, '⚠');
 
   const fd = new FormData();
   use.forEach(x => fd.append('files', x.f));
@@ -195,12 +242,7 @@ async function doGenerate() {
   fd.append('marks', $('gMarks').value || 1);
   fd.append('focus', $('gDesc').value.trim());
 
-  const photos = use.some(x => x.info.needs_ocr);
-  const mins = Math.max(1, Math.ceil(n / 25)) + (photos ? 2 : 0);   // rough: ~25 questions a minute, photos add time
-  const wait = ` This can take up to ${mins} minute${mins > 1 ? 's' : ''} for ${n} questions. Please keep this page open.`;
-  setBusy(true, (photos ? 'The AI is reading the photographed pages, then writing questions…'
-                : use.length ? `Reading ${use.length > 1 ? use.length + ' PDFs' : 'the PDF'} and asking the AI…`
-                : 'Asking the AI to write questions from your description…') + wait);
+  setBusy(true, progressText(use, n));
   markPending(Date.now());
   try {
     const { attempt } = await api('/questions/generate', { method: 'POST', body: fd });
@@ -212,13 +254,7 @@ async function doGenerate() {
     if (leaving) return;           // page is reloading/closing: keep the marker so the reloaded page picks up the result
     markPending(null);
     handleApiError(e);
-    const m = /^"(.+?)": /.exec(e.message || '');                 // server names the PDF that failed
-    const culprit = m ? FILES.find(x => x.f.name === m[1]) : (e.details && e.details.file && okFiles().length === 1 ? okFiles()[0] : null);
-    if (culprit && e.details && e.details.file) { culprit.status = 'bad'; culprit.msg = e.message.replace(/^".+?": /, ''); render(); }
-    if (e.details && e.details.focus) { const h = $('descHint'); h.className = 'desc-hint bad'; h.textContent = e.details.focus; }
-    if (e.details && e.details.attempt_id) {
-      banner(`${esc(e.message)} The attempt was saved — you can retry it later from <a href="draft-review.html?attempt=${+e.details.attempt_id}">Draft Review</a>.`, 'warn');
-    }
+    showGenerateError(e);
     setBusy(false);
   }
 }
@@ -241,25 +277,40 @@ async function resumePending() {
   if (!since) return;
   if (Date.now() - since > 15 * 60 * 1000) return markPending(null);
   setBusy(true, 'The page was reloaded while questions were being generated — waiting for them to finish…');
-  for (let i = 0; i < 200; i++) {                       // up to ~10 minutes (100 questions can take a while)
-    try {
-      const { items } = await api('/questions/attempts?per_page=1');
-      const a = items[0];
-      const fresh = a && Date.parse(a.created_at) >= since - 60 * 1000;   // started by this click (1 min clock tolerance)
-      if (fresh && a.status !== 'processing') {
-        markPending(null);
-        if (a.status === 'failed') { setBusy(false); return banner(esc(a.error ? a.error.message : 'Generation failed.') + ` <a href="draft-review.html?attempt=${+a.id}">Open the attempt</a> to retry it.`, 'warn'); }
-        aToast(esc(a.generated_count + ' draft questions generated.'));
-        return setTimeout(() => location.href = 'draft-review.html?attempt=' + a.id, 600);
-      }
-    } catch (e) { if (e.status === 401) return handleApiError(e); }
-    await new Promise(r => setTimeout(r, 3000));
+  await pollPending(since, 200);                            // up to ~10 minutes (100 questions can take a while)
+}
+/** Checks once for the attempt started at `since`; then tries again in 3 s, at most `triesLeft` more times. */
+async function pollPending(since, triesLeft) {
+  try {
+    if (await pendingFinished(since)) return;
+  } catch (e) {
+    if (e.status === 401) return handleApiError(e);
   }
-  markPending(null); setBusy(false);
-  banner('Still no result. Check <a href="draft-review.html">Draft Review</a> — the questions may already be there.', 'warn');
+  if (triesLeft <= 1) {
+    markPending(null); setBusy(false);
+    banner('Still no result. Check <a href="draft-review.html">Draft Review</a> — the questions may already be there.', 'warn');
+    return;
+  }
+  setTimeout(() => { pollPending(since, triesLeft - 1).catch(handleApiError); }, 3000);
+}
+async function pendingFinished(since) {
+  const { items } = await api('/questions/attempts?per_page=1');
+  const a = items[0];
+  const fresh = a && Date.parse(a.created_at) >= since - 60 * 1000;   // started by this click (1 min clock tolerance)
+  if (!fresh || a.status === 'processing') return false;
+  markPending(null);
+  if (a.status === 'failed') {
+    setBusy(false);
+    const why = a.error ? a.error.message : 'Generation failed.';
+    banner(esc(why) + ` <a href="draft-review.html?attempt=${+a.id}">Open the attempt</a> to retry it.`, 'warn');
+    return true;
+  }
+  aToast(esc(a.generated_count + ' draft questions generated.'));
+  setTimeout(() => { location.href = 'draft-review.html?attempt=' + a.id; }, 600);
+  return true;
 }
 
-document.addEventListener('admin:ready', async () => { await load(); refreshButton(); resumePending(); });
+document.addEventListener('admin:ready', async () => { await load(); refreshButton(); await resumePending(); });
 document.addEventListener('DOMContentLoaded', () => {
   const dz = $('drop');
   ['dragover', 'dragenter'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add('drag'); }));

@@ -35,7 +35,7 @@ def add_questions(app, dept_id, subject, n, *, qtype="mcq", difficulty="easy", s
         db.session.commit()
 
 
-@pytest.fixture()
+@pytest.fixture
 def admin(app):
     c = make_admin(app)
     dept = c.post("/api/v1/departments", json=DEPT).get_json()["data"]["department"]
@@ -110,8 +110,10 @@ def test_overlapping_rows_are_checked_together(app, admin):
     add_questions(app, dept, "Mathematics", 6, difficulty="hard")
     # easy x4 needs 6 (6 easy ok) and any x6 needs 9 (12 ok), but together they need 15 of the same 12 questions
     a = avail(c, dept, [row(count=4, difficulty="easy"), row(count=6, difficulty="any")])
-    assert all(r["sufficient"] for r in a["rows"]) and a["all_sufficient"] is False
-    assert a["shortfalls"][0]["difficulty"] == "combined" and a["shortfalls"][0]["short"] == 3
+    assert all(r["sufficient"] for r in a["rows"])
+    assert a["all_sufficient"] is False
+    assert a["shortfalls"][0]["difficulty"] == "combined"
+    assert a["shortfalls"][0]["short"] == 3
 
 
 def test_publish_is_blocked_while_a_pool_is_short(app, admin):
@@ -121,10 +123,12 @@ def test_publish_is_blocked_while_a_pool_is_short(app, admin):
     r = c.post("/api/v1/tests", json=body(dept, [row(count=10), row("Physics", count=5)]))
     assert r.status_code == 201
     test = r.get_json()["data"]["test"]
-    assert test["status"] == "draft" and test["availability"]["all_sufficient"] is False
+    assert test["status"] == "draft"
+    assert test["availability"]["all_sufficient"] is False
 
     r = c.post(f"/api/v1/tests/{test['id']}/publish")
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "POOL_TOO_SMALL"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "POOL_TOO_SMALL"
     short = r.get_json()["error"]["details"]["shortfalls"]
     assert [(s["subject"], s["needed"], s["pool"], s["short"]) for s in short] == [("Physics", 8, 4, 4)]
     assert c.get(f"/api/v1/tests/{test['id']}").get_json()["data"]["test"]["status"] == "draft"
@@ -134,10 +138,12 @@ def test_publish_is_blocked_while_a_pool_is_short(app, admin):
     r = c.post(f"/api/v1/tests/{test['id']}/publish")
     assert r.status_code == 200
     pub = r.get_json()["data"]["test"]
-    assert pub["status"] == "published" and pub["published_at"]
+    assert pub["status"] == "published"
+    assert pub["published_at"]
     assert pub["questions_per_candidate"] == {str(dept): 12}
     r = c.post(f"/api/v1/tests/{test['id']}/publish")
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "INVALID_TRANSITION"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "INVALID_TRANSITION"
 
 
 def test_published_fixed_test_stores_correct_start_and_end(app, admin):
@@ -158,9 +164,11 @@ def test_published_fixed_test_stores_correct_start_and_end(app, admin):
 def test_flexible_schedule_rules(app, admin):
     c, dept = admin
     r = c.post("/api/v1/tests", json=body(dept, [row()], FLEX))
-    assert r.status_code == 201 and r.get_json()["data"]["test"]["schedule"]["duration_minutes"] == 120
+    assert r.status_code == 201
+    assert r.get_json()["data"]["test"]["schedule"]["duration_minutes"] == 120
     r = c.post("/api/v1/tests", json=body(dept, [row()], {**FLEX, "duration_minutes": 200}))   # window is 150 min
-    assert r.status_code == 422 and "schedule.duration_minutes" in r.get_json()["error"]["details"]
+    assert r.status_code == 422
+    assert "schedule.duration_minutes" in r.get_json()["error"]["details"]
     r = c.post("/api/v1/tests", json=body(dept, [row()], {**FLEX, "duration_minutes": None}))
     assert r.status_code == 422
 
@@ -177,7 +185,8 @@ def test_flexible_schedule_rules(app, admin):
 def test_schedule_validation(app, admin, change, key):
     c, dept = admin
     r = c.post("/api/v1/tests", json=body(dept, [row()], {**FIXED, **change}))
-    assert r.status_code == 422 and key in r.get_json()["error"]["details"]
+    assert r.status_code == 422
+    assert key in r.get_json()["error"]["details"]
 
 
 @pytest.mark.parametrize("rows", [
@@ -190,13 +199,15 @@ def test_schedule_validation(app, admin, change, key):
 def test_composition_validation(app, admin, rows):
     c, dept = admin
     r = c.post("/api/v1/tests", json=body(dept, rows))
-    assert r.status_code == 422 and "compositions" in r.get_json()["error"]["details"]
+    assert r.status_code == 422
+    assert "compositions" in r.get_json()["error"]["details"]
 
 
 def test_name_level_and_department_checks(app, admin):
     c, dept = admin
     r = c.post("/api/v1/tests", json={**body(dept, [row()]), "name": "", "level": "School"})
-    assert r.status_code == 422 and {"name", "level"} <= set(r.get_json()["error"]["details"])
+    assert r.status_code == 422
+    assert {"name", "level"} <= set(r.get_json()["error"]["details"])
     r = c.post("/api/v1/tests", json={**body(dept, [row()]), "level": "Masters"})       # Undergraduate field
     assert r.status_code == 422
     r = c.post("/api/v1/tests", json={**body(dept, [row()]), "compositions": []})
@@ -210,7 +221,8 @@ def test_cannot_publish_a_test_in_the_past(app, admin):
     past = {**FIXED, "starts_at": "2020-01-01T09:00:00Z", "ends_at": "2020-01-01T11:00:00Z", "release_on": "2020-01-02"}
     test = c.post("/api/v1/tests", json=body(dept, [row()], past)).get_json()["data"]["test"]
     r = c.post(f"/api/v1/tests/{test['id']}/publish")
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "SCHEDULE_IN_PAST"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "SCHEDULE_IN_PAST"
 
 
 def test_published_test_is_locked(app, admin):
@@ -228,10 +240,12 @@ def test_list_update_delete_draft(app, admin):
     r = c.put(f"/api/v1/tests/{tid}", json=body(dept, [row(count=3), row("Physics", count=2, difficulty="hard")],
                                                  FLEX, name="Renamed test"))
     t = r.get_json()["data"]["test"]
-    assert t["name"] == "Renamed test" and [x["subject"] for x in t["compositions"][0]["rows"]] == ["Mathematics", "Physics"]
+    assert t["name"] == "Renamed test"
+    assert [x["subject"] for x in t["compositions"][0]["rows"]] == ["Mathematics", "Physics"]
     assert t["schedule"]["timing_mode"] == "flexible"
     items = c.get("/api/v1/tests?status=draft&q=renamed").get_json()["data"]["items"]
-    assert [i["id"] for i in items] == [tid] and "compositions" not in items[0]
+    assert [i["id"] for i in items] == [tid]
+    assert "compositions" not in items[0]
     assert c.get("/api/v1/tests?status=published").get_json()["data"]["items"] == []
     assert c.get("/api/v1/tests?status=bogus").status_code == 400
     assert c.delete(f"/api/v1/tests/{tid}").status_code == 200
@@ -262,10 +276,13 @@ def test_department_used_by_a_test_is_protected(app, admin):
     c, dept = admin
     c.post("/api/v1/tests", json=body(dept, [row("Physics", count=2)]))
     r = c.delete(f"/api/v1/departments/{dept}")
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "DEPARTMENT_IN_USE"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "DEPARTMENT_IN_USE"
     r = c.put(f"/api/v1/departments/{dept}", json={**DEPT, "subjects": ["Mathematics", "Chemistry"]})   # drops Physics
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "SUBJECT_IN_USE"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "SUBJECT_IN_USE"
     r = c.put(f"/api/v1/departments/{dept}", json={**DEPT, "level": "Masters"})
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "DEPARTMENT_IN_USE"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "DEPARTMENT_IN_USE"
     # unrelated edits still work
     assert c.put(f"/api/v1/departments/{dept}", json={**DEPT, "subjects": DEPT["subjects"] + ["Biology"]}).status_code == 200

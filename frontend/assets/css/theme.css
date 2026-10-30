@@ -43,6 +43,15 @@
   --n-800: #1e293b;
   --n-900: #0f172a;
   --n-950: #020617;
+
+  /* Translucent tints laid over the dark page background (text on them is light, contrast > 4.5:1) */
+  --tint-white: rgba(255,255,255,.06);
+  --tint-amber: rgba(245,158,11,.08);
+  --tint-amber-strong: rgba(245,158,11,.15);
+  --tint-cyan: rgba(6,182,212,.06);
+  --tint-slate: rgba(100,116,139,.15);
+  --tint-red: rgba(239,68,68,.12);
+  --tint-green: rgba(34,197,94,.15);
 }
 
 *, *::before, *::after { box-sizing: border-box; }

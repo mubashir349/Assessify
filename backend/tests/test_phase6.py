@@ -80,7 +80,7 @@ def err(r) -> str:
     return r.get_json()["error"]["code"]
 
 
-@pytest.fixture()
+@pytest.fixture
 def live(app):
     """A fixed-time test that started 30 minutes ago and ends in 60 minutes."""
     admin = make_admin(app)
@@ -103,9 +103,12 @@ def test_fixed_time_candidate_cannot_start_early(app):
     set_window(app, test_id, 10, 70)
     c = candidate(app)                          # signing in early is fine (Phase 5) ...
     gate = c.get("/api/v1/exam").get_json()["data"]["gate"]
-    assert gate["state"] == "not_started" and not gate["can_start"] and 590 <= gate["seconds_until_start"] <= 600
+    assert gate["state"] == "not_started"
+    assert not gate["can_start"]
+    assert 590 <= gate["seconds_until_start"] <= 600
     r = c.post("/api/v1/exam/start")            # ... starting is not
-    assert r.status_code == 403 and err(r) == "TEST_NOT_STARTED"
+    assert r.status_code == 403
+    assert err(r) == "TEST_NOT_STARTED"
     assert 590 <= r.get_json()["error"]["details"]["seconds_left"] <= 600
     with app.app_context():
         assert ExamAttempt.query.count() == 0   # nothing was created
@@ -117,11 +120,13 @@ def test_late_starter_in_fixed_test_ends_at_the_fixed_end_time(app, live):
     _, test_id, _ = live
     c = candidate(app)
     gate = c.get("/api/v1/exam").get_json()["data"]["gate"]
-    assert gate["state"] == "open" and 59 <= gate["minutes_if_started_now"] <= 60
+    assert gate["state"] == "open"
+    assert 59 <= gate["minutes_if_started_now"] <= 60
     a = c.post("/api/v1/exam/start").get_json()["data"]["attempt"]
     assert a["deadline_at"] == gate["ends_at"]                  # not start + 90 minutes
     assert 3590 <= a["remaining_seconds"] <= 3600
-    assert a["timing_mode"] == "fixed" and a["status"] == "in_progress"
+    assert a["timing_mode"] == "fixed"
+    assert a["status"] == "in_progress"
 
 
 def test_flexible_timer_is_own_duration_but_never_past_the_window(app):
@@ -141,7 +146,8 @@ def test_cannot_start_after_the_end(app, live):
     time_passes(app, test_id, 61)
     assert c.get("/api/v1/exam").get_json()["data"]["gate"]["state"] == "closed"
     r = c.post("/api/v1/exam/start")
-    assert r.status_code == 403 and err(r) == "TEST_CLOSED"
+    assert r.status_code == 403
+    assert err(r) == "TEST_CLOSED"
 
 
 # ---------------------------------------------------------------- the random paper
@@ -186,9 +192,11 @@ def test_start_again_resumes_the_same_paper(app, live):
     again = c.post("/api/v1/exam/start").get_json()["data"]
     assert again["attempt"]["id"] == first["attempt"]["id"]
     assert [q["text"] for q in again["questions"]] == [q["text"] for q in first["questions"]]
-    assert again["questions"][1]["choice"] == 1 and again["questions"][1]["flagged"] is True
+    assert again["questions"][1]["choice"] == 1
+    assert again["questions"][1]["flagged"] is True
     paper = c.get("/api/v1/exam/paper").get_json()["data"]
-    assert paper["questions"] == again["questions"] and paper["attempt"]["answered_count"] == 1
+    assert paper["questions"] == again["questions"]
+    assert paper["attempt"]["answered_count"] == 1
     with app.app_context():
         assert ExamAttempt.query.count() == 1
 
@@ -199,7 +207,8 @@ def test_short_pool_at_start_is_refused_cleanly(app, live):
             q.status = "rejected"               # (not possible through the API; approved questions stay approved)
         db.session.commit()
     r = candidate(app).post("/api/v1/exam/start")
-    assert r.status_code == 409 and err(r) == "PAPER_UNAVAILABLE"
+    assert r.status_code == 409
+    assert err(r) == "PAPER_UNAVAILABLE"
     with app.app_context():
         assert ExamAttempt.query.count() == 0
 
@@ -209,20 +218,23 @@ def test_answers_are_saved_cleared_and_validated(app, live):
     c = candidate(app)
     c.post("/api/v1/exam/start")
     r = c.put("/api/v1/exam/answers/1", json={"choice": 3})
-    assert r.status_code == 200 and r.get_json()["data"]["question"]["choice"] == 3
+    assert r.status_code == 200
+    assert r.get_json()["data"]["question"]["choice"] == 3
     assert r.get_json()["data"]["attempt"]["answered_count"] == 1
     assert c.put("/api/v1/exam/answers/1", json={"choice": None}).get_json()["data"]["question"]["choice"] is None
     assert c.put("/api/v1/exam/answers/1", json={"flagged": True}).get_json()["data"]["question"]["flagged"] is True
     for bad in ({"choice": 4}, {"choice": -1}, {"choice": "A"}, {"choice": True}, {"flagged": "yes"}, {}):
         r = c.put("/api/v1/exam/answers/1", json=bad)
-        assert r.status_code == 422 and err(r) == "VALIDATION_ERROR", bad
+        assert r.status_code == 422, bad
+        assert err(r) == "VALIDATION_ERROR", bad
     assert c.put("/api/v1/exam/answers/99", json={"choice": 0}).status_code == 404
     assert c.put("/api/v1/exam/answers/1", data="x").status_code == 400
 
 
 def test_answer_before_starting_is_refused(app, live):
     r = candidate(app).put("/api/v1/exam/answers/1", json={"choice": 0})
-    assert r.status_code == 409 and err(r) == "ATTEMPT_NOT_STARTED"
+    assert r.status_code == 409
+    assert err(r) == "ATTEMPT_NOT_STARTED"
 
 
 def test_answers_after_the_end_time_are_rejected_and_the_test_is_auto_submitted(app, live):
@@ -232,13 +244,17 @@ def test_answers_after_the_end_time_are_rejected_and_the_test_is_auto_submitted(
     c.put("/api/v1/exam/answers/1", json={"choice": correct_choice(qs[0])})
     time_passes(app, test_id, 61)                                    # the fixed end time has passed
     r = c.put("/api/v1/exam/answers/2", json={"choice": correct_choice(qs[1])})
-    assert r.status_code == 409 and err(r) == "TIME_UP"
+    assert r.status_code == 409
+    assert err(r) == "TIME_UP"
     r = c.put("/api/v1/exam/answers/1", json={"choice": None})       # can't undo a saved answer either
-    assert r.status_code == 409 and err(r) == "ALREADY_SUBMITTED"
+    assert r.status_code == 409
+    assert err(r) == "ALREADY_SUBMITTED"
     with app.app_context():
         a = ExamAttempt.query.one()
-        assert a.status == "submitted" and a.submit_reason == "time_up"
-        assert a.answered_count == 1 and a.score == 1                # only the answer saved in time counts
+        assert a.status == "submitted"
+        assert a.submit_reason == "time_up"
+        assert a.answered_count == 1
+        assert a.score == 1                # only the answer saved in time counts
         assert [i.answer_index for i in a.items][1] is None
 
 
@@ -248,10 +264,12 @@ def test_overdue_attempt_is_submitted_when_any_route_touches_it(app, live):
     c.post("/api/v1/exam/start")
     time_passes(app, test_id, 61)
     gate = c.get("/api/v1/exam").get_json()["data"]["gate"]
-    assert gate["state"] == "submitted" and gate["attempt"]["submit_reason"] == "time_up"
+    assert gate["state"] == "submitted"
+    assert gate["attempt"]["submit_reason"] == "time_up"
     assert c.get("/api/v1/exam/paper").get_json()["data"]["questions"] == []
     r = c.post("/api/v1/exam/start")
-    assert r.status_code == 409 and err(r) == "ALREADY_SUBMITTED"
+    assert r.status_code == 409
+    assert err(r) == "ALREADY_SUBMITTED"
 
 
 # ---------------------------------------------------------------- submit + scoring
@@ -263,16 +281,21 @@ def test_submit_is_scored_on_the_server(app, live):
     c.put("/api/v1/exam/answers/5", json={"choice": (correct_choice(qs[4]) + 1) % 4})   # 1 wrong, 1 blank
     r = c.post("/api/v1/exam/submit")
     a = r.get_json()["data"]["attempt"]
-    assert r.status_code == 200 and a["status"] == "submitted" and a["submit_reason"] == "candidate"
+    assert r.status_code == 200
+    assert a["status"] == "submitted"
+    assert a["submit_reason"] == "candidate"
     assert c.post("/api/v1/exam/submit").status_code == 200                           # twice is harmless
     res = c.get("/api/v1/exam/result").get_json()["data"]
-    assert res["release"] == "scheduled" and res["score"] is None                       # FIXED releases later
-    assert res["release_on"] == "2030-11-12" and res["email"] == "c1@mail.com"
+    assert res["release"] == "scheduled"
+    assert res["score"] is None                       # FIXED releases later
+    assert res["release_on"] == "2030-11-12"
+    assert res["email"] == "c1@mail.com"
     with app.app_context():
         a = ExamAttempt.query.one()
         assert (a.score, a.max_score, a.correct_count, a.answered_count) == (4, 6, 4, 5)
     r = c.put("/api/v1/exam/answers/6", json={"choice": 0})
-    assert r.status_code == 409 and err(r) == "ALREADY_SUBMITTED"
+    assert r.status_code == 409
+    assert err(r) == "ALREADY_SUBMITTED"
 
 
 def test_immediate_release_shows_the_score_by_subject(app):
@@ -322,10 +345,13 @@ def test_lock_stops_answers_until_an_admin_unlocks(app, live):
     c = candidate(app)
     attempt_id = c.post("/api/v1/exam/start").get_json()["data"]["attempt"]["id"]
     a = c.post("/api/v1/exam/lock", json={"reason": "fullscreen_exit"}).get_json()["data"]["attempt"]
-    assert a["status"] == "locked" and a["lock_count"] == 1 and a["reference"].startswith("APT-")
+    assert a["status"] == "locked"
+    assert a["lock_count"] == 1
+    assert a["reference"].startswith("APT-")
     c.post("/api/v1/exam/lock", json={"reason": "tab_hidden"})                     # already locked: no new event
     r = c.put("/api/v1/exam/answers/1", json={"choice": 0})
-    assert r.status_code == 423 and err(r) == "ATTEMPT_LOCKED"
+    assert r.status_code == 423
+    assert err(r) == "ATTEMPT_LOCKED"
     assert c.post("/api/v1/exam/submit").status_code == 423
     assert c.get("/api/v1/exam/paper").get_json()["data"]["attempt"]["status"] == "locked"   # still readable
 
@@ -334,14 +360,16 @@ def test_lock_stops_answers_until_an_admin_unlocks(app, live):
     assert c.post(f"/api/v1/attempts/{attempt_id}/unlock").status_code == 401    # a candidate can't unlock
     r = admin.post(f"/api/v1/attempts/{attempt_id}/unlock")
     a = r.get_json()["data"]["attempt"]
-    assert r.status_code == 200 and a["status"] == "in_progress"
+    assert r.status_code == 200
+    assert a["status"] == "in_progress"
     assert [(e["kind"], e["reason"]) for e in a["events"]] == [("lock", "fullscreen_exit"), ("unlock", None)]
     assert a["events"][1]["by"] == "Dr. Ayesha Khan"
     assert admin.post(f"/api/v1/attempts/{attempt_id}/unlock").status_code == 409  # not locked any more
     assert c.put("/api/v1/exam/answers/1", json={"choice": 0}).status_code == 200
     c.post("/api/v1/exam/lock", json={"reason": "anything"})
     with app.app_context():
-        assert ExamAttempt.query.one().events[-1].reason == "other" and ExamAttempt.query.one().lock_count == 2
+        assert ExamAttempt.query.one().events[-1].reason == "other"
+        assert ExamAttempt.query.one().lock_count == 2
 
 
 def test_fixed_time_keeps_running_while_locked(app, live):
@@ -379,7 +407,8 @@ def test_locked_flexible_attempt_still_closes_at_the_window_end(app):
     c.post("/api/v1/exam/lock", json={"reason": "fullscreen_exit"})
     time_passes(app, test_id, 61)
     res = c.get("/api/v1/exam/result")
-    assert res.status_code == 200 and res.get_json()["data"]["attempt"]["submit_reason"] == "time_up"
+    assert res.status_code == 200
+    assert res.get_json()["data"]["attempt"]["submit_reason"] == "time_up"
 
 
 # ---------------------------------------------------------------- roster side
@@ -389,10 +418,12 @@ def test_roster_shows_the_attempt_and_protects_started_candidates(app, live):
     c.post("/api/v1/exam/start")
     items = admin.get("/api/v1/roster", query_string={"test_id": test_id}).get_json()["data"]["items"]
     started = next(i for i in items if i["roll_number"] == "R-1")
-    assert started["attempt"]["status"] == "in_progress" and started["attempt"]["score"] is None
+    assert started["attempt"]["status"] == "in_progress"
+    assert started["attempt"]["score"] is None
     assert next(i for i in items if i["roll_number"] == "R-2")["attempt"] is None
     r = admin.delete(f"/api/v1/roster/{started['id']}")
-    assert r.status_code == 409 and err(r) == "CANDIDATE_HAS_ATTEMPT"
+    assert r.status_code == 409
+    assert err(r) == "CANDIDATE_HAS_ATTEMPT"
     same = {k: started[k] for k in ("full_name", "email", "roll_number", "date_of_birth")}
     assert admin.put(f"/api/v1/roster/{started['id']}", json={**same, "full_name": "Candidate One"}).status_code == 200
     c.post("/api/v1/exam/submit")
@@ -410,4 +441,5 @@ def test_started_candidate_cannot_move_to_another_field(app):
     set_window(app, test_id, -5, 60)
     candidate(app).post("/api/v1/exam/start")
     r = admin.put(f"/api/v1/roster/{cid}", json={**cand, "department_id": med})
-    assert r.status_code == 409 and err(r) == "CANDIDATE_HAS_ATTEMPT"
+    assert r.status_code == 409
+    assert err(r) == "CANDIDATE_HAS_ATTEMPT"

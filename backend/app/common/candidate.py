@@ -13,6 +13,7 @@ from app.extensions import db
 from app.models.candidate import Candidate
 
 CANDIDATE_COOKIE = "candidate_token"
+MSG_SIGN_IN = "Please sign in with your access code."
 
 
 def code_version(access_code: str) -> str:
@@ -25,22 +26,22 @@ def load_current_candidate(*, allow_ended: bool = False) -> Candidate:
 
     token = request.cookies.get(CANDIDATE_COOKIE)
     if not token:
-        raise ApiError("UNAUTHORIZED", "Please sign in with your access code.", 401)
+        raise ApiError("UNAUTHORIZED", MSG_SIGN_IN, 401)
     try:
         claims = decode_token(token)
     except ExpiredSignatureError:
         raise ApiError("SESSION_EXPIRED", "Your session expired. Please sign in again.", 401)
     except Exception:  # noqa: BLE001  (any damaged / foreign token)
-        raise ApiError("UNAUTHORIZED", "Please sign in with your access code.", 401)
+        raise ApiError("UNAUTHORIZED", MSG_SIGN_IN, 401)
     sub = str(claims.get("sub", ""))
     if claims.get("kind") != "candidate" or not sub.startswith("candidate:"):
-        raise ApiError("UNAUTHORIZED", "Please sign in with your access code.", 401)
+        raise ApiError("UNAUTHORIZED", MSG_SIGN_IN, 401)
     try:
         candidate = db.session.get(Candidate, int(sub.split(":", 1)[1]))
     except ValueError:
         candidate = None
     if candidate is None or claims.get("cv") != code_version(candidate.access_code):   # removed / new code issued
-        raise ApiError("UNAUTHORIZED", "Please sign in with your access code.", 401)
+        raise ApiError("UNAUTHORIZED", MSG_SIGN_IN, 401)
     check_can_continue(candidate, allow_ended=allow_ended)
     g.current_candidate = candidate
     return candidate

@@ -12,7 +12,7 @@ function firstError(ex) { const d = ex.details && Object.values(ex.details)[0]; 
 function renderTags() {
   const box = $('tagBox'), inp = $('tagInput');
   box.querySelectorAll('.a-chip').forEach(c => c.remove());
-  tags.forEach((t, i) => { const c = document.createElement('span'); c.className = 'a-chip'; c.innerHTML = `${esc(t)}<button onclick="tags.splice(${i},1);renderTags()">✕</button>`; box.insertBefore(c, inp); });
+  tags.forEach((t, i) => { const c = document.createElement('span'); c.className = 'a-chip'; c.innerHTML = `${esc(t)}<button onclick="tags.splice(${i},1);renderTags()">✕</button>`; inp.before(c); });
 }
 function lvlChange() {
   const info = levelInfo($('dLevel').value), t = info.term;
@@ -89,5 +89,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keydown', e => {
     if (e.target.id === 'tagInput' && e.key === 'Enter') { e.preventDefault(); const v = e.target.value.trim(); if (v && !tags.includes(v)) tags.push(v); e.target.value = ''; renderTags(); }
   });
-  loadDepts();
+  void loadDepts();                     // shows its own errors
 });

@@ -63,7 +63,7 @@ def no_sleep(monkeypatch):
     monkeypatch.setattr(generator, "_sleep", lambda s: None)
 
 
-@pytest.fixture()
+@pytest.fixture
 def fake(monkeypatch):
     holder = {"p": FakeProvider(smart_reply)}
     monkeypatch.setattr(service, "get_provider", lambda cfg: holder["p"])
@@ -95,11 +95,17 @@ def gen_ok(c, dept, **form):
 def test_valid_pdf_generates_drafts(app, fake):
     c, dept = setup_admin(app)
     a = gen_ok(c, dept)
-    assert a["status"] == "completed" and a["generated_count"] == 5 and len(a["questions"]) == 5
-    assert a["source"]["filename"] == "notes.pdf" and a["source"]["pages"] == 1 and a["source"]["characters"] > 300
+    assert a["status"] == "completed"
+    assert a["generated_count"] == 5
+    assert len(a["questions"]) == 5
+    assert a["source"]["filename"] == "notes.pdf"
+    assert a["source"]["pages"] == 1
+    assert a["source"]["characters"] > 300
     assert all(q["status"] == "draft" for q in a["questions"])          # never auto-approved
-    assert a["questions"][0]["marks"] == 2 and a["questions"][0]["subject"] == "Biology"
-    assert a["provider"] == "fake" and a["department_name"] == DEPT["name"]
+    assert a["questions"][0]["marks"] == 2
+    assert a["questions"][0]["subject"] == "Biology"
+    assert a["provider"] == "fake"
+    assert a["department_name"] == DEPT["name"]
 
 
 def test_prompt_contains_source_text_and_rules(app, fake):
@@ -108,54 +114,63 @@ def test_prompt_contains_source_text_and_rules(app, fake):
     c, dept = setup_admin(app)
     gen_ok(c, dept, focus="Focus on chloroplasts")
     assert "chloroplasts, which contain the green pigment" in seen["p"]
-    assert "Focus on chloroplasts" in seen["p"] and "exactly 4 options" in seen["p"]
+    assert "Focus on chloroplasts" in seen["p"]
+    assert "exactly 4 options" in seen["p"]
 
 
 def test_not_a_pdf_rejected(app, fake):
     c, dept = setup_admin(app)
     r = upload(c, dept, data=b"Hello, I am a text file pretending to be a PDF")
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "INVALID_PDF"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "INVALID_PDF"
 
 
 def test_corrupted_pdf_rejected(app, fake):
     c, dept = setup_admin(app)
     r = upload(c, dept, data=b"%PDF-1.4\nthis is garbage and not really a pdf at all")
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "INVALID_PDF"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "INVALID_PDF"
     assert "Traceback" not in r.get_data(as_text=True)
 
 
 def test_empty_upload_and_missing_file(app, fake):
     c, dept = setup_admin(app)
     r = upload(c, dept, data=b"")
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "EMPTY_FILE"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "EMPTY_FILE"
     r = upload(c, dept, data=False)
-    assert r.status_code == 422 and "file" in r.get_json()["error"]["details"]
+    assert r.status_code == 422
+    assert "file" in r.get_json()["error"]["details"]
 
 
 def test_unsupported_file_type(app, fake):
     c, dept = setup_admin(app)
     r = upload(c, dept, data=make_pdf(), filename="notes.docx")
-    assert r.status_code == 415 and r.get_json()["error"]["code"] == "UNSUPPORTED_FILE_TYPE"
+    assert r.status_code == 415
+    assert r.get_json()["error"]["code"] == "UNSUPPORTED_FILE_TYPE"
 
 
 def test_oversized_upload(app, fake):
     app.config["MAX_CONTENT_LENGTH"] = 2000
     c, dept = setup_admin(app)
     r = upload(c, dept, data=make_pdf(pages=5))
-    assert r.status_code == 413 and r.get_json()["error"]["code"] == "FILE_TOO_LARGE"
+    assert r.status_code == 413
+    assert r.get_json()["error"]["code"] == "FILE_TOO_LARGE"
 
 
 def test_pdf_without_text(app, fake):
     c, dept = setup_admin(app)
     r = upload(c, dept, data=blank_pdf())
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "PDF_NO_TEXT"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "PDF_NO_TEXT"
     assert "Please upload another PDF" in r.get_json()["error"]["message"]   # no text and no page pictures
 
 
 def test_encrypted_pdf(app, fake):
     c, dept = setup_admin(app)
     r = upload(c, dept, data=encrypted_pdf("secret"))
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "PDF_ENCRYPTED"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "PDF_ENCRYPTED"
     # "protected" PDFs that open without a password are fine
     assert upload(c, dept, data=encrypted_pdf("")).status_code == 201
 
@@ -173,7 +188,8 @@ def test_long_text_is_cut_to_source_limit(app, fake):
     a = gen_ok(c, dept, data=make_pdf(pages=4))
     with app.app_context():
         att = db.session.get(GenerationAttempt, a["id"])
-        assert len(att.source_text) <= 500 and att.source_truncated is True
+        assert len(att.source_text) <= 500
+        assert att.source_truncated is True
 
 
 def test_form_validation(app, fake):
@@ -182,7 +198,8 @@ def test_form_validation(app, fake):
     assert r.status_code == 422
     assert set(r.get_json()["error"]["details"]) == {"subject", "question_type", "difficulty", "count", "marks"}
     r = upload(c, dept, department_id="abc")
-    assert r.status_code == 422 and "department_id" in r.get_json()["error"]["details"]
+    assert r.status_code == 422
+    assert "department_id" in r.get_json()["error"]["details"]
 
 
 # ------------------------------------------------------------------ AI generation behaviour
@@ -192,17 +209,21 @@ def test_malformed_json_retries_are_bounded(app, fake):
     c, dept = setup_admin(app)
     r = upload(c, dept)
     body = r.get_json()["error"]
-    assert r.status_code == 502 and body["code"] == "AI_BAD_RESPONSE"
+    assert r.status_code == 502
+    assert body["code"] == "AI_BAD_RESPONSE"
     assert fake["p"].calls == 3                                  # 1 try + 2 retries, then stop
     with app.app_context():                                      # failed attempt is still recorded, safely
         att = db.session.get(GenerationAttempt, body["details"]["attempt_id"])
-        assert att.status == "failed" and att.error_code == "AI_BAD_RESPONSE" and att.questions == []
+        assert att.status == "failed"
+        assert att.error_code == "AI_BAD_RESPONSE"
+        assert att.questions == []
 
 
 def test_malformed_then_valid(app, fake):
     fake["p"] = FakeProvider("{broken json", smart_reply)
     c, dept = setup_admin(app)
-    assert gen_ok(c, dept)["generated_count"] == 5 and fake["p"].calls == 2
+    assert gen_ok(c, dept)["generated_count"] == 5
+    assert fake["p"].calls == 2
 
 
 def test_markdown_fences_letters_and_labels_are_accepted(app, fake):
@@ -215,7 +236,9 @@ def test_markdown_fences_letters_and_labels_are_accepted(app, fake):
     c, dept = setup_admin(app)
     a = gen_ok(c, dept, count=2)
     q1, q2 = a["questions"]
-    assert q1["options"][0] == "Chlorophyll" and q1["correct_index"] == 0 and q2["correct_index"] == 1
+    assert q1["options"][0] == "Chlorophyll"
+    assert q1["correct_index"] == 0
+    assert q2["correct_index"] == 1
 
 
 def test_invalid_items_are_discarded(app, fake):
@@ -231,7 +254,9 @@ def test_invalid_items_are_discarded(app, fake):
     fake["p"] = FakeProvider(json.dumps({"questions": good + bad}))
     c, dept = setup_admin(app)
     a = gen_ok(c, dept, count=5)
-    assert a["status"] == "partial" and a["generated_count"] == 2 and a["discarded_count"] >= 6
+    assert a["status"] == "partial"
+    assert a["generated_count"] == 2
+    assert a["discarded_count"] >= 6
 
 
 def test_true_false_generation(app, fake):
@@ -254,7 +279,8 @@ def test_provider_failures(app, fake, exc, status, code):
     fake["p"] = FakeProvider(exc)
     c, dept = setup_admin(app)
     r = upload(c, dept)
-    assert r.status_code == status and r.get_json()["error"]["code"] == code
+    assert r.status_code == status
+    assert r.get_json()["error"]["code"] == code
     assert fake["p"].calls == (1 if code == "AI_AUTH_FAILED" else 3)    # auth errors are not retried
 
 
@@ -262,13 +288,16 @@ def test_rate_limit_quota_is_not_retried(app, fake):
     fake["p"] = FakeProvider(ai_errors.rate_limited(None))
     c, dept = setup_admin(app)
     r = upload(c, dept)
-    assert r.status_code == 429 and r.get_json()["error"]["code"] == "AI_RATE_LIMITED" and fake["p"].calls == 1
+    assert r.status_code == 429
+    assert r.get_json()["error"]["code"] == "AI_RATE_LIMITED"
+    assert fake["p"].calls == 1
 
 
 def test_short_rate_limit_is_retried(app, fake):
     fake["p"] = FakeProvider(ai_errors.rate_limited(1), smart_reply)
     c, dept = setup_admin(app)
-    assert gen_ok(c, dept)["generated_count"] == 5 and fake["p"].calls == 2
+    assert gen_ok(c, dept)["generated_count"] == 5
+    assert fake["p"].calls == 2
 
 
 def test_missing_configuration(app):
@@ -276,7 +305,8 @@ def test_missing_configuration(app):
     for provider, key in (("none", ""), ("gemini", ""), ("bogus", "x")):
         app.config.update(AI_PROVIDER=provider, GEMINI_API_KEY=key)
         r = upload(c, dept)
-        assert r.status_code == 503 and r.get_json()["error"]["code"] == "AI_NOT_CONFIGURED"
+        assert r.status_code == 503
+        assert r.get_json()["error"]["code"] == "AI_NOT_CONFIGURED"
     with app.app_context():
         assert GenerationAttempt.query.count() == 0          # nothing recorded when AI is switched off
 
@@ -298,7 +328,8 @@ def test_duplicate_generation_in_progress(app, fake):
         db.session.get(GenerationAttempt, first["id"]).status = "processing"    # pretend it is still running
         db.session.commit()
     r = upload(c, dept)
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "GENERATION_IN_PROGRESS"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "GENERATION_IN_PROGRESS"
 
 
 # ------------------------------------------------------------------ provider HTTP layer (requests is mocked)
@@ -352,7 +383,8 @@ def test_openai_compatible_request_shape(monkeypatch):
     p = get_provider(cfg)
     assert p.complete("sys", "hello") == '{"questions": []}'
     assert sent["url"] == "https://api.groq.com/openai/v1/chat/completions"
-    assert sent["headers"]["Authorization"] == "Bearer gsk_test" and sent["timeout"] == 33
+    assert sent["headers"]["Authorization"] == "Bearer gsk_test"
+    assert sent["timeout"] == 33
     assert sent["body"]["response_format"] == {"type": "json_object"}
     assert get_provider({"AI_PROVIDER": "gemini", "GEMINI_API_KEY": "k"}).base_url.startswith(
         "https://generativelanguage.googleapis.com/")
@@ -367,14 +399,16 @@ def test_lifecycle_draft_approve_reject_bank(app, fake):
     assert c.get(BANK).get_json()["data"]["items"] == []                         # drafts are not in the bank
 
     r = c.post(f"/api/v1/questions/{ids[0]}/approve")
-    assert r.status_code == 200 and r.get_json()["data"]["question"]["status"] == "approved"
+    assert r.status_code == 200
+    assert r.get_json()["data"]["question"]["status"] == "approved"
     assert r.get_json()["data"]["question"]["reviewed_by"] == SIGNUP["admin_name"]
     r = c.post(f"/api/v1/questions/{ids[1]}/reject", json={"reason": "Ambiguous wording"})
     assert r.get_json()["data"]["question"]["status"] == "rejected"
     assert r.get_json()["data"]["question"]["rejection_reason"] == "Ambiguous wording"
 
     bank = c.get(BANK).get_json()["data"]
-    assert [q["id"] for q in bank["items"]] == [ids[0]] and bank["summary"]["total"] == 1
+    assert [q["id"] for q in bank["items"]] == [ids[0]]
+    assert bank["summary"]["total"] == 1
 
     # decisions are final for approved questions
     assert c.post(f"/api/v1/questions/{ids[0]}/reject").status_code == 409
@@ -384,7 +418,9 @@ def test_lifecycle_draft_approve_reject_bank(app, fake):
     assert c.post(f"/api/v1/questions/{ids[1]}/approve").status_code == 409        # rejected -> regenerate instead
 
     detail = c.get(f"/api/v1/questions/attempts/{a['id']}").get_json()["data"]["attempt"]
-    assert detail["counts"]["approved"] == 1 and detail["counts"]["rejected"] == 1 and detail["counts"]["draft"] == 3
+    assert detail["counts"]["approved"] == 1
+    assert detail["counts"]["rejected"] == 1
+    assert detail["counts"]["draft"] == 3
 
 
 def test_edit_draft_validates(app, fake):
@@ -398,7 +434,10 @@ def test_edit_draft_validates(app, fake):
             "correct_index": 0, "explanation": "Chloroplasts hold chlorophyll.", "topic": "Cells",
             "difficulty": "hard", "marks": 3}
     q = c.put(f"/api/v1/questions/{qid}", json=good).get_json()["data"]["question"]
-    assert q["is_edited"] and q["options"] == good["options"] and q["difficulty"] == "hard" and q["marks"] == 3
+    assert q["is_edited"]
+    assert q["options"] == good["options"]
+    assert q["difficulty"] == "hard"
+    assert q["marks"] == 3
     assert q["status"] == "draft"                                                  # editing never approves
     assert c.put(f"/api/v1/questions/{qid}", data="nope").status_code == 400
 
@@ -412,10 +451,12 @@ def test_invalid_question_cannot_be_approved(app, fake):
         q.options, q.correct_index = ["only one"], 3
         db.session.commit()
     r = c.post(f"/api/v1/questions/{qid}/approve")
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "QUESTION_INVALID"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "QUESTION_INVALID"
     assert c.get(BANK).get_json()["data"]["items"] == []
     r = c.post(f"/api/v1/questions/attempts/{att['id']}/approve-all").get_json()["data"]
-    assert qid in [s["id"] for s in r["skipped"]] and len(r["approved"]) == 4
+    assert qid in [s["id"] for s in r["skipped"]]
+    assert len(r["approved"]) == 4
 
 
 def test_regenerate_single_question(app, fake):
@@ -425,12 +466,15 @@ def test_regenerate_single_question(app, fake):
     r = c.post(f"/api/v1/questions/{old['id']}/regenerate")
     assert r.status_code == 201
     new = r.get_json()["data"]["question"]
-    assert new["status"] == "draft" and new["regenerated_from_id"] == old["id"] and new["text"] != old["text"]
+    assert new["status"] == "draft"
+    assert new["regenerated_from_id"] == old["id"]
+    assert new["text"] != old["text"]
     detail = c.get(f"/api/v1/questions/attempts/{a['id']}").get_json()["data"]["attempt"]
     assert old["id"] not in [q["id"] for q in detail["questions"]]                # hidden by default
     hist = c.get(f"/api/v1/questions/attempts/{a['id']}?include_replaced=1").get_json()["data"]["attempt"]
     replaced = next(q for q in hist["questions"] if q["id"] == old["id"])
-    assert replaced["status"] == "replaced" and replaced["replaced_by_id"] == new["id"]
+    assert replaced["status"] == "replaced"
+    assert replaced["replaced_by_id"] == new["id"]
     assert c.get(BANK).get_json()["data"]["items"] == []                          # regeneration never approves
 
 
@@ -440,7 +484,8 @@ def test_regenerate_never_touches_approved(app, fake):
     qid = a["questions"][0]["id"]
     c.post(f"/api/v1/questions/{qid}/approve")
     r = c.post(f"/api/v1/questions/{qid}/regenerate")
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "INVALID_TRANSITION"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "INVALID_TRANSITION"
     with app.app_context():
         assert db.session.get(Question, qid).status == "approved"
 
@@ -453,7 +498,8 @@ def test_failed_regeneration_changes_nothing(app, fake):
     r = c.post(f"/api/v1/questions/{qid}/regenerate")
     assert r.status_code == 503
     with app.app_context():
-        assert db.session.get(Question, qid).status == "draft" and Question.query.count() == 5
+        assert db.session.get(Question, qid).status == "draft"
+        assert Question.query.count() == 5
 
 
 def test_regenerate_attempt_replaces_rejected_only(app, fake):
@@ -464,12 +510,16 @@ def test_regenerate_attempt_replaces_rejected_only(app, fake):
     c.post(f"/api/v1/questions/{q[1]}/reject")
     c.post(f"/api/v1/questions/{q[2]}/reject")
     d = c.post(f"/api/v1/questions/attempts/{a['id']}/regenerate").get_json()["data"]
-    assert d["replaced"] == 2 and d["added"] == 0
+    assert d["replaced"] == 2
+    assert d["added"] == 0
     statuses = {x["id"]: x["status"] for x in d["attempt"]["questions"]}
-    assert statuses[q[0]] == "approved" and q[1] not in statuses and q[2] not in statuses
+    assert statuses[q[0]] == "approved"
+    assert q[1] not in statuses
+    assert q[2] not in statuses
     assert d["attempt"]["counts"]["draft"] == 5 - 1                                # 2 old drafts + 2 new
     r = c.post(f"/api/v1/questions/attempts/{a['id']}/regenerate")
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "NOTHING_TO_REGENERATE"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "NOTHING_TO_REGENERATE"
 
 
 def test_failed_attempt_can_be_retried(app, fake):
@@ -478,7 +528,9 @@ def test_failed_attempt_can_be_retried(app, fake):
     attempt_id = upload(c, dept).get_json()["error"]["details"]["attempt_id"]
     fake["p"] = FakeProvider(smart_reply)
     d = c.post(f"/api/v1/questions/attempts/{attempt_id}/regenerate").get_json()["data"]
-    assert d["added"] == 5 and d["attempt"]["status"] == "completed" and d["attempt"]["error"] is None
+    assert d["added"] == 5
+    assert d["attempt"]["status"] == "completed"
+    assert d["attempt"]["error"] is None
 
 
 def test_approve_all(app, fake):
@@ -486,7 +538,8 @@ def test_approve_all(app, fake):
     a = gen_ok(c, dept)
     c.post(f"/api/v1/questions/{a['questions'][0]['id']}/reject")
     d = c.post(f"/api/v1/questions/attempts/{a['id']}/approve-all").get_json()["data"]
-    assert len(d["approved"]) == 4 and d["skipped"] == []
+    assert len(d["approved"]) == 4
+    assert d["skipped"] == []
     assert c.get(BANK).get_json()["data"]["total"] == 4
 
 
@@ -499,7 +552,10 @@ def test_bank_filters_and_pagination(app, fake):
         c.post(f"/api/v1/questions/attempts/{a['id']}/approve-all")
 
     d = c.get(BANK + "?per_page=4").get_json()["data"]
-    assert d["total"] == 9 and d["pages"] == 3 and len(d["items"]) == 4 and d["page"] == 1
+    assert d["total"] == 9
+    assert d["pages"] == 3
+    assert len(d["items"]) == 4
+    assert d["page"] == 1
     d2 = c.get(BANK + "?per_page=4&page=3").get_json()["data"]
     assert len(d2["items"]) == 1
     assert c.get(BANK + "?difficulty=hard").get_json()["data"]["total"] == 3
@@ -511,7 +567,8 @@ def test_bank_filters_and_pagination(app, fake):
     one = d["items"][0]["text"][:20]
     assert c.get(BANK + "?q=" + one).get_json()["data"]["total"] >= 1
     s = d["summary"]
-    assert s["by_difficulty"] == {"medium": 6, "hard": 3} and s["by_subject"] == {"Biology": 6, "Physics": 3}
+    assert s["by_difficulty"] == {"medium": 6, "hard": 3}
+    assert s["by_subject"] == {"Biology": 6, "Physics": 3}
     for bad in ("difficulty=x", "level=x", "question_type=x", "department_id=x", "page=x"):
         assert c.get(BANK + "?" + bad).status_code == 400
 
@@ -521,7 +578,9 @@ def test_attempt_list_pagination_and_filters(app, fake):
     for _ in range(3):
         gen_ok(c, dept, count=1)
     d = c.get("/api/v1/questions/attempts?per_page=2").get_json()["data"]
-    assert d["total"] == 3 and len(d["items"]) == 2 and "source_text" not in json.dumps(d)
+    assert d["total"] == 3
+    assert len(d["items"]) == 2
+    assert "source_text" not in json.dumps(d)
     assert c.get("/api/v1/questions/attempts?status=failed").get_json()["data"]["total"] == 0
     assert c.get("/api/v1/questions/attempts?q=notes").get_json()["data"]["total"] == 3
     assert c.get("/api/v1/questions/attempts?status=bogus").status_code == 400
@@ -559,7 +618,8 @@ def test_institutions_are_isolated(app, fake):
     q2 = att["questions"][1]["id"]
 
     assert b.get("/api/v1/questions/attempts").get_json()["data"]["items"] == []
-    assert b.get(BANK).get_json()["data"]["items"] == [] and b.get(BANK).get_json()["data"]["summary"]["total"] == 0
+    assert b.get(BANK).get_json()["data"]["items"] == []
+    assert b.get(BANK).get_json()["data"]["summary"]["total"] == 0
     assert b.get(f"/api/v1/questions/attempts/{att['id']}").status_code == 404
     assert b.post(f"/api/v1/questions/attempts/{att['id']}/approve-all").status_code == 404
     assert b.post(f"/api/v1/questions/attempts/{att['id']}/regenerate").status_code == 404
@@ -585,7 +645,8 @@ def test_pending_and_suspended_institutions_blocked(app, fake):
     c = app.test_client()
     c.post("/api/v1/institutions/signup", json={**SIGNUP, "admin_email": "p@pending.edu", "institution_name": "Pending U"})
     r = login(c, "p@pending.edu", SIGNUP["password"])
-    assert r.status_code == 403 and r.get_json()["error"]["code"] == "INSTITUTION_PENDING"
+    assert r.status_code == 403
+    assert r.get_json()["error"]["code"] == "INSTITUTION_PENDING"
     assert c.get(BANK).status_code == 401
 
     s, dept = setup_admin(app, "s@susp.edu", "Susp U")
@@ -593,7 +654,8 @@ def test_pending_and_suspended_institutions_blocked(app, fake):
         Institution.query.filter_by(name="Susp U").first().status = "suspended"
         db.session.commit()
     r = upload(s, dept)
-    assert r.status_code == 403 and r.get_json()["error"]["code"] == "INSTITUTION_NOT_ACTIVE"
+    assert r.status_code == 403
+    assert r.get_json()["error"]["code"] == "INSTITUTION_NOT_ACTIVE"
     assert s.get(BANK).status_code == 403
 
 
@@ -603,10 +665,14 @@ def test_check_pdf(app, fake):
     url = "/api/v1/questions/check-pdf"
     r = c.post(url, data={"file": (io.BytesIO(make_pdf(pages=2)), "ch3.pdf")}, content_type="multipart/form-data")
     d = r.get_json()["data"]
-    assert r.status_code == 200 and d["filename"] == "ch3.pdf" and d["pages"] == 2 and d["characters"] > 300
+    assert r.status_code == 200
+    assert d["filename"] == "ch3.pdf"
+    assert d["pages"] == 2
+    assert d["characters"] > 300
     for data, code in ((blank_pdf(), "PDF_NO_TEXT"), (b"nope", "INVALID_PDF"), (encrypted_pdf("x"), "PDF_ENCRYPTED")):
         r = c.post(url, data={"file": (io.BytesIO(data), "x.pdf")}, content_type="multipart/form-data")
-        assert r.status_code == 422 and r.get_json()["error"]["code"] == code
+        assert r.status_code == 422
+        assert r.get_json()["error"]["code"] == code
     assert fake["p"].calls == 0                                   # no AI quota used
     with app.app_context():
         assert GenerationAttempt.query.count() == 0
@@ -631,15 +697,19 @@ def test_photo_pdf_check_needs_vision_provider(app, fake):
                           content_type="multipart/form-data")
     fake["p"] = FakeProvider(vision_reply, vision=True)
     d = send().get_json()["data"]
-    assert d["needs_ocr"] is True and d["image_pages"] == 3 and d["characters"] == 0
+    assert d["needs_ocr"] is True
+    assert d["image_pages"] == 3
+    assert d["characters"] == 0
     assert fake["p"].calls == 0                                    # checking never spends AI quota
     fake["p"] = FakeProvider(smart_reply, vision=False)            # e.g. Groq / Ollama text model
     r = send()
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "PDF_NO_TEXT"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "PDF_NO_TEXT"
     assert "gemini" in r.get_json()["error"]["message"].lower()
     fake["p"] = FakeProvider(vision_reply, vision=True)
     r = c.post(url, data={"file": (io.BytesIO(blank_pdf()), "blank.pdf")}, content_type="multipart/form-data")
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "PDF_NO_TEXT"   # no text AND no pictures
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "PDF_NO_TEXT"   # no text AND no pictures
 
 
 def test_photo_pdf_generates_from_transcription(app, fake):
@@ -647,25 +717,31 @@ def test_photo_pdf_generates_from_transcription(app, fake):
     fake["p"] = FakeProvider(vision_reply, vision=True)
     c, dept = setup_admin(app)
     a = gen_ok(c, dept, data=photo_pdf(5), filename="notes-photos.pdf", count=3)
-    assert a["source"]["ocr"] is True and a["source"]["pages"] == 5 and a["source"]["characters"] > 300
+    assert a["source"]["ocr"] is True
+    assert a["source"]["pages"] == 5
+    assert a["source"]["characters"] > 300
     assert fake["p"].image_calls == [2, 2, 1]                     # 5 pictures sent in batches of 2
-    assert len(a["questions"]) == 3 and all(q["status"] == "draft" for q in a["questions"])
+    assert len(a["questions"]) == 3
+    assert all(q["status"] == "draft" for q in a["questions"])
     with app.app_context():
         att = db.session.get(GenerationAttempt, a["id"])
         assert "Calvin cycle" in att.source_text                   # transcription kept for "Regenerate"
     r = c.post(f"/api/v1/questions/{a['questions'][0]['id']}/regenerate")
-    assert r.status_code == 201 and fake["p"].image_calls == [2, 2, 1]   # regenerating re-uses text, no pictures
+    assert r.status_code == 201
+    assert fake["p"].image_calls == [2, 2, 1]   # regenerating re-uses text, no pictures
 
 
 def test_photo_pdf_unreadable_or_ai_error(app, fake):
     c, dept = setup_admin(app)
     fake["p"] = FakeProvider(lambda p: "--- Page 1 ---\n[unreadable]\n--- Page 2 ---\n[unreadable]", vision=True)
     r = upload(c, dept, data=photo_pdf(2))
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "PDF_NO_TEXT"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "PDF_NO_TEXT"
     assert "clearer photos" in r.get_json()["error"]["message"]
     fake["p"] = FakeProvider(ai_errors.rate_limited(None), vision=True)
     r = upload(c, dept, data=photo_pdf(2))
-    assert r.status_code == 429 and r.get_json()["error"]["code"] == "AI_RATE_LIMITED"
+    assert r.status_code == 429
+    assert r.get_json()["error"]["code"] == "AI_RATE_LIMITED"
     with app.app_context():
         assert GenerationAttempt.query.count() == 0                # nothing half-saved
 
@@ -674,7 +750,8 @@ def test_text_pdf_never_sends_pictures(app, fake):
     fake["p"] = FakeProvider(vision_reply, vision=True)
     c, dept = setup_admin(app)
     a = gen_ok(c, dept)
-    assert a["source"]["ocr"] is False and fake["p"].image_calls == []
+    assert a["source"]["ocr"] is False
+    assert fake["p"].image_calls == []
 
 
 def test_image_request_shape(monkeypatch):
@@ -685,7 +762,8 @@ def test_image_request_shape(monkeypatch):
         return FakeResp(200, _chat("Page text"))
     monkeypatch.setattr(requests, "post", post)
     p = get_provider({"AI_PROVIDER": "gemini", "GEMINI_API_KEY": "k"})
-    assert p.supports_images and p.complete("sys", "Transcribe", images=[b"\xff\xd8jpegbytes"]) == "Page text"
+    assert p.supports_images
+    assert p.complete("sys", "Transcribe", images=[b"\xff\xd8jpegbytes"]) == "Page text"
     parts = sent["body"]["messages"][1]["content"]
     assert parts[0] == {"type": "text", "text": "Transcribe"}
     assert parts[1]["image_url"]["url"].startswith("data:image/jpeg;base64,")
@@ -732,7 +810,9 @@ def test_mixed_pdf_without_vision_uses_typed_pages_and_says_so(app, fake):
     d = check(c, data).get_json()["data"]
     assert (d["typed_pages"], d["image_pages"], d["skipped_photo_pages"], d["truncated"]) == (2, 0, 3, True)
     a = gen_ok(c, dept, data=data, count=2)
-    assert a["source"]["ocr"] is False and a["source"]["truncated"] is True and fake["p"].image_calls == []
+    assert a["source"]["ocr"] is False
+    assert a["source"]["truncated"] is True
+    assert fake["p"].image_calls == []
 
 
 def test_figures_in_typed_pages_are_not_sent(app, fake):
@@ -777,7 +857,9 @@ def test_multiple_pdfs(app, fake):
     r = upload_many(c, dept, [("a.pdf", one), ("b.pdf", two)])
     assert r.status_code == 201, r.get_json()
     a = r.get_json()["data"]["attempt"]
-    assert a["source"]["files"] == 2 and a["source"]["filename"] == "a.pdf, b.pdf" and a["source"]["pages"] == 2
+    assert a["source"]["files"] == 2
+    assert a["source"]["filename"] == "a.pdf, b.pdf"
+    assert a["source"]["pages"] == 2
     with app.app_context():
         t = db.session.get(GenerationAttempt, a["id"]).source_text
     assert t.index("=== Document 1: a.pdf ===") < t.index("Handout A") < t.index("=== Document 2: b.pdf ===") < t.index("Handout B")
@@ -787,9 +869,11 @@ def test_multiple_pdfs_limits_and_bad_file_named(app, fake):
     c, dept = setup_admin(app)
     app.config["MAX_PDFS_PER_GENERATION"] = 2
     r = upload_many(c, dept, [(f"{i}.pdf", make_pdf()) for i in range(3)])
-    assert r.status_code == 422 and "at most 2" in r.get_json()["error"]["details"]["file"]
+    assert r.status_code == 422
+    assert "at most 2" in r.get_json()["error"]["details"]["file"]
     r = upload_many(c, dept, [("good.pdf", make_pdf()), ("broken.pdf", b"not a pdf")])
-    assert r.status_code == 422 and r.get_json()["error"]["message"].startswith('"broken.pdf":')
+    assert r.status_code == 422
+    assert r.get_json()["error"]["message"].startswith('"broken.pdf":')
 
 
 def test_fair_share_between_big_and_small_pdf(app, fake):
@@ -800,7 +884,9 @@ def test_fair_share_between_big_and_small_pdf(app, fake):
     a = upload_many(c, dept, [("big.pdf", big), ("small.pdf", small)]).get_json()["data"]["attempt"]
     with app.app_context():
         t = db.session.get(GenerationAttempt, a["id"]).source_text
-    assert "Small handout" in t and len(t) <= 3200 and a["source"]["truncated"] is True
+    assert "Small handout" in t
+    assert len(t) <= 3200
+    assert a["source"]["truncated"] is True
 
 
 def test_questions_are_spread_over_the_whole_document(app, fake):
@@ -811,8 +897,10 @@ def test_questions_are_spread_over_the_whole_document(app, fake):
     gen_ok(c, dept, data=mixed_pdf("T" * 20), count=6)              # 20 distinct pages, ~13 parts
     sources = [p.split("<<<SOURCE")[1] for p in prompts]
     assert len(prompts) == 3
-    assert "Typed page 1:" in sources[0] and "Typed page 20:" in sources[-1]   # beginning AND end are used
-    assert "part 1 of" in prompts[0] and all(p.count("Write 2 ") for p in prompts)
+    assert "Typed page 1:" in sources[0]
+    assert "Typed page 20:" in sources[-1]   # beginning AND end are used
+    assert "part 1 of" in prompts[0]
+    assert all(p.count("Write 2 ") for p in prompts)
 
 
 def test_description_only(app, fake):
@@ -821,11 +909,17 @@ def test_description_only(app, fake):
     c, dept = setup_admin(app)
     r = upload(c, dept, data=False, focus="photosynthesis")         # too vague
     err = r.get_json()["error"]
-    assert r.status_code == 422 and "at least 8 words" in err["details"]["focus"] and "file" in err["details"]
+    assert r.status_code == 422
+    assert "at least 8 words" in err["details"]["focus"]
+    assert "file" in err["details"]
     focus = "Photosynthesis: light reactions, Calvin cycle and factors affecting the rate, first-year biology"
     a = gen_ok(c, dept, data=False, focus=focus)
-    assert a["source"]["kind"] == "description" and a["source"]["files"] == 0 and a["source"]["filename"] == ""
-    assert "TOPIC DESCRIPTION" in prompts[0] and focus in prompts[0] and "<<<SOURCE" not in prompts[0]
+    assert a["source"]["kind"] == "description"
+    assert a["source"]["files"] == 0
+    assert a["source"]["filename"] == ""
+    assert "TOPIC DESCRIPTION" in prompts[0]
+    assert focus in prompts[0]
+    assert "<<<SOURCE" not in prompts[0]
     assert all(q["status"] == "draft" for q in a["questions"])
 
 
@@ -838,7 +932,9 @@ def test_check_pdf_suggests_headings(app, fake):
 
 def test_meta_has_file_limits(client):
     lim = client.get("/api/v1/meta").get_json()["data"]["generation_limits"]
-    assert lim["max_files"] == 10 and lim["max_upload_mb"] == 200 and lim["max_questions"] == 100
+    assert lim["max_files"] == 10
+    assert lim["max_upload_mb"] == 200
+    assert lim["max_questions"] == 100
     assert lim["description_min_words"] == 8
 
 
@@ -848,9 +944,12 @@ def test_hundred_questions_spread_over_ten_parts(app, fake):
     app.config["AI_MAX_SOURCE_CHARS"] = 1500
     c, dept = setup_admin(app)
     a = gen_ok(c, dept, data=mixed_pdf("T" * 30), count=100)      # 30 distinct pages -> ~20 parts
-    assert a["generated_count"] == 100 and a["status"] == "completed" and len(prompts) == 10
+    assert a["generated_count"] == 100
+    assert a["status"] == "completed"
+    assert len(prompts) == 10
     sources = [p.split("<<<SOURCE")[1] for p in prompts]
-    assert "Typed page 1:" in sources[0] and "Typed page 30:" in sources[-1]
+    assert "Typed page 1:" in sources[0]
+    assert "Typed page 30:" in sources[-1]
     assert upload(c, dept, count=101).status_code == 422
 
 
@@ -869,10 +968,12 @@ def test_without_pillow_typed_pdfs_still_work(app, fake, monkeypatch):
     w.write(buf)
     r = c.post("/api/v1/questions/check-pdf", data={"file": (io.BytesIO(buf.getvalue()), "notes.pdf")},
                content_type="multipart/form-data")
-    assert r.status_code == 200 and r.get_json()["data"]["typed_pages"] == 1
+    assert r.status_code == 200
+    assert r.get_json()["data"]["typed_pages"] == 1
     r = c.post("/api/v1/questions/check-pdf", data={"file": (io.BytesIO(photos), "photos.pdf")},
                content_type="multipart/form-data")
-    assert r.status_code == 503 and r.get_json()["error"]["code"] == "SERVER_SETUP"
+    assert r.status_code == 503
+    assert r.get_json()["error"]["code"] == "SERVER_SETUP"
     assert "pip install" in r.get_json()["error"]["message"]
 
 
@@ -883,7 +984,8 @@ def test_old_database_gives_clear_message(app, fake):
         db.session.execute(text("ALTER TABLE generation_attempts DROP COLUMN source_kind"))
         db.session.commit()
     r = c.get("/api/v1/questions/attempts")
-    assert r.status_code == 500 and r.get_json()["error"]["code"] == "DB_NOT_UPGRADED"
+    assert r.status_code == 500
+    assert r.get_json()["error"]["code"] == "DB_NOT_UPGRADED"
     assert "flask --app run db upgrade" in r.get_json()["error"]["message"]
 
 
@@ -915,7 +1017,8 @@ def test_cut_off_reply_still_gives_questions(app, fake):
     fake["p"] = FakeProvider(cut, smart_reply)       # first answer cut off, the top-up request answers normally
     c, dept = setup_admin(app)
     a = gen_ok(c, dept, count=5)
-    assert a["generated_count"] == 5 and a["status"] == "completed"
+    assert a["generated_count"] == 5
+    assert a["status"] == "completed"
 
 
 def test_provider_keeps_cut_off_and_list_content(monkeypatch):
@@ -933,7 +1036,8 @@ def test_options_as_dict_or_choices():
     from app.modules.questions.validation import clean_question
     q = clean_question({"question": "Where does photosynthesis happen?", "options": {"B": "Nucleus", "A": "Chloroplast",
                         "D": "Wall", "C": "Ribosome"}, "answer": "A"}, "mcq", from_ai=True)
-    assert q["options"] == ["Chloroplast", "Nucleus", "Ribosome", "Wall"] and q["correct_index"] == 0
+    assert q["options"] == ["Chloroplast", "Nucleus", "Ribosome", "Wall"]
+    assert q["correct_index"] == 0
     q = clean_question({"question": "Which gas is released as a by-product?", "choices": ["Oxygen", "Neon", "Argon",
                         "Helium"], "correct_answer": "Oxygen"}, "mcq", from_ai=True)
     assert q["correct_index"] == 0

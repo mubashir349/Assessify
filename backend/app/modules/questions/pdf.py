@@ -22,6 +22,7 @@ from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
 from app.common.errors import ApiError
+from app.common.validation import FIX_FIELDS
 
 log = logging.getLogger(__name__)
 logging.getLogger("pypdf").setLevel(logging.ERROR)   # pypdf warns loudly about slightly broken files
@@ -105,7 +106,7 @@ def normalise(text: str) -> str:
     text = "".join(ch for ch in text if ch == "\n" or ch == "\t" or unicodedata.category(ch)[0] != "C")
     text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)          # "exam-\nple" -> "example"
     text = re.sub(r"[ \t ]+", " ", text)
-    text = re.sub(r" *\n *", "\n", text)
+    text = "\n".join(line.strip(" ") for line in text.split("\n"))   # no spaces around line breaks
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
@@ -122,12 +123,52 @@ def cut(text: str, limit: int) -> tuple[str, bool]:
     return head.strip(), True
 
 
+@dataclass
+class _PageScan:
+    parts: list = field(default_factory=list)
+    typed_pages: int = 0
+    photos_read: int = 0
+    skipped: int = 0
+    no_pillow: bool = False
+    estimate: int = 0               # characters the AI will get, counting a photo page as EST_CHARS_PER_PHOTO_PAGE
+    stopped_early: bool = False
+
+
 def extract(file_storage, *, max_pages: int, min_chars: int, max_chars: int, allow_images: bool = False,
             max_image_pages: int = 20, image_max_side: int = 1600) -> ExtractedPdf:
     """Validate an uploaded PDF (werkzeug FileStorage) and classify its pages. Raises ApiError with a clear code.
     allow_images=True: photo pages are returned as pictures (in `parts`) for the AI to read."""
+    name, data = _read_upload(file_storage)
+    reader = _open_reader(data)
+    page_count = len(reader.pages)
+    if page_count == 0:
+        raise ApiError("INVALID_PDF", "This PDF has no pages.", 422, {"file": "The PDF has no pages."})
+
+    scan = _PageScan()
+    for no, page in enumerate(reader.pages[:max_pages], start=1):
+        if scan.estimate > max_chars:     # the AI text limit is already full - later pages would be cut anyway
+            scan.stopped_early = True
+            break
+        _scan_page(scan, no, page, allow_images=allow_images and scan.photos_read < max_image_pages,
+                   image_max_side=image_max_side)
+
+    parts = scan.parts
+    typed = normalise("\n\n".join(p[2] for p in parts if p[0] == "text"))
+    sha = hashlib.sha256(data).hexdigest()
+    reached_all = not scan.stopped_early and page_count <= max_pages
+
+    if scan.photos_read == 0 and _letters(typed) < min_chars:
+        _raise_no_text(scan)
+
+    short, was_cut = cut(typed, max_chars)
+    return ExtractedPdf(filename=name, pages=page_count, text=short, total_chars=len(typed),
+                        truncated=was_cut or not reached_all or scan.skipped > 0, sha256=sha,
+                        typed_pages=scan.typed_pages, parts=parts, skipped_photo_pages=scan.skipped)
+
+
+def _read_upload(file_storage) -> tuple[str, bytes]:
     if file_storage is None or not file_storage.filename:
-        raise ApiError("VALIDATION_ERROR", "Please fix the highlighted fields.", 422, {"file": "Choose a PDF file to upload."})
+        raise ApiError("VALIDATION_ERROR", FIX_FIELDS, 422, {"file": "Choose a PDF file to upload."})
 
     name = display_name(file_storage.filename)
     if not name.lower().endswith(".pdf"):
@@ -139,88 +180,77 @@ def extract(file_storage, *, max_pages: int, min_chars: int, max_chars: int, all
     # Do not trust the extension or the browser's MIME type: a real PDF starts with "%PDF-" near the top.
     if b"%PDF-" not in data[:1024]:
         raise ApiError("INVALID_PDF", "This file is not a valid PDF.", 422, {"file": "The file is not a real PDF."})
+    return name, data
 
+
+def _open_reader(data: bytes) -> PdfReader:
     try:
         reader = PdfReader(io.BytesIO(data), strict=False)
         if reader.is_encrypted:
-            # Many "protected" PDFs only block printing/copying and open with an empty password - try that.
-            try:
-                opened = reader.decrypt("")
-            except Exception:   # noqa: BLE001  (e.g. unsupported encryption)
-                opened = 0
-            if not opened:
-                raise ApiError("PDF_ENCRYPTED", "This PDF is password-protected. Remove the password and upload it again.",
-                               422, {"file": "Password-protected PDFs are not supported."})
-        page_count = len(reader.pages)
+            _unlock(reader)
+        len(reader.pages)            # parses the page tree: a damaged file fails here
     except ApiError:
         raise
     except (PdfReadError, Exception):  # noqa: BLE001  any parser failure = unreadable file
         log.info("PDF could not be parsed", exc_info=True)
         raise ApiError("INVALID_PDF", "This PDF is damaged or could not be read.", 422, {"file": "The PDF could not be read."})
+    return reader
 
-    if page_count == 0:
-        raise ApiError("INVALID_PDF", "This PDF has no pages.", 422, {"file": "The PDF has no pages."})
 
-    parts: list[tuple] = []
-    typed_pages = photos_read = skipped = 0
-    no_pillow = False
-    estimate = 0                    # characters the AI will get, counting a photo page as EST_CHARS_PER_PHOTO_PAGE
-    stopped_early = False
-    for no, page in enumerate(reader.pages[:max_pages], start=1):
-        if estimate > max_chars:     # the AI text limit is already full - later pages would be cut anyway
-            stopped_early = True
-            break
-        try:
-            chunk = page.extract_text() or ""
-        except Exception:  # noqa: BLE001  one bad page should not fail the whole document
-            log.info("Skipping page %s: text could not be read", no, exc_info=True)
-            chunk = ""
-        if _letters(chunk) >= PHOTO_PAGE_MAX_TEXT:
-            parts.append(("text", no, chunk))
-            typed_pages += 1
-            estimate += len(chunk)
-            continue
-        try:
-            picture = page_picture(page, image_max_side)
-        except PillowMissing:
-            no_pillow = True         # can't look at pictures - a typed PDF still works, photo pages can't
-            picture = None
-        if picture is None:          # little text and no picture: a blank page, title or divider
-            if chunk.strip():
-                parts.append(("text", no, chunk))
-                estimate += len(chunk)
-            continue
-        if allow_images and photos_read < max_image_pages:
-            parts.append(("photo", no, picture))
-            photos_read += 1
-            estimate += EST_CHARS_PER_PHOTO_PAGE
-        else:
-            skipped += 1
-            if chunk.strip():
-                parts.append(("text", no, chunk))
+def _unlock(reader: PdfReader) -> None:
+    # Many "protected" PDFs only block printing/copying and open with an empty password - try that.
+    try:
+        opened = reader.decrypt("")
+    except Exception:   # noqa: BLE001  (e.g. unsupported encryption)
+        opened = 0
+    if not opened:
+        raise ApiError("PDF_ENCRYPTED", "This PDF is password-protected. Remove the password and upload it again.",
+                       422, {"file": "Password-protected PDFs are not supported."})
 
-    typed = normalise("\n\n".join(p[2] for p in parts if p[0] == "text"))
-    sha = hashlib.sha256(data).hexdigest()
-    reached_all = not stopped_early and page_count <= max_pages
 
-    if photos_read == 0 and _letters(typed) < min_chars:
-        if no_pillow:
-            log.error("Pillow is not installed: photo / scanned PDF pages cannot be read. Run: pip install -r requirements.txt")
-            raise ApiError("SERVER_SETUP", "This PDF looks like photos or scans, but the server cannot read pictures yet: "
-                           "the Pillow package is missing. Ask the administrator to run 'pip install -r requirements.txt' "
-                           "in backend/ and restart the server.", 503,
-                           {"file": "Server setup: Pillow is not installed."})
-        if skipped:
-            raise ApiError("PDF_NO_TEXT", "This PDF contains photos or scans instead of typed text. Reading pictures needs "
-                           "an AI provider that understands images - set AI_PROVIDER=gemini in backend/.env, or upload a "
-                           "PDF with selectable text.", 422, {"file": "Photos / scans need AI_PROVIDER=gemini."})
-        raise ApiError("PDF_NO_TEXT", "Not enough readable text or page pictures were found in this PDF. "
-                       "Please upload another PDF.", 422, {"file": "No usable text or page pictures found."})
+def _scan_page(scan: _PageScan, no: int, page, *, allow_images: bool, image_max_side: int) -> None:
+    """Adds one page to the scan: typed text, a photo for the AI to read, or a skipped photo page."""
+    try:
+        chunk = page.extract_text() or ""
+    except Exception:  # noqa: BLE001  one bad page should not fail the whole document
+        log.info("Skipping page %s: text could not be read", no, exc_info=True)
+        chunk = ""
+    if _letters(chunk) >= PHOTO_PAGE_MAX_TEXT:
+        scan.parts.append(("text", no, chunk))
+        scan.typed_pages += 1
+        scan.estimate += len(chunk)
+        return
+    try:
+        picture = page_picture(page, image_max_side)
+    except PillowMissing:
+        scan.no_pillow = True        # can't look at pictures - a typed PDF still works, photo pages can't
+        picture = None
+    if picture is not None and allow_images:
+        scan.parts.append(("photo", no, picture))
+        scan.photos_read += 1
+        scan.estimate += EST_CHARS_PER_PHOTO_PAGE
+        return
+    if picture is not None:
+        scan.skipped += 1
+    if chunk.strip():                # little text and no picture: a blank page, title or divider
+        scan.parts.append(("text", no, chunk))
+        if picture is None:
+            scan.estimate += len(chunk)
 
-    short, was_cut = cut(typed, max_chars)
-    return ExtractedPdf(filename=name, pages=page_count, text=short, total_chars=len(typed),
-                        truncated=was_cut or not reached_all or skipped > 0, sha256=sha, typed_pages=typed_pages,
-                        parts=parts, skipped_photo_pages=skipped)
+
+def _raise_no_text(scan: _PageScan):
+    if scan.no_pillow:
+        log.error("Pillow is not installed: photo / scanned PDF pages cannot be read. Run: pip install -r requirements.txt")
+        raise ApiError("SERVER_SETUP", "This PDF looks like photos or scans, but the server cannot read pictures yet: "
+                       "the Pillow package is missing. Ask the administrator to run 'pip install -r requirements.txt' "
+                       "in backend/ and restart the server.", 503,
+                       {"file": "Server setup: Pillow is not installed."})
+    if scan.skipped:
+        raise ApiError("PDF_NO_TEXT", "This PDF contains photos or scans instead of typed text. Reading pictures needs "
+                       "an AI provider that understands images - set AI_PROVIDER=gemini in backend/.env, or upload a "
+                       "PDF with selectable text.", 422, {"file": "Photos / scans need AI_PROVIDER=gemini."})
+    raise ApiError("PDF_NO_TEXT", "Not enough readable text or page pictures were found in this PDF. "
+                   "Please upload another PDF.", 422, {"file": "No usable text or page pictures found."})
 
 
 _HEADING = re.compile(

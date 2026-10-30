@@ -38,29 +38,32 @@ def _clean(data: dict) -> tuple[str, str, str, list[str]]:
     if mode not in MODES:
         errors["mode"] = "Choose one of: " + ", ".join(MODES) + "."
 
-    raw = data.get("subjects")
-    subjects: list[str] = []
-    if not isinstance(raw, list) or not raw:
-        errors["subjects"] = "Add at least one subject."
-    else:
-        seen = set()
-        for item in raw:
-            s = item.strip() if isinstance(item, str) else ""
-            if not s:
-                continue
-            if len(s) > 120:
-                errors["subjects"] = "Each subject must be at most 120 characters."
-                break
-            if s.lower() not in seen:
-                seen.add(s.lower())
-                subjects.append(s)
-        if "subjects" not in errors:
-            if not subjects:
-                errors["subjects"] = "Add at least one subject."
-            elif len(subjects) > MAX_SUBJECTS:
-                errors["subjects"] = f"A maximum of {MAX_SUBJECTS} subjects is allowed."
+    subjects, problem = _clean_subjects(data.get("subjects"))
+    if problem:
+        errors["subjects"] = problem
     raise_if(errors)
     return name, level, mode, subjects
+
+
+def _clean_subjects(raw) -> tuple[list[str], str | None]:
+    """Trimmed, de-duplicated subject names, plus the problem text (or None)."""
+    if not isinstance(raw, list) or not raw:
+        return [], "Add at least one subject."
+    subjects, seen = [], set()
+    for item in raw:
+        s = item.strip() if isinstance(item, str) else ""
+        if not s:
+            continue
+        if len(s) > 120:
+            return subjects, "Each subject must be at most 120 characters."
+        if s.lower() not in seen:
+            seen.add(s.lower())
+            subjects.append(s)
+    if not subjects:
+        return subjects, "Add at least one subject."
+    if len(subjects) > MAX_SUBJECTS:
+        return subjects, f"A maximum of {MAX_SUBJECTS} subjects is allowed."
+    return subjects, None
 
 
 def _ensure_unique_name(institution_id: int, level: str, name: str, ignore_id: int | None = None) -> None:

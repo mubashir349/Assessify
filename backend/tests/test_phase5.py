@@ -34,7 +34,7 @@ def make_test(app, c, *, publish=True, name="Undergraduate Admission Test"):
     return test["id"], eng, med
 
 
-@pytest.fixture()
+@pytest.fixture
 def admin(app):
     c = make_admin(app)
     test_id, eng, med = make_test(app, c)
@@ -69,7 +69,8 @@ def test_roster_needs_a_published_test(app):
     c = make_admin(app)
     test_id, _, _ = make_test(app, c, publish=False)
     r = upload(c, test_id, GOOD)
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "TEST_NOT_PUBLISHED"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "TEST_NOT_PUBLISHED"
     assert c.get("/api/v1/roster").status_code == 400                     # test_id is required
 
 
@@ -94,9 +95,13 @@ def test_import_good_csv_generates_missing_codes(app, admin):
     assert (d["imported"], d["error_count"], d["codes_generated"], d["roster_total"]) == (2, 0, 1, 2)
     items = {x["roll_number"]: x for x in roster(c, test_id)["items"]}
     ahmed, sana = items["PE-001"], items["PM-001"]
-    assert ahmed["department"]["id"] == eng and sana["department"]["id"] == med   # field matched case-insensitively
-    assert ahmed["code_generated"] is True and len(ahmed["access_code"]) == 9 and ahmed["access_code"][4] == "-"
-    assert sana["access_code"] == "NED7-Q4K2" and sana["code_generated"] is False
+    assert ahmed["department"]["id"] == eng
+    assert sana["department"]["id"] == med   # field matched case-insensitively
+    assert ahmed["code_generated"] is True
+    assert len(ahmed["access_code"]) == 9
+    assert ahmed["access_code"][4] == "-"
+    assert sana["access_code"] == "NED7-Q4K2"
+    assert sana["code_generated"] is False
     assert sana["date_of_birth"] == "2007-07-02"                                    # DD/MM/YYYY (Pakistani order)
     assert ahmed["email"] == "ahmed@mail.com"
 
@@ -113,12 +118,16 @@ def test_bad_rows_are_reported_one_by_one_and_good_rows_still_import(app, admin)
         "Future Kid,kid@mail.com,R-5,,2099-01-01,Pre-Medical\n"
     )
     d = upload(c, test_id, csv_text).get_json()["data"]
-    assert d["imported"] == 1 and d["total_rows"] == 6 and d["error_count"] == 5
+    assert d["imported"] == 1
+    assert d["total_rows"] == 6
+    assert d["error_count"] == 5
     errs = {e["row"]: " ".join(e["issues"]) for e in d["errors"]}
     assert 'did you mean "Pre-Engineering"' in errs[3]
     assert "2007/13/40" in errs[4]
     assert "Duplicate roll number R-1 (also row #2)" in errs[5]
-    assert "Name is required" in errs[6] and "Email" in errs[6] and "Roll number is required" in errs[6]
+    assert "Name is required" in errs[6]
+    assert "Email" in errs[6]
+    assert "Roll number is required" in errs[6]
     assert "not realistic" in errs[8]                                              # blank line 7 was skipped
     assert roster(c, test_id)["total"] == 1
 
@@ -127,7 +136,8 @@ def test_reimporting_the_same_file_does_not_duplicate(app, admin):
     c, test_id, _, _ = admin
     upload(c, test_id, GOOD)
     d = upload(c, test_id, GOOD).get_json()["data"]
-    assert d["imported"] == 0 and d["error_count"] == 2
+    assert d["imported"] == 0
+    assert d["error_count"] == 2
     assert all("already on this test's roster" in " ".join(e["issues"]) or "already in use" in " ".join(e["issues"])
                for e in d["errors"])
     assert roster(c, test_id)["total"] == 2
@@ -136,7 +146,9 @@ def test_reimporting_the_same_file_does_not_duplicate(app, admin):
 def test_dry_run_saves_nothing(app, admin):
     c, test_id, _, _ = admin
     d = upload(c, test_id, GOOD, dry_run=True).get_json()["data"]
-    assert d["dry_run"] is True and d["would_import"] == 2 and d["roster_total"] == 0
+    assert d["dry_run"] is True
+    assert d["would_import"] == 2
+    assert d["roster_total"] == 0
     assert roster(c, test_id)["total"] == 0
 
 
@@ -174,14 +186,16 @@ def test_bad_files_are_refused_clearly(app, admin):
     r = upload(c, test_id, "x", filename="roster.xlsx")
     assert r.status_code == 415
     r = upload(c, test_id, "   ")
-    assert r.status_code == 422 and r.get_json()["error"]["code"] == "EMPTY_FILE"
+    assert r.status_code == 422
+    assert r.get_json()["error"]["code"] == "EMPTY_FILE"
     r = upload(c, test_id, "name,email\nA,a@b.co\n")
     assert r.get_json()["error"]["code"] == "CSV_MISSING_COLUMNS"
     assert "roll number" in r.get_json()["error"]["details"]["columns"]
     r = upload(c, test_id, HEADER)
     assert r.get_json()["error"]["code"] == "EMPTY_FILE"
     r = c.post("/api/v1/roster/import", data={"test_id": str(test_id)}, content_type="multipart/form-data")
-    assert r.status_code == 422 and "file" in r.get_json()["error"]["details"]
+    assert r.status_code == 422
+    assert "file" in r.get_json()["error"]["details"]
 
 
 def test_one_field_test_needs_no_field_column(app):
@@ -199,13 +213,16 @@ def test_one_field_test_needs_no_field_column(app):
 def test_template_and_export_csv(app, admin):
     c, test_id, _, _ = admin
     r = c.get("/api/v1/roster/template.csv")
-    assert r.status_code == 200 and r.mimetype == "text/csv"
+    assert r.status_code == 200
+    assert r.mimetype == "text/csv"
     assert r.get_data(as_text=True).lstrip("﻿").startswith("name,email,roll number,access code,date of birth,field")
     upload(c, test_id, GOOD)
     r = c.get(f"/api/v1/roster/export.csv?test_id={test_id}")
     body = r.get_data(as_text=True)
-    assert r.status_code == 200 and "attachment" in r.headers["Content-Disposition"]
-    assert "NED7-Q4K2" in body and "Sana Fatima" in body
+    assert r.status_code == 200
+    assert "attachment" in r.headers["Content-Disposition"]
+    assert "NED7-Q4K2" in body
+    assert "Sana Fatima" in body
 
 
 # ---------------------------------------------------------------- list, add, correct, new code, delete
@@ -213,7 +230,8 @@ def test_list_search_filter_and_summary(app, admin):
     c, test_id, eng, med = admin
     upload(c, test_id, GOOD)
     d = roster(c, test_id)
-    assert d["summary"]["total"] == 2 and d["summary"]["logged_in"] == 0
+    assert d["summary"]["total"] == 2
+    assert d["summary"]["logged_in"] == 0
     assert {x["name"]: x["count"] for x in d["summary"]["by_department"]} == {"Pre-Engineering": 1, "Pre-Medical": 1}
     assert [x["full_name"] for x in roster(c, test_id, q="sana")["items"]] == ["Sana Fatima"]
     assert [x["full_name"] for x in roster(c, test_id, q="PE-0")["items"]] == ["Ahmed Raza"]
@@ -229,15 +247,18 @@ def test_add_and_correct_a_candidate(app, admin):
     cand = r.get_json()["data"]["candidate"]
     r = c.post("/api/v1/roster", json={"test_id": test_id, "full_name": "Dup", "email": "d@mail.com",
                                        "roll_number": "pe-050", "date_of_birth": "2008-05-05", "department_id": 99999})
-    assert r.status_code == 422 and {"roll_number", "department_id"} <= set(r.get_json()["error"]["details"])
+    assert r.status_code == 422
+    assert {"roll_number", "department_id"} <= set(r.get_json()["error"]["details"])
 
     r = c.put(f"/api/v1/roster/{cand['id']}", json={"full_name": "Late Entry Fixed", "email": "late@mail.com",
                                                      "roll_number": "PE-050", "date_of_birth": "14/03/2008",
                                                      "department_id": med, "access_code": "HACKED99"})
     assert r.status_code == 200, r.get_json()
     fixed = r.get_json()["data"]["candidate"]
-    assert fixed["full_name"] == "Late Entry Fixed" and fixed["department"]["id"] == med
-    assert fixed["date_of_birth"] == "2008-03-14" and fixed["access_code"] == cand["access_code"]  # code not editable here
+    assert fixed["full_name"] == "Late Entry Fixed"
+    assert fixed["department"]["id"] == med
+    assert fixed["date_of_birth"] == "2008-03-14"
+    assert fixed["access_code"] == cand["access_code"]  # code not editable here
 
 
 def test_delete_candidate(app, admin):
@@ -255,15 +276,21 @@ def test_imported_candidate_can_log_in_and_a_wrong_code_is_refused(app, admin):
     r = cand_login(app, "ned7-q4k2", "2007-07-02")          # lower case, with the dash: same code
     assert r.status_code == 200, r.get_json()
     cand = r.get_json()["data"]["candidate"]
-    assert cand["full_name"] == "Sana Fatima" and cand["department"]["id"] == med
-    assert cand["test"]["id"] == test_id and cand["test"]["schedule"]["timing_mode"] == "fixed"
-    assert cand["test"]["subjects"] == ["Biology"] and cand["test"]["question_count"] == 2
-    assert "access_code" not in cand and "date_of_birth" not in cand
+    assert cand["full_name"] == "Sana Fatima"
+    assert cand["department"]["id"] == med
+    assert cand["test"]["id"] == test_id
+    assert cand["test"]["schedule"]["timing_mode"] == "fixed"
+    assert cand["test"]["subjects"] == ["Biology"]
+    assert cand["test"]["question_count"] == 2
+    assert "access_code" not in cand
+    assert "date_of_birth" not in cand
 
     r = cand_login(app, "WRNG-CODE", "2007-07-02")
-    assert r.status_code == 401 and r.get_json()["error"]["code"] == "INVALID_ACCESS_CODE"
+    assert r.status_code == 401
+    assert r.get_json()["error"]["code"] == "INVALID_ACCESS_CODE"
     r = cand_login(app, "NED7Q4K2", "2007-02-07")            # right code, wrong date of birth: same message
-    assert r.status_code == 401 and r.get_json()["error"]["code"] == "INVALID_ACCESS_CODE"
+    assert r.status_code == 401
+    assert r.get_json()["error"]["code"] == "INVALID_ACCESS_CODE"
     assert roster(c, test_id, q="Sana")["items"][0]["login_count"] == 1
 
 
@@ -274,7 +301,8 @@ def test_candidate_session_and_logout(app, admin):
     assert cc.get("/api/v1/candidate/me").status_code == 401
     assert cc.post("/api/v1/candidate/login", json={"access_code": "NED7Q4K2", "date_of_birth": "2007-07-02"}).status_code == 200
     me = cc.get("/api/v1/candidate/me")
-    assert me.status_code == 200 and me.get_json()["data"]["candidate"]["roll_number"] == "PM-001"
+    assert me.status_code == 200
+    assert me.get_json()["data"]["candidate"]["roll_number"] == "PM-001"
     cc.post("/api/v1/candidate/logout")
     assert cc.get("/api/v1/candidate/me").status_code == 401
 
@@ -298,11 +326,13 @@ def test_validation_and_lockout_after_too_many_wrong_tries(app, admin):
     c, test_id, _, _ = admin
     upload(c, test_id, GOOD)
     r = cand_login(app, "", "")
-    assert r.status_code == 422 and {"access_code", "date_of_birth"} <= set(r.get_json()["error"]["details"])
+    assert r.status_code == 422
+    assert {"access_code", "date_of_birth"} <= set(r.get_json()["error"]["details"])
     for _ in range(app.config["CANDIDATE_LOGIN_MAX_FAILS"]):
         assert cand_login(app, "NED7Q4K2", "2000-01-01").status_code == 401
     r = cand_login(app, "NED7Q4K2", "2007-07-02")           # even the right date is refused while locked
-    assert r.status_code == 429 and r.get_json()["error"]["code"] == "TOO_MANY_ATTEMPTS"
+    assert r.status_code == 429
+    assert r.get_json()["error"]["code"] == "TOO_MANY_ATTEMPTS"
     # other candidates in the same hall (same address) are not locked out by one person's typos
     ahmed = roster(c, test_id, q="Ahmed")["items"][0]
     assert cand_login(app, ahmed["access_code"], "2008-03-14").status_code == 200
@@ -339,14 +369,16 @@ def test_suspended_institution_and_ended_test_refuse_login(app, admin):
         db.session.get(Institution, inst).status = "suspended"
         db.session.commit()
     r = cand_login(app, "NED7Q4K2", "2007-07-02")
-    assert r.status_code == 403 and r.get_json()["error"]["code"] == "INSTITUTION_NOT_ACTIVE"
+    assert r.status_code == 403
+    assert r.get_json()["error"]["code"] == "INSTITUTION_NOT_ACTIVE"
     with app.app_context():
         db.session.get(Institution, inst).status = "approved"
         sched = db.session.get(AptitudeTest, test_id).schedule
         sched.starts_at, sched.ends_at = datetime(2020, 1, 1, 9), datetime(2020, 1, 1, 11)
         db.session.commit()
     r = cand_login(app, "NED7Q4K2", "2007-07-02")
-    assert r.status_code == 403 and r.get_json()["error"]["code"] == "TEST_CLOSED"
+    assert r.status_code == 403
+    assert r.get_json()["error"]["code"] == "TEST_CLOSED"
 
 
 def test_access_codes_are_random_and_readable(app, admin):

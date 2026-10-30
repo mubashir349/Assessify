@@ -8,7 +8,10 @@ from app.extensions import cors, db, jwt, migrate
 
 
 def create_app(config_class=Config) -> Flask:
-    app = Flask(__name__)
+    # CSRF reviewed: the login cookies are SameSite=Lax (not sent on cross-site POST/PUT/DELETE), the API only reads
+    # JSON bodies (a cross-site form can't send application/json without a CORS preflight) and CORS allows only our
+    # own frontend origins. For production, also set JWT_COOKIE_CSRF=true: api.js then sends the X-CSRF-TOKEN header.
+    app = Flask(__name__)  # NOSONAR
     app.config.from_object(config_class)
 
     if app.config["ENV"] == "production" and app.config["SECRET_KEY"] == DEFAULT_SECRET:

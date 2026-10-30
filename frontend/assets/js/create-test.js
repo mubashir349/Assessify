@@ -51,15 +51,24 @@ async function refreshAvailability() {
   } catch (e) {
     if (seq !== availSeq) return;
     if (e.status === 401) return handleApiError(e);
-    state.avail = null; state.availError = (e.details && e.details.compositions) || e.message;
+    state.avail = null; state.availError = e.details?.compositions || e.message;
   }
   rerender();
 }
 function rowStatus(deptId, row) {
-  const hit = state.avail && state.avail.rows.find(r => rowKey(r.department_id, r) === rowKey(deptId, row));
+  const hit = state.avail?.rows.find(r => rowKey(r.department_id, r) === rowKey(deptId, row));
   return hit || { needed: Math.ceil(row.count * META.pool_factor), pool: null, short: 0, sufficient: null };
 }
-function rerender() { if (currentStep === 2) renderStep2(); if (currentStep === 4) renderStep4(); }
+function rerender() {
+  if (currentStep === 2) { renderStep2(); }
+  if (currentStep === 4) { renderStep4(); }
+}
+/** "Checking…" / "Sufficient" / "Short by N" for one composition row. */
+function availBadge(st) {
+  if (st.sufficient === null) return '<span class="muted">Checking…</span>';
+  if (st.sufficient) return '<span class="badge badge-approved">Sufficient</span>';
+  return `<span class="badge badge-draft">Short by ${st.short}</span>`;
+}
 
 // ---- Step 1: level, then fields / departments ----
 function defaultName() { return `${state.level} Admission Test`; }
@@ -112,8 +121,7 @@ function renderStep2() {
 }
 function renderCompRow(id, d, row) {
   const st = rowStatus(id, row);
-  const badge = st.sufficient === null ? '<span class="muted">Checking…</span>'
-    : st.sufficient ? '<span class="badge badge-approved">Sufficient</span>' : `<span class="badge badge-draft">Short by ${st.short}</span>`;
+  const badge = availBadge(st);
   const opts = (list, cur) => list.map(o => `<option value="${esc(o.value)}" ${o.value === cur ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
   return `<div class="comp-row">
     <select class="a-select" onchange="updateRow(${id},${row.id},'subject',this.value)">${opts(d.subjects.map(s => ({ value: s, label: s })), row.subject)}</select>
@@ -185,8 +193,7 @@ function renderStep4() {
     const rows = state.compositions[id] || [];
     const rowsHtml = rows.map(row => {
       const st = rowStatus(id, row);
-      const statusHtml = st.sufficient === null ? '<span class="muted">Checking…</span>'
-        : st.sufficient ? '<span class="badge badge-approved">Sufficient</span>' : `<span class="badge badge-draft">Short by ${st.short}</span>`;
+      const statusHtml = availBadge(st);
       return `<tr><td>${esc(row.subject)}</td><td>${esc(label(META.question_types, row.question_type))}</td><td>${esc(label(META.row_difficulties, row.difficulty))}</td><td>${row.count}</td><td>${st.pool ?? '…'} / ${st.needed}</td><td>${statusHtml}</td></tr>`;
     }).join('');
     return `
@@ -208,9 +215,10 @@ function renderStep4() {
     <div>Time limit: <b style="color:#fff;">${sc.limit} minutes</b></div>
     <div>Date: <b style="color:#fff;">${esc(sc.date)}</b></div>
     <div>Window: <b style="color:#fff;">${fmt12(sc.start)} – ${fmt12(sc.end)}</b></div>`;
-  $('reviewRelease').innerHTML = `<div>${state.release.mode === 'immediate'
+  const releaseText = state.release.mode === 'immediate'
     ? 'Score shown immediately on submission'
-    : `Scheduled email on <b style="color:#fff;">${esc($('releaseDate').value)}</b>`}</div>`;
+    : `Scheduled email on <b style="color:#fff;">${esc($('releaseDate').value)}</b>`;
+  $('reviewRelease').innerHTML = `<div>${releaseText}</div>`;
 
   const shortfalls = state.avail ? state.avail.shortfalls : [];
   const btn = $('publishBtn'), title = $('publishTitle'), sub = $('publishSub');
@@ -275,8 +283,9 @@ function renderStep() {
   if (currentStep === 4) nextBtn.style.display = 'none';
   else { nextBtn.style.display = 'inline-flex'; nextBtn.innerHTML = STEP_LABELS[currentStep]; }
   if (currentStep === 1) renderStep1();
-  if (currentStep === 2) { renderStep2(); refreshAvailability(); }
-  if (currentStep === 4) { renderStep4(); refreshAvailability(); }
+  // refreshAvailability never rejects: it shows its own errors
+  if (currentStep === 2) { renderStep2(); void refreshAvailability(); }
+  if (currentStep === 4) { renderStep4(); void refreshAvailability(); }
 }
 function validateStep(step) {
   if (step === 1) {
@@ -293,7 +302,7 @@ function validateStep(step) {
     if (!$('testDate').value) { aToast('Set the test date.', '⚠'); return false; }
     const sc = getSchedule();
     if (toMin(sc.end) <= toMin(sc.start)) { aToast('End time must be after the start time.', '⚠'); return false; }
-    if (sc.mode === 'flex' && !(sc.limit > 0)) { aToast('Set a time limit.', '⚠'); return false; }
+    if (sc.mode === 'flex' && (!sc.limit || sc.limit <= 0)) { aToast('Set a time limit.', '⚠'); return false; }
     if (sc.mode === 'flex' && sc.limit > toMin(sc.end) - toMin(sc.start)) { aToast('The time limit is longer than the window.', '⚠'); return false; }
     if (new Date(`${sc.date}T${sc.start}`) <= new Date()) { aToast('The start time has already passed.', '⚠'); return false; }
     if (state.release.mode === 'scheduled' && !$('releaseDate').value) { aToast('Set the result release date.', '⚠'); return false; }

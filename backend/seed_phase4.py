@@ -20,8 +20,8 @@ PLAN = {"Mathematics": 15, "Physics": 4}
 
 
 def add_approved(user: User, dept: Department, subject: str, n: int) -> None:
-    common = dict(institution_id=dept.institution_id, department_id=dept.id, department_name=dept.name,
-                  level=dept.level, subject_name=subject, question_type="mcq", difficulty="medium")
+    common = {"institution_id": dept.institution_id, "department_id": dept.id, "department_name": dept.name,
+              "level": dept.level, "subject_name": subject, "question_type": "mcq", "difficulty": "medium"}
     attempt = GenerationAttempt(created_by_id=user.id, requested_count=n, source_kind="description",
                                 source_filename="seed_phase4.py", source_sha256="0" * 64,
                                 source_text="Phase 4 demo seed", status="completed", generated_count=n,

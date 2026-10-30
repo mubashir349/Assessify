@@ -15,16 +15,29 @@ class ApiRequestError extends Error {
   }
 }
 
+/** Value of a readable (non-httpOnly) cookie, or ''. */
+function readCookie(name) {
+  const hit = document.cookie.split('; ').find(c => c.startsWith(name + '='));
+  return hit ? decodeURIComponent(hit.slice(name.length + 1)) : '';
+}
+
 async function api(path, { method = 'GET', body } = {}) {
   let res;
   // FormData (file uploads) is sent as-is: the browser sets the multipart Content-Type + boundary itself.
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+  const headers = {};
+  let payload;
+  if (isForm) payload = body;
+  else if (body !== undefined) { headers['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
+  // CSRF double-submit: only present when the server turns it on (JWT_COOKIE_CSRF=true in production).
+  const csrf = method === 'GET' ? '' : readCookie('csrf_access_token');
+  if (csrf) headers['X-CSRF-TOKEN'] = csrf;
   try {
     res = await fetch(API_BASE + path, {
       method,
       credentials: 'include',                       // sends / receives the httpOnly login cookie
-      headers: body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {},
-      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+      headers,
+      body: payload,
     });
   } catch (e) {
     throw new ApiRequestError('NETWORK_ERROR', 'Cannot reach the server. Is the backend running?', 0);
@@ -32,7 +45,7 @@ async function api(path, { method = 'GET', body } = {}) {
   let json = null;
   try { json = await res.json(); } catch (e) { /* empty or non-JSON body */ }
   if (!res.ok) {
-    const err = (json && json.error) || {};
+    const err = json?.error || {};
     throw new ApiRequestError(err.code || 'HTTP_' + res.status, err.message || 'Request failed (' + res.status + ').', res.status, err.details);
   }
   return json ? json.data : null;
@@ -60,7 +73,7 @@ function fillSelect(select, items, { keepFirst = false } = {}) {
 
 /** Shared error handling for admin pages: expired session -> login page, otherwise a toast with the server's message. */
 function handleApiError(e, fallbackIcon = '⚠') {
-  if (e && e.status === 401) { window.location.replace('../institution-login.html'); return; }
-  const field = e && e.details && Object.values(e.details).find(v => typeof v === 'string');
-  if (typeof aToast === 'function') aToast(esc(field || (e && e.message) || 'Something went wrong.'), fallbackIcon);
+  if (e?.status === 401) { window.location.replace('../institution-login.html'); return; }
+  const field = e?.details && Object.values(e.details).find(v => typeof v === 'string');
+  if (typeof aToast === 'function') aToast(esc(field || e?.message || 'Something went wrong.'), fallbackIcon);
 }

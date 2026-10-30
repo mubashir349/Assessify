@@ -57,8 +57,8 @@ CANDIDATES = {
 def add_real_maths(user: User, dept: Department) -> None:
     if GenerationAttempt.query.filter_by(department_id=dept.id, provider="seed6").first():
         return
-    common = dict(institution_id=dept.institution_id, department_id=dept.id, department_name=dept.name,
-                  level=dept.level, subject_name="Mathematics", question_type="mcq", difficulty="easy")
+    common = {"institution_id": dept.institution_id, "department_id": dept.id, "department_name": dept.name,
+              "level": dept.level, "subject_name": "Mathematics", "question_type": "mcq", "difficulty": "easy"}
     att = GenerationAttempt(created_by_id=user.id, requested_count=len(MATHS), source_kind="description",
                             source_filename="seed_phase6.py", source_sha256="0" * 64, source_text="Phase 6 demo seed",
                             status="completed", generated_count=len(MATHS), provider="seed6", **common)
@@ -125,7 +125,10 @@ def main() -> int:
         for test in (live, short, early):
             reset_roster(test, dept, CANDIDATES[test.name])
         db.session.commit()
-        pk = lambda d: (d + timedelta(hours=5)).strftime("%H:%M")   # noqa: E731  (Pakistan time, for the printout)
+
+        def pk(d):   # Pakistan time, for the printout
+            return (d + timedelta(hours=5)).strftime("%H:%M")
+
         print(f'"{LIVE}": fixed, {pk(live.schedule.starts_at)}-{pk(live.schedule.ends_at)} Pakistan time '
               f"(started 15 min ago). Codes LIVE-0001 (DOB 2007-05-01), LIVE-0002 (DOB 2007-08-15).")
         print(f'"{SHORT}": ends at {pk(short.schedule.ends_at)} Pakistan time (3 minutes). Codes SHRT-0001 (DOB 2007-09-09), '
