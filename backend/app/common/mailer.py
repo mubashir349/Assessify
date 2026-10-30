@@ -28,6 +28,18 @@ def mail_ready(config) -> tuple[bool, str]:
     return True, f"Emails are sent through {config['MAIL_SERVER']}."
 
 
+def _connect(cfg) -> smtplib.SMTP:
+    """Always encrypted, with the server certificate checked: port 465 = SSL from the start, any other port =
+    STARTTLS. The password never travels in clear text."""
+    context = ssl.create_default_context()
+    host, port, timeout = cfg["MAIL_SERVER"], int(cfg["MAIL_PORT"]), cfg["MAIL_TIMEOUT_SECONDS"]
+    if port == 465:
+        return smtplib.SMTP_SSL(host, port, timeout=timeout, context=context)
+    smtp = smtplib.SMTP(host, port, timeout=timeout)
+    smtp.starttls(context=context)
+    return smtp
+
+
 def send_mail(to: str, subject: str, body: str) -> str:
     cfg = current_app.config
     ready, why = mail_ready(cfg)
@@ -43,11 +55,10 @@ def send_mail(to: str, subject: str, body: str) -> str:
     msg["Subject"] = subject
     msg.set_content(body)
     try:
-        with smtplib.SMTP(cfg["MAIL_SERVER"], cfg["MAIL_PORT"], timeout=cfg["MAIL_TIMEOUT_SECONDS"]) as smtp:
-            if cfg.get("MAIL_USE_TLS"):
-                smtp.starttls(context=ssl.create_default_context())
-            if cfg.get("MAIL_USERNAME"):
-                smtp.login(cfg["MAIL_USERNAME"], cfg.get("MAIL_PASSWORD", ""))
+        with _connect(cfg) as smtp:
+            username, password = cfg.get("MAIL_USERNAME"), cfg.get("MAIL_PASSWORD")
+            if username and password:
+                smtp.login(username, password)
             smtp.send_message(msg)
     except smtplib.SMTPAuthenticationError:
         raise MailError("The mail server refused the username / password.")

@@ -84,7 +84,6 @@ class Config:
     MAIL_BACKEND = os.getenv("MAIL_BACKEND", "console").strip().lower()
     MAIL_SERVER = os.getenv("MAIL_SERVER", "").strip()          # e.g. smtp.gmail.com
     MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
-    MAIL_USE_TLS = _flag("MAIL_USE_TLS", "true")                # STARTTLS on port 587
     MAIL_USERNAME = os.getenv("MAIL_USERNAME", "").strip()
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
     MAIL_FROM = os.getenv("MAIL_FROM", "").strip()              # empty -> MAIL_USERNAME
