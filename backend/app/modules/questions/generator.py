@@ -110,43 +110,75 @@ def _salvage_objects(s: str) -> list:
     start = s.find("[", s.find('"questions"')) if '"questions"' in s else s.find("[")
     if start < 0:
         return []
-    items, depth, begin, in_str, esc = [], 0, None, False, False
-    for i in range(start + 1, len(s)):
-        ch = s[i]
-        if in_str:
-            if esc:
-                esc = False
-            elif ch == "\\":
-                esc = True
-            elif ch == '"':
-                in_str = False
+    items = []
+    for begin, end in _object_spans(s, start + 1):
+        try:
+            obj = _loads(s[begin:end + 1])
+        except ValueError:
             continue
-        if ch == '"':
-            in_str = True
-        elif ch == "{":
+        if isinstance(obj, dict):
+            items.append(obj)
+    return items
+
+
+def _outside_strings(s: str, pos: int):
+    """Yields (index, char) for every character from pos on that is not inside a "..." JSON string."""
+    in_str = esc = False
+    for i in range(pos, len(s)):
+        ch = s[i]
+        if esc:
+            esc = False
+        elif in_str and ch == "\\":
+            esc = True
+        elif ch == '"':
+            in_str = not in_str
+        elif not in_str:
+            yield i, ch
+
+
+def _object_spans(s: str, pos: int):
+    """Yields (begin, end) of each top-level {...} object until the list's closing ]."""
+    depth, begin = 0, 0
+    for i, ch in _outside_strings(s, pos):
+        if ch == "{":
             if depth == 0:
                 begin = i
             depth += 1
         elif ch == "}" and depth:
             depth -= 1
-            if depth == 0 and begin is not None:
-                try:
-                    obj = _loads(s[begin:i + 1])
-                    if isinstance(obj, dict):
-                        items.append(obj)
-                except ValueError:
-                    pass
-                begin = None
+            if depth == 0:
+                yield begin, i
         elif ch == "]" and depth == 0:
-            break
-    return items
+            return
+
+
+def _strip_fences(s: str, lang: re.Pattern) -> str:
+    """Removes a leading ```lang and a trailing ``` (plain string checks, no backtracking regex)."""
+    if s.startswith("```"):
+        s = lang.sub("", s[3:], count=1).lstrip()
+    if s.endswith("```"):
+        s = s[:-3].rstrip()
+    return s
+
+
+_JSON_LANG = re.compile(r"^(?:json)?", re.IGNORECASE)
+_ANY_LANG = re.compile(r"^[a-z]*")
+
+
+def _questions_from(data) -> list | None:
+    if isinstance(data, dict) and isinstance(data.get("questions"), list):
+        return data["questions"]
+    if isinstance(data, dict) and ("question" in data or "text" in data):
+        return [data]                       # a single question object
+    if isinstance(data, list):
+        return data
+    return None
 
 
 def parse_items(raw: str) -> list:
     """Find the questions list in the model's answer. Tolerates ```json fences, text around the JSON, LaTeX
     backslashes, line breaks inside strings, trailing commas, and answers that were cut off (complete items kept)."""
-    s = raw.strip()
-    s = re.sub(r"^```(?:json)?\s*|\s*```$", "", s, flags=re.IGNORECASE).strip()
+    s = _strip_fences(raw.strip(), _JSON_LANG).strip()
     candidates = [s]
     if "{" in s and "}" in s:
         candidates.append(s[s.find("{"): s.rfind("}") + 1])
@@ -154,15 +186,11 @@ def parse_items(raw: str) -> list:
         candidates.append(s[s.find("["): s.rfind("]") + 1])
     for c in candidates:
         try:
-            data = _loads(c)
+            found = _questions_from(_loads(c))
         except ValueError:
             continue
-        if isinstance(data, dict) and isinstance(data.get("questions"), list):
-            return data["questions"]
-        if isinstance(data, dict) and ("question" in data or "text" in data):
-            return [data]                       # a single question object
-        if isinstance(data, list):
-            return data
+        if found is not None:
+            return found
     salvaged = _salvage_objects(s)
     if salvaged:
         log.info("AI answer was not complete JSON; kept %s complete question(s) from it", len(salvaged))
@@ -222,7 +250,7 @@ def transcribe_pages(provider: AIProvider, pages: list[tuple[int, bytes]], *, ma
               "Output only the transcription.")
     images = [img for _, img in pages]
     raw = _with_retries(lambda: provider.complete(OCR_SYSTEM_PROMPT, prompt, images=images), max_retries)
-    return re.sub(r"^```[a-z]*\s*|\s*```$", "", raw.strip())
+    return _strip_fences(raw.strip(), _ANY_LANG)
 
 
 def split_chunks(text: str, size: int) -> list[str]:
@@ -250,7 +278,8 @@ def plan_batches(count: int, n_chunks: int, batch_size: int, max_requests: int) 
     Questions are spread evenly from the beginning to the end of the document (first and last part included)."""
     k = max(1, min(n_chunks, count, max_requests))
     if k == 1:
-        picks = [random.randrange(n_chunks)] if n_chunks > 1 else [0]   # e.g. regenerating one question
+        # Not security related: only picks which part of the document to ask about.
+        picks = [random.randrange(n_chunks)] if n_chunks > 1 else [0]   # NOSONAR
     else:
         picks = [round(i * (n_chunks - 1) / (k - 1)) for i in range(k)]
     base, extra = divmod(count, k)
@@ -271,7 +300,8 @@ def generate(provider: AIProvider, p: Params, *, batch_size: int, max_retries: i
     seen = {normalised_key(a) for a in p.avoid}
     chunks = split_chunks(p.source_text, chunk_size) if p.mode == "pdf" else [p.source_text]
     plan = plan_batches(p.count, len(chunks), batch_size, max_requests)
-    plan.append((random.randrange(len(chunks)), 0))   # one top-up request if some answers were unusable
+    # one top-up request if some answers were unusable (random part of the document only, not security related)
+    plan.append((random.randrange(len(chunks)), 0))   # NOSONAR
     error = None
 
     for part, wanted in plan:
@@ -286,23 +316,30 @@ def generate(provider: AIProvider, p: Params, *, batch_size: int, max_retries: i
         except AIError as exc:
             error = exc
             break
-        gained = 0
-        for item in items[:n]:
-            try:
-                q = clean_question(item, p.question_type, from_ai=True)
-            except QuestionInvalid:
-                discarded += 1
-                continue
-            key = normalised_key(q["text"])
-            if key in seen:
-                discarded += 1
-                continue
-            seen.add(key)
-            valid.append(q)
-            gained += 1
+        gained, dropped = _keep_new(items[:n], p.question_type, seen, valid)
+        discarded += dropped
         discarded += max(0, len(items) - n)
         if gained == 0:      # this request produced nothing usable - stop instead of spending more quota
             if error is None and not valid:
                 error = ai_errors.bad_response("no valid questions")
             break
     return Outcome(valid[:p.count], discarded, error)
+
+
+def _keep_new(items: list, question_type: str, seen: set, valid: list) -> tuple[int, int]:
+    """Cleans each AI item and appends the valid, not-yet-seen ones to `valid`. Returns (kept, discarded)."""
+    gained = discarded = 0
+    for item in items:
+        try:
+            q = clean_question(item, question_type, from_ai=True)
+        except QuestionInvalid:
+            discarded += 1
+            continue
+        key = normalised_key(q["text"])
+        if key in seen:
+            discarded += 1
+            continue
+        seen.add(key)
+        valid.append(q)
+        gained += 1
+    return gained, discarded

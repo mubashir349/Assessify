@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     admin_name: 'adminName', admin_email: 'adminEmail', admin_phone: 'adminPhone', admin_designation: 'adminRole', password: 'pw1' };
 
   function showErr(msg) { ok.style.display = 'none'; err.textContent = msg; err.style.display = 'block'; err.scrollIntoView({ block: 'nearest' }); }
-  const mark = ids => ids.forEach(id => $(id) && $(id).classList.add('invalid'));
+  const mark = ids => ids.forEach(id => $(id)?.classList.add('invalid'));
 
   // Institution types come from the backend
   loadMeta().then(m => { const sel = $('instType'); sel.insertAdjacentHTML('beforeend', m.institution_types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')); })
@@ -33,7 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Password strength meter
   $('pw1').addEventListener('input', e => {
     const x = e.target.value; let sc = 0;
-    if (x.length >= 8) sc++; if (x.length >= 12) sc++; if (/[A-Z]/.test(x) && /[a-z]/.test(x)) sc++; if (/\d/.test(x) && /[^A-Za-z0-9]/.test(x)) sc++;
+    if (x.length >= 8) { sc++; }
+    if (x.length >= 12) { sc++; }
+    if (/[A-Z]/.test(x) && /[a-z]/.test(x)) { sc++; }
+    if (/\d/.test(x) && /[^A-Za-z0-9]/.test(x)) { sc++; }
     $('pwMeter').className = 'pw-meter' + (x ? ' s' + Math.max(1, sc) : '');
     $('pwLabel').textContent = x ? ['', 'Weak', 'Fair', 'Good', 'Strong'][Math.max(1, sc)] : '';
   });

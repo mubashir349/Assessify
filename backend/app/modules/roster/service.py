@@ -176,60 +176,77 @@ def clean_fields(test: AptitudeTest, raw: dict, *, department=None, candidate: C
     name). Returns (clean, errors) with errors = {field: message}. Checks against the saved roster, not the file."""
     errors, clean = {}, {}
 
-    name = " ".join(str(raw.get("full_name") or "").split())
-    if not name:
-        errors["full_name"] = "Name is required."
-    elif not 2 <= len(name) <= 150:
-        errors["full_name"] = "Name must be 2-150 characters."
-    clean["full_name"] = name
+    def keep(field_name, value, error):
+        clean[field_name] = value
+        if error:
+            errors[field_name] = error
 
-    email = str(raw.get("email") or "").strip().lower()
-    if not email:
-        errors["email"] = "Email is required."
-    elif len(email) > 255 or not EMAIL_RE.match(email):
-        errors["email"] = f'Email "{email}" is not valid.'
-    clean["email"] = email
-
-    roll = str(raw.get("roll_number") or "").strip()
-    if not roll:
-        errors["roll_number"] = "Roll number is required."
-    elif len(roll) > 50:
-        errors["roll_number"] = "Roll number must be at most 50 characters."
-    else:
-        q = Candidate.query.filter(Candidate.test_id == test.id, func.lower(Candidate.roll_number) == roll.lower())
-        if candidate is not None:
-            q = q.filter(Candidate.id != candidate.id)
-        if q.first() is not None:
-            errors["roll_number"] = f"Roll number {roll} is already on this test's roster."
-    clean["roll_number"] = roll
-
-    dob_raw = str(raw.get("date_of_birth") or "").strip()
-    dob = parse_dob(dob_raw)
-    if not dob_raw:
-        errors["date_of_birth"] = "Date of birth is required."
-    elif dob is None:
-        errors["date_of_birth"] = f'Date of birth "{dob_raw}" is not a date (use YYYY-MM-DD or DD/MM/YYYY).'
-    elif dob.year < 1900 or dob >= date.today():
-        errors["date_of_birth"] = f'Date of birth "{dob_raw}" is not realistic.'
-    clean["date_of_birth"] = dob
-
+    keep("full_name", *_clean_name(raw))
+    keep("email", *_clean_email(raw))
+    keep("roll_number", *_clean_roll(test, raw, candidate))
+    keep("date_of_birth", *_clean_dob(raw))
     if department is None:
         department, msg = _match_department(test, raw.get("department"))
         if msg:
             errors["department"] = msg
     clean["department"] = department
-
-    code_raw = raw.get("access_code")
-    if code_raw is not None and str(code_raw).strip():
-        code = canonical_code(code_raw)
-        if not CODE_MIN_LEN <= len(code) <= CODE_MAX_LEN:
-            errors["access_code"] = f"Access code must be {CODE_MIN_LEN}-{CODE_MAX_LEN} letters or digits."
-        elif _code_taken(code):
-            errors["access_code"] = f"Access code {str(code_raw).strip()} is already in use. Leave it empty to get one generated."
-        clean["access_code"] = code
-    else:
-        clean["access_code"] = None
+    keep("access_code", *_clean_code(raw.get("access_code")))
     return clean, errors
+
+
+def _clean_name(raw: dict) -> tuple:
+    name = " ".join(str(raw.get("full_name") or "").split())
+    if not name:
+        return name, "Name is required."
+    if not 2 <= len(name) <= 150:
+        return name, "Name must be 2-150 characters."
+    return name, None
+
+
+def _clean_email(raw: dict) -> tuple:
+    email = str(raw.get("email") or "").strip().lower()
+    if not email:
+        return email, "Email is required."
+    if len(email) > 255 or not EMAIL_RE.match(email):
+        return email, f'Email "{email}" is not valid.'
+    return email, None
+
+
+def _clean_roll(test: AptitudeTest, raw: dict, candidate: Candidate | None) -> tuple:
+    roll = str(raw.get("roll_number") or "").strip()
+    if not roll:
+        return roll, "Roll number is required."
+    if len(roll) > 50:
+        return roll, "Roll number must be at most 50 characters."
+    q = Candidate.query.filter(Candidate.test_id == test.id, func.lower(Candidate.roll_number) == roll.lower())
+    if candidate is not None:
+        q = q.filter(Candidate.id != candidate.id)
+    if q.first() is not None:
+        return roll, f"Roll number {roll} is already on this test's roster."
+    return roll, None
+
+
+def _clean_dob(raw: dict) -> tuple:
+    dob_raw = str(raw.get("date_of_birth") or "").strip()
+    dob = parse_dob(dob_raw)
+    if not dob_raw:
+        return dob, "Date of birth is required."
+    if dob is None:
+        return dob, f'Date of birth "{dob_raw}" is not a date (use YYYY-MM-DD or DD/MM/YYYY).'
+    if dob.year < 1900 or dob >= date.today():
+        return dob, f'Date of birth "{dob_raw}" is not realistic.'
+    return dob, None
+
+
+def _clean_code(code_raw) -> tuple:
+    if code_raw is None or not str(code_raw).strip():
+        return None, None
+    code = canonical_code(code_raw)
+    if not CODE_MIN_LEN <= len(code) <= CODE_MAX_LEN:
+        return code, f"Access code must be {CODE_MIN_LEN}-{CODE_MAX_LEN} letters or digits."
+    if _code_taken(code):
+        return code, f"Access code {str(code_raw).strip()} is already in use. Leave it empty to get one generated."
+    return code, None
 
 
 def _new_candidate(test: AptitudeTest, clean: dict, code: str, generated: bool) -> Candidate:
@@ -262,38 +279,13 @@ def _decode(data: bytes) -> str:
 
 def read_csv(file_storage, test: AptitudeTest) -> list[tuple[int, dict]]:
     """Uploaded CSV -> [(row number as Excel shows it, {column: value})]. Raises clear errors for a bad file."""
-    if file_storage is None or not file_storage.filename:
-        raise ApiError("VALIDATION_ERROR", "Choose a CSV file.", 422, {"file": "Choose a CSV file."})
-    name = file_storage.filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
-    if not name.lower().endswith((".csv", ".txt")):
-        raise ApiError("UNSUPPORTED_FILE_TYPE", "Upload a .csv file (in Excel: File → Save As → CSV UTF-8).", 415,
-                       {"file": "Upload a .csv file."})
-    data = file_storage.read(MAX_CSV_BYTES + 1)
-    if len(data) > MAX_CSV_BYTES:
-        raise ApiError("FILE_TOO_LARGE", f"The CSV is larger than {MAX_CSV_BYTES // (1024 * 1024)} MB.", 413,
-                       {"file": "File is too large."})
-    text = _decode(data)
-    if not text.strip():
-        raise ApiError("EMPTY_FILE", "The CSV file is empty.", 422, {"file": "The file is empty."})
+    text = _read_csv_text(file_storage)
     try:
         dialect = csv.Sniffer().sniff(text.splitlines()[0], delimiters=",;\t")
     except csv.Error:
         dialect = csv.excel
     reader = csv.reader(io.StringIO(text), dialect)
-    header = next(reader, [])
-
-    columns, aliases = {}, {alias: col for col, names in CSV_COLUMNS.items() for alias in names}
-    for i, h in enumerate(header):
-        col = aliases.get(_header_key(h))
-        if col and col not in columns:
-            columns[col] = i
-    required = [c for c in CSV_REQUIRED if not (c == "department" and len(test.departments()) == 1)]
-    missing = [c for c in required if c not in columns]
-    if missing:
-        names = ", ".join(_LABELS[c] for c in missing)
-        raise ApiError("CSV_MISSING_COLUMNS", f"The first row of the CSV must name the columns. Missing: {names}. "
-                       "Download the template to see the expected headings.", 422,
-                       {"file": f"Missing columns: {names}.", "columns": [_LABELS[c] for c in missing]})
+    columns = _map_columns(next(reader, []), test)
 
     rows = []
     for line_no, cells in enumerate(reader, start=2):
@@ -308,34 +300,80 @@ def read_csv(file_storage, test: AptitudeTest) -> list[tuple[int, dict]]:
     return rows
 
 
+def _read_csv_text(file_storage) -> str:
+    if file_storage is None or not file_storage.filename:
+        raise ApiError("VALIDATION_ERROR", "Choose a CSV file.", 422, {"file": "Choose a CSV file."})
+    name = file_storage.filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    if not name.lower().endswith((".csv", ".txt")):
+        raise ApiError("UNSUPPORTED_FILE_TYPE", "Upload a .csv file (in Excel: File → Save As → CSV UTF-8).", 415,
+                       {"file": "Upload a .csv file."})
+    data = file_storage.read(MAX_CSV_BYTES + 1)
+    if len(data) > MAX_CSV_BYTES:
+        raise ApiError("FILE_TOO_LARGE", f"The CSV is larger than {MAX_CSV_BYTES // (1024 * 1024)} MB.", 413,
+                       {"file": "File is too large."})
+    text = _decode(data)
+    if not text.strip():
+        raise ApiError("EMPTY_FILE", "The CSV file is empty.", 422, {"file": "The file is empty."})
+    return text
+
+
+def _map_columns(header: list, test: AptitudeTest) -> dict:
+    """{column: index in the row} from the heading row; raises when a required column is missing."""
+    columns, aliases = {}, {alias: col for col, names in CSV_COLUMNS.items() for alias in names}
+    for i, h in enumerate(header):
+        col = aliases.get(_header_key(h))
+        if col and col not in columns:
+            columns[col] = i
+    required = [c for c in CSV_REQUIRED if not (c == "department" and len(test.departments()) == 1)]
+    missing = [c for c in required if c not in columns]
+    if missing:
+        names = ", ".join(_LABELS[c] for c in missing)
+        raise ApiError("CSV_MISSING_COLUMNS", f"The first row of the CSV must name the columns. Missing: {names}. "
+                       "Download the template to see the expected headings.", 422,
+                       {"file": f"Missing columns: {names}.", "columns": [_LABELS[c] for c in missing]})
+    return columns
+
+
 def import_csv(user: User, test_id, file_storage, dry_run: bool = False) -> dict:
     test = published_test(user.institution_id, test_id)
     rows = read_csv(file_storage, test)
 
-    seen_rolls, seen_codes, reserved = {}, {}, set()
-    to_add, problems, generated = [], [], 0
+    seen_rolls, seen_codes = {}, {}
+    to_add, problems = [], []
     for line_no, raw in rows:
         clean, errors = clean_fields(test, raw)
         issues = list(errors.values())
-        roll_key = clean["roll_number"].lower()
-        if roll_key and "roll_number" not in errors:
-            if roll_key in seen_rolls:
-                issues.append(f"Duplicate roll number {clean['roll_number']} (also row #{seen_rolls[roll_key]}).")
-            else:
-                seen_rolls[roll_key] = line_no
-        code = clean["access_code"]
-        if code and "access_code" not in errors:
-            if code in seen_codes:
-                issues.append(f"Duplicate access code (also row #{seen_codes[code]}).")
-            else:
-                seen_codes[code] = line_no
+        if "roll_number" not in errors:
+            issues += _first_seen(seen_rolls, clean["roll_number"].lower(), line_no,
+                                  f"Duplicate roll number {clean['roll_number']}")
+        if "access_code" not in errors:
+            issues += _first_seen(seen_codes, clean["access_code"], line_no, "Duplicate access code")
         if issues:
             problems.append({"row": line_no, "full_name": clean["full_name"] or raw.get("full_name", ""),
                              "roll_number": clean["roll_number"], "issues": issues})
             continue
         to_add.append(clean)
 
-    reserved.update(seen_codes)
+    generated = _add_candidates(test, to_add, set(seen_codes), dry_run)
+    return {"test_id": test.id, "dry_run": dry_run, "total_rows": len(rows),
+            ("would_import" if dry_run else "imported"): len(to_add), "codes_generated": generated,
+            "error_count": len(problems), "errors": problems,
+            "roster_total": Candidate.query.filter_by(test_id=test.id).count()}
+
+
+def _first_seen(seen: dict, key, line_no: int, message: str) -> list[str]:
+    """Remembers the first row of each key (roll number / code); a later row with the same key gets an issue."""
+    if not key:
+        return []
+    if key in seen:
+        return [f"{message} (also row #{seen[key]})."]
+    seen[key] = line_no
+    return []
+
+
+def _add_candidates(test: AptitudeTest, to_add: list[dict], reserved: set, dry_run: bool) -> int:
+    """Adds the clean rows (unless dry_run), generating missing codes. Returns how many codes were generated."""
+    generated = 0
     for clean in to_add:
         if clean["access_code"]:
             code, was_generated = clean["access_code"], False
@@ -347,11 +385,7 @@ def import_csv(user: User, test_id, file_storage, dry_run: bool = False) -> dict
             db.session.add(_new_candidate(test, clean, code, was_generated))
     if not dry_run:
         _commit()
-
-    return {"test_id": test.id, "dry_run": dry_run, "total_rows": len(rows),
-            ("would_import" if dry_run else "imported"): len(to_add), "codes_generated": generated,
-            "error_count": len(problems), "errors": problems,
-            "roster_total": Candidate.query.filter_by(test_id=test.id).count()}
+    return generated
 
 
 def template_csv() -> str:

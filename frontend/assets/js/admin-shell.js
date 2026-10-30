@@ -73,7 +73,7 @@ function initAdminShell() {
     try { await api('/auth/logout', { method: 'POST' }); } catch (err) { /* leave anyway */ }
     window.location.href = '../institution-login.html';
   });
-  guardSession();
+  void guardSession();               // handles its own errors (redirects to the login page)
 
   const actionsTpl = document.getElementById('a-actions-template');
   if (actionsTpl) {

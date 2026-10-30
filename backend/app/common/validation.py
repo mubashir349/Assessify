@@ -5,7 +5,9 @@ from flask import request
 
 from app.common.errors import ApiError
 
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+FIX_FIELDS = "Please fix the highlighted fields."
+# Domain part is "label(.label)+" with no dots inside a label, so the regex never backtracks.
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
 PHONE_RE = re.compile(r"^[0-9+\-\s()]{7,20}$")
 
 
@@ -33,4 +35,4 @@ def text(data: dict, key: str, label: str, errors: dict, *, required=True, min_l
 
 def raise_if(errors: dict) -> None:
     if errors:
-        raise ApiError("VALIDATION_ERROR", "Please fix the highlighted fields.", 422, errors)
+        raise ApiError("VALIDATION_ERROR", FIX_FIELDS, 422, errors)

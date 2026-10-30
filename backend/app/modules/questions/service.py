@@ -15,6 +15,7 @@ from sqlalchemy.orm import defer
 from app.ai import AIError, get_provider
 from app.common.errors import ApiError
 from app.common.utils import utcnow
+from app.common.validation import FIX_FIELDS
 from app.extensions import db
 from app.models.department import LEVELS
 from app.models.question import ATTEMPT_STATUSES, DIFFICULTIES, QUESTION_TYPES, GenerationAttempt, Question
@@ -153,7 +154,7 @@ def _clean_generate_form(institution_id: int, form) -> dict:
     if len(focus) > 500:
         errors["focus"] = "Description / focus must be at most 500 characters."
     if errors:
-        raise ApiError("VALIDATION_ERROR", "Please fix the highlighted fields.", 422, errors)
+        raise ApiError("VALIDATION_ERROR", FIX_FIELDS, 422, errors)
     return {"dept": dept, "subject": subject, "question_type": qtype, "difficulty": diff, "count": count,
             "marks": marks, "focus": focus or None}
 
@@ -260,28 +261,10 @@ def generate(user: User, form, files: list) -> GenerationAttempt:
     inst = user.institution_id
     f = _clean_generate_form(inst, form)
     files = [x for x in (files or []) if x is not None and x.filename]
-    max_files = _cfg("MAX_PDFS_PER_GENERATION")
-    if len(files) > max_files:
-        raise ApiError("VALIDATION_ERROR", "Please fix the highlighted fields.", 422,
-                       {"file": f"Upload at most {max_files} PDFs at a time."})
-    if not files:
-        problem = description_problem(f["focus"])
-        if problem:
-            raise ApiError("VALIDATION_ERROR", "Upload a PDF, or describe the scope in more detail.", 422,
-                           {"file": "Upload at least one PDF, or describe the scope below.", "focus": problem})
+    _check_generate_files(f, files)
 
     provider = _optional_provider()
-    docs: list[pdf.ExtractedPdf] = []
-    image_budget = _cfg("OCR_MAX_PAGES")
-    for fs in files:
-        try:
-            doc = _extract(fs, provider, image_budget)
-        except ApiError as exc:
-            if len(files) > 1:          # say WHICH file is the problem
-                exc.message = f'"{pdf.display_name(fs.filename)}": {exc.message}'
-            raise
-        image_budget -= len(doc.images)
-        docs.append(doc)
+    docs = _extract_all(files, provider)
     if provider is None:
         try:
             provider = get_provider(current_app.config)
@@ -292,55 +275,22 @@ def generate(user: User, form, files: list) -> GenerationAttempt:
         if d.needs_ocr:
             _read_photos(provider, d, f'"{d.filename}"')
 
-    if docs:
-        kind = "pdf"
-        source_text, cut_any = _combine(docs)
-        fingerprint = hashlib.sha256("|".join(d.sha256 for d in docs).encode()).hexdigest()
-        names = ", ".join(d.filename for d in docs)
-        source_name = names if len(names) <= 255 else names[:240] + f"… (+{len(docs)} files)"
-        pages, chars = sum(d.pages for d in docs), sum(d.total_chars for d in docs)
-        truncated = cut_any or any(d.truncated for d in docs)
-    else:
-        kind, source_text, cut_any = "description", f["focus"], False
-        fingerprint = hashlib.sha256(("description|" + f["focus"].lower()).encode()).hexdigest()
-        source_name, pages, chars, truncated = "", 0, len(f["focus"]), False
-
-    # Same material + same settings already being processed (e.g. a double click) -> don't spend quota twice.
-    busy = GenerationAttempt.query.filter(
-        GenerationAttempt.institution_id == inst, GenerationAttempt.source_sha256 == fingerprint,
-        GenerationAttempt.status == "processing", GenerationAttempt.department_id == f["dept"].id,
-        GenerationAttempt.subject_name == f["subject"], GenerationAttempt.question_type == f["question_type"],
-        GenerationAttempt.difficulty == f["difficulty"], GenerationAttempt.created_at >= utcnow() - DUPLICATE_WINDOW,
-    ).first()
-    if busy:
-        raise ApiError("GENERATION_IN_PROGRESS", "These questions are already being generated. Please wait.", 409,
-                       {"attempt_id": busy.id})
+    src = _source_of(docs, f["focus"])
+    _ensure_not_busy(inst, src["fingerprint"], f)
 
     attempt = GenerationAttempt(
         institution_id=inst, created_by_id=user.id, department_id=f["dept"].id, department_name=f["dept"].name,
         level=f["dept"].level, subject_name=f["subject"], question_type=f["question_type"], difficulty=f["difficulty"],
-        requested_count=f["count"], marks=f["marks"], focus=f["focus"], source_kind=kind, source_files=len(docs),
-        source_filename=source_name, source_pages=pages, source_chars=chars, source_truncated=truncated,
-        source_sha256=fingerprint, source_text=source_text, source_ocr=used_ocr, status="processing",
-        provider=provider.name, model=provider.model)
+        requested_count=f["count"], marks=f["marks"], focus=f["focus"], source_kind=src["kind"], source_files=len(docs),
+        source_filename=src["name"], source_pages=src["pages"], source_chars=src["chars"],
+        source_truncated=src["truncated"], source_sha256=src["fingerprint"], source_text=src["text"],
+        source_ocr=used_ocr, status="processing", provider=provider.name, model=provider.model)
     db.session.add(attempt)
     _commit()                                     # the attempt is recorded even if the AI call fails
 
     try:
         outcome = _run(provider, _params(attempt, f["count"]))
-        for i, data in enumerate(outcome.questions):
-            _new_question(attempt, data, i)
-        attempt.generated_count = len(outcome.questions)
-        attempt.discarded_count = outcome.discarded
-        if not outcome.questions:
-            err = outcome.error
-            attempt.status = "failed"
-            attempt.error_code = err.code if err else "AI_NO_VALID_QUESTIONS"
-            attempt.error_message = (err.message if err else "The AI did not return any usable questions.")[:500]
-        else:
-            attempt.status = "completed" if len(outcome.questions) >= f["count"] else "partial"
-            if outcome.error:
-                attempt.error_code, attempt.error_message = outcome.error.code, outcome.error.message[:500]
+        _save_outcome(attempt, outcome, f["count"])
         _commit()
     except Exception:
         log.exception("Generation attempt %s crashed", attempt.id)
@@ -355,6 +305,76 @@ def generate(user: User, form, files: list) -> GenerationAttempt:
         exc = outcome.error or AIError("AI_NO_VALID_QUESTIONS", attempt.error_message, status=502)
         raise _ai_error(exc, attempt.id)
     return attempt
+
+
+def _check_generate_files(f: dict, files: list) -> None:
+    max_files = _cfg("MAX_PDFS_PER_GENERATION")
+    if len(files) > max_files:
+        raise ApiError("VALIDATION_ERROR", FIX_FIELDS, 422,
+                       {"file": f"Upload at most {max_files} PDFs at a time."})
+    if not files:
+        problem = description_problem(f["focus"])
+        if problem:
+            raise ApiError("VALIDATION_ERROR", "Upload a PDF, or describe the scope in more detail.", 422,
+                           {"file": "Upload at least one PDF, or describe the scope below.", "focus": problem})
+
+
+def _extract_all(files: list, provider) -> list:
+    docs: list[pdf.ExtractedPdf] = []
+    image_budget = _cfg("OCR_MAX_PAGES")
+    for fs in files:
+        try:
+            doc = _extract(fs, provider, image_budget)
+        except ApiError as exc:
+            if len(files) > 1:          # say WHICH file is the problem
+                exc.message = f'"{pdf.display_name(fs.filename)}": {exc.message}'
+            raise
+        image_budget -= len(doc.images)
+        docs.append(doc)
+    return docs
+
+
+def _source_of(docs: list, focus: str) -> dict:
+    """What the questions are generated from: the uploaded PDFs, or the admin's description."""
+    if not docs:
+        return {"kind": "description", "text": focus, "name": "", "pages": 0, "chars": len(focus), "truncated": False,
+                "fingerprint": hashlib.sha256(("description|" + focus.lower()).encode()).hexdigest()}
+    source_text, cut_any = _combine(docs)
+    names = ", ".join(d.filename for d in docs)
+    return {"kind": "pdf", "text": source_text,
+            "name": names if len(names) <= 255 else names[:240] + f"… (+{len(docs)} files)",
+            "pages": sum(d.pages for d in docs), "chars": sum(d.total_chars for d in docs),
+            "truncated": cut_any or any(d.truncated for d in docs),
+            "fingerprint": hashlib.sha256("|".join(d.sha256 for d in docs).encode()).hexdigest()}
+
+
+def _ensure_not_busy(inst: int, fingerprint: str, f: dict) -> None:
+    """Same material + same settings already being processed (e.g. a double click) -> don't spend quota twice."""
+    busy = GenerationAttempt.query.filter(
+        GenerationAttempt.institution_id == inst, GenerationAttempt.source_sha256 == fingerprint,
+        GenerationAttempt.status == "processing", GenerationAttempt.department_id == f["dept"].id,
+        GenerationAttempt.subject_name == f["subject"], GenerationAttempt.question_type == f["question_type"],
+        GenerationAttempt.difficulty == f["difficulty"], GenerationAttempt.created_at >= utcnow() - DUPLICATE_WINDOW,
+    ).first()
+    if busy:
+        raise ApiError("GENERATION_IN_PROGRESS", "These questions are already being generated. Please wait.", 409,
+                       {"attempt_id": busy.id})
+
+
+def _save_outcome(attempt: GenerationAttempt, outcome, requested: int) -> None:
+    for i, data in enumerate(outcome.questions):
+        _new_question(attempt, data, i)
+    attempt.generated_count = len(outcome.questions)
+    attempt.discarded_count = outcome.discarded
+    if not outcome.questions:
+        err = outcome.error
+        attempt.status = "failed"
+        attempt.error_code = err.code if err else "AI_NO_VALID_QUESTIONS"
+        attempt.error_message = (err.message if err else "The AI did not return any usable questions.")[:500]
+        return
+    attempt.status = "completed" if len(outcome.questions) >= requested else "partial"
+    if outcome.error:
+        attempt.error_code, attempt.error_message = outcome.error.code, outcome.error.message[:500]
 
 
 # ---------------------------------------------------------------- attempts
@@ -381,7 +401,7 @@ def edit_question(institution_id: int, question_id: int, body: dict) -> Question
     try:
         data = clean_question(body, q.question_type, from_ai=False)
     except QuestionInvalid as exc:
-        raise ApiError("VALIDATION_ERROR", "Please fix the highlighted fields.", 422, exc.errors)
+        raise ApiError("VALIDATION_ERROR", FIX_FIELDS, 422, exc.errors)
     q.text, q.options, q.correct_index = data["text"], data["options"], data["correct_index"]
     q.explanation, q.topic = data["explanation"], data["topic"]
     if "difficulty" in data:
@@ -422,7 +442,7 @@ def reject_question(user: User, question_id: int, body: dict) -> Question:
     reason = body.get("reason")
     reason = reason.strip() if isinstance(reason, str) else ""
     if len(reason) > 500:
-        raise ApiError("VALIDATION_ERROR", "Please fix the highlighted fields.", 422,
+        raise ApiError("VALIDATION_ERROR", FIX_FIELDS, 422,
                        {"reason": "Reason must be at most 500 characters."})
     q.status, q.rejection_reason = "rejected", reason or None
     q.reviewed_by_id, q.reviewed_at = user.id, utcnow()
@@ -528,6 +548,25 @@ def regenerate_attempt(user: User, attempt_id: int, body: dict) -> dict:
 
 
 # ---------------------------------------------------------------- question bank
+# (query argument, allowed values, column, message for an unknown value)
+_BANK_CHOICES = (
+    ("level", LEVELS, Question.level, "Unknown level filter."),
+    ("difficulty", DIFFICULTIES, Question.difficulty, "Unknown difficulty filter."),
+    ("question_type", QUESTION_TYPES, Question.question_type, "Unknown question type filter."),
+)
+
+
+def _bank_choice_filters(q, args):
+    for key, allowed, column, message in _BANK_CHOICES:
+        value = args.get(key)
+        if not value:
+            continue
+        if value not in allowed:
+            raise ApiError("BAD_REQUEST", message, 400)
+        q = q.filter(column == value)
+    return q
+
+
 def bank(institution_id: int, args) -> dict:
     """Approved questions ONLY - drafts, rejected and replaced questions never appear here."""
     base = Question.query.filter(Question.institution_id == institution_id, Question.status == "approved")
@@ -538,21 +577,7 @@ def bank(institution_id: int, args) -> dict:
         if errors:
             raise ApiError("BAD_REQUEST", "department_id must be a number.", 400)
         q = q.filter(Question.department_id == dept_id)
-    level = args.get("level")
-    if level:
-        if level not in LEVELS:
-            raise ApiError("BAD_REQUEST", "Unknown level filter.", 400)
-        q = q.filter(Question.level == level)
-    diff = args.get("difficulty")
-    if diff:
-        if diff not in DIFFICULTIES:
-            raise ApiError("BAD_REQUEST", "Unknown difficulty filter.", 400)
-        q = q.filter(Question.difficulty == diff)
-    qtype = args.get("question_type")
-    if qtype:
-        if qtype not in QUESTION_TYPES:
-            raise ApiError("BAD_REQUEST", "Unknown question type filter.", 400)
-        q = q.filter(Question.question_type == qtype)
+    q = _bank_choice_filters(q, args)
     subject = (args.get("subject") or "").strip()
     if subject:
         q = q.filter(func.lower(Question.subject_name) == subject.lower())
@@ -568,7 +593,7 @@ def bank(institution_id: int, args) -> dict:
     def group(col):
         rows = db.session.query(col, func.count(Question.id)).filter(
             Question.institution_id == institution_id, Question.status == "approved").group_by(col).all()
-        return {k: v for k, v in rows}
+        return dict(rows)
 
     result["summary"] = {"total": base.count(), "by_difficulty": group(Question.difficulty),
                          "by_level": group(Question.level), "by_subject": group(Question.subject_name),

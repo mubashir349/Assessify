@@ -50,17 +50,24 @@ async function renderBank() {
   insights(d.summary);
   $('bankList').innerHTML = d.items.map(card).join('') ||
     `<div class="a-card a-empty">${d.summary.total ? 'No approved questions match these filters.' : 'No approved questions yet. Generate drafts and approve them in Draft Review.'}</div>`;
-  $('bankPager').innerHTML = d.pages > 1 ? `<div class="pager">
-    <button class="a-btn a-btn-ghost a-btn-sm" ${d.page <= 1 ? 'disabled' : ''} onclick="page--;renderBank()">← Prev</button>
-    <span>Page ${d.page} of ${d.pages} · ${d.total} questions</span>
-    <button class="a-btn a-btn-ghost a-btn-sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="page++;renderBank()">Next →</button></div>`
-    : (d.total ? `<div class="pager"><span>${d.total} question${d.total === 1 ? '' : 's'}</span></div>` : '');
+  $('bankPager').innerHTML = pagerHtml(d);
 }
-function applyFilters() { page = 1; renderBank(); }
+function pagerHtml(d) {
+  if (d.pages > 1) {
+    const prevDis = d.page <= 1 ? 'disabled' : '', nextDis = d.page >= d.pages ? 'disabled' : '';
+    return `<div class="pager">
+    <button class="a-btn a-btn-ghost a-btn-sm" ${prevDis} onclick="page--;renderBank()">← Prev</button>
+    <span>Page ${d.page} of ${d.pages} · ${d.total} questions</span>
+    <button class="a-btn a-btn-ghost a-btn-sm" ${nextDis} onclick="page++;renderBank()">Next →</button></div>`;
+  }
+  if (!d.total) return '';
+  return `<div class="pager"><span>${d.total} question${d.total === 1 ? '' : 's'}</span></div>`;
+}
+function applyFilters() { page = 1; void renderBank(); }   // renderBank shows its own errors
 function onSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(applyFilters, 300); }
 function subjectsFor(deptId) {
   const list = deptId ? DEPTS.filter(d => String(d.id) === deptId) : DEPTS;
-  return [...new Set(list.flatMap(d => d.subjects))].sort();
+  return [...new Set(list.flatMap(d => d.subjects))].sort((a, b) => a.localeCompare(b));
 }
 function onDept() {
   const keep = $('fSubj').value, subs = subjectsFor($('fDept').value);

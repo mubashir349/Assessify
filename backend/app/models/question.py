@@ -77,7 +77,7 @@ class GenerationAttempt(db.Model):
     created_by = db.relationship("User")
 
     def counts(self) -> dict:
-        c = {s: 0 for s in QUESTION_STATUSES}
+        c = dict.fromkeys(QUESTION_STATUSES, 0)
         for q in self.questions:
             c[q.status] = c.get(q.status, 0) + 1
         return c

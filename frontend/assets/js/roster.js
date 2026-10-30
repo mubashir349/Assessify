@@ -3,7 +3,7 @@
 let TESTS = [], TEST = null, page = 1, searchTimer, pendingFile = null, editId = null;
 const PER_PAGE = 50;
 const $ = id => document.getElementById(id);
-const term = () => (TEST && TEST.term) || 'Field';
+const term = () => TEST?.term || 'Field';
 function openModal(id) { $(id).classList.add('open'); }
 function closeModal(id) { $(id).classList.remove('open'); }
 function plural(n, w) { return `${n} ${w}${n === 1 ? '' : 's'}`; }
@@ -53,16 +53,17 @@ function fmtWhen(iso) {
 
 function selectTest() {
   TEST = TESTS.find(t => String(t.id) === $('testSel').value);
-  try { sessionStorage.setItem('aa_roster_test', String(TEST.id)); } catch (e) {}
+  try { sessionStorage.setItem('aa_roster_test', String(TEST.id)); } catch (e) { /* storage blocked: only the remembered test is lost */ }
   const sc = TEST.schedule;
-  $('testMeta').innerHTML = sc ? `${sc.timing_mode === 'fixed' ? 'Fixed time' : 'Flexible window'}<br/><b style="color:#fff;">${esc(fmtWhen(sc.starts_at))}</b> – ${esc(fmtWhen(sc.ends_at))}` : '';
+  const mode = sc?.timing_mode === 'fixed' ? 'Fixed time' : 'Flexible window';
+  $('testMeta').innerHTML = sc ? `${mode}<br/><b style="color:#fff;">${esc(fmtWhen(sc.starts_at))}</b> – ${esc(fmtWhen(sc.ends_at))}` : '';
   $('rosterArea').hidden = false; $('exportBtn').hidden = false; $('addBtn').hidden = false;
   $('deptHead').textContent = term(); $('cDeptLbl').textContent = term();
   $('deptFilter').innerHTML = `<option value="">All ${term() === 'Field' ? 'fields' : 'departments'}</option>` +
     TEST.departments.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
   fillSelect($('cDept'), TEST.departments.map(d => ({ value: d.id, label: d.name })));
   $('importBox').hidden = true; pendingFile = null; page = 1;
-  loadRoster();
+  void loadRoster();
 }
 
 // ---------------------------------------------------------------- roster table
@@ -87,7 +88,7 @@ async function loadRoster() {
       <td class="mono reveal" data-real="${esc(new Date(c.date_of_birth + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }))}">••-•••-••••</td>
       <td class="muted" style="font-size:12px;">${c.last_login_at ? esc(fmtWhen(c.last_login_at)) : '—'}${attemptCell(c.attempt)}</td>
       <td style="white-space:nowrap;">
-        ${c.attempt && c.attempt.status === 'locked' ? `<button class="a-btn a-btn-amber a-btn-sm" onclick="unlockAttempt(${c.attempt.id})" title="${esc(c.attempt.reference)}">Unlock</button>` : ''}
+        ${c.attempt?.status === 'locked' ? `<button class="a-btn a-btn-amber a-btn-sm" onclick="unlockAttempt(${c.attempt.id})" title="${esc(c.attempt.reference)}">Unlock</button>` : ''}
         <button class="a-btn a-btn-ghost a-btn-sm" onclick="openCandModal(${c.id})">Correct</button>
         <button class="a-btn a-btn-ghost a-btn-sm" onclick="newCode(${c.id})" title="Issue a new access code (the old one stops working)">New code</button>
         ${c.attempt ? '' : `<button class="a-btn a-btn-danger a-btn-sm" onclick="removeCand(${c.id})" title="Remove from roster">✕</button>`}
@@ -95,18 +96,25 @@ async function loadRoster() {
     </tr>`).join('') ||
     `<tr><td colspan="8" class="a-empty">${s.total ? 'No candidate matches the search.' : 'No candidates yet — drop the roster CSV above or click “Add candidate”.'}</td></tr>`;
   window.ROWS = d.items;
-  $('pager').innerHTML = d.pages > 1 ? `<div class="pager">
-    <button class="a-btn a-btn-ghost a-btn-sm" ${d.page <= 1 ? 'disabled' : ''} onclick="page--;loadRoster()">← Prev</button>
+  $('pager').innerHTML = pagerHtml(d);
+}
+
+function pagerHtml(d) {
+  if (d.pages <= 1) return '';
+  const prevDis = d.page <= 1 ? 'disabled' : '', nextDis = d.page >= d.pages ? 'disabled' : '';
+  return `<div class="pager">
+    <button class="a-btn a-btn-ghost a-btn-sm" ${prevDis} onclick="page--;loadRoster()">← Prev</button>
     <span>Page ${d.page} of ${d.pages} · ${plural(d.total, 'candidate')}</span>
-    <button class="a-btn a-btn-ghost a-btn-sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="page++;loadRoster()">Next →</button></div>` : '';
+    <button class="a-btn a-btn-ghost a-btn-sm" ${nextDis} onclick="page++;loadRoster()">Next →</button></div>`;
 }
 
 // ---------------------------------------------------------------- Phase 6: test status + unlock (Phase 7 adds the live monitor)
 function attemptCell(a) {
   if (!a) return '';
+  const score = a.score === null ? '' : ` · ${a.score}/${a.max_score}`;
   const label = { in_progress: '<span style="color:var(--apt-light);">Taking the test</span>',
                   locked: '<span style="color:#f87171;">🔒 Locked</span>',
-                  submitted: `<span style="color:#4ade80;">Submitted${a.score !== null ? ` · ${a.score}/${a.max_score}` : ''}</span>` }[a.status] || esc(a.status);
+                  submitted: `<span style="color:#4ade80;">Submitted${score}</span>` }[a.status] || esc(a.status);
   return `<br/>${label}`;
 }
 
@@ -115,7 +123,7 @@ async function unlockAttempt(id) {
     await api(`/attempts/${id}/unlock`, { method: 'POST' });
     aToast('Unlocked. The candidate can continue after entering fullscreen again.', '🔓');
   } catch (e) { handleApiError(e); }
-  loadRoster();
+  await loadRoster();
 }
 
 // ---------------------------------------------------------------- CSV import (check first, then save)
@@ -161,8 +169,9 @@ async function confirmImport() {
   try {
     const d = await sendCsv(pendingFile, false);
     showResult(d, pendingFile); pendingFile = null;
-    aToast(`${plural(d.imported, 'candidate')} imported${d.error_count ? ` · ${d.error_count} row(s) need fixing` : ''}.`);
-    page = 1; loadRoster();
+    const fixNote = d.error_count ? ` · ${d.error_count} row(s) need fixing` : '';
+    aToast(`${plural(d.imported, 'candidate')} imported${fixNote}.`);
+    page = 1; await loadRoster();
   } catch (e) { handleApiError(e); btn.disabled = false; }
 }
 function cancelPreview() { pendingFile = null; $('importBox').hidden = true; }
@@ -175,7 +184,7 @@ function openCandModal(id) {
   $('cSub').textContent = c ? 'To change the access code use “New code”.' : 'An access code is generated automatically if you leave it empty.';
   $('cName').value = c ? c.full_name : ''; $('cEmail').value = c ? c.email : '';
   $('cRoll').value = c ? c.roll_number : ''; $('cDob').value = c ? c.date_of_birth : '';
-  $('cDept').value = c ? c.department.id : (TEST.departments[0] || {}).id;
+  $('cDept').value = c ? c.department.id : TEST.departments[0]?.id;
   $('cCode').value = ''; $('cCodeField').hidden = !!c;
   $('cErr').style.display = 'none';
   openModal('candModal');
@@ -191,7 +200,7 @@ async function saveCand() {
                                  : await api('/roster', { method: 'POST', body });
     closeModal('candModal');
     aToast(editId ? 'Candidate corrected.' : `Added · access code ${esc(candidate.access_code)}`);
-    loadRoster();
+    await loadRoster();
   } catch (e) {
     if (e.status === 401) return handleApiError(e);
     const msgs = e.details ? Object.values(e.details).filter(v => typeof v === 'string') : [];
@@ -204,28 +213,29 @@ async function saveCand() {
 async function newCode(id) {
   const c = window.ROWS.find(x => x.id === id);
   if (!confirm(`Issue a new access code for ${c.full_name}? The old code stops working immediately (use this for a lost slip).`)) return;
-  try { const { candidate } = await api(`/roster/${id}/new-code`, { method: 'POST' }); aToast(`New code for ${esc(candidate.full_name)}: ${esc(candidate.access_code)}`); loadRoster(); }
+  try { const { candidate } = await api(`/roster/${id}/new-code`, { method: 'POST' }); aToast(`New code for ${esc(candidate.full_name)}: ${esc(candidate.access_code)}`); await loadRoster(); }
   catch (e) { handleApiError(e); }
 }
 
 async function removeCand(id) {
   const c = window.ROWS.find(x => x.id === id);
   if (!confirm(`Remove ${c.full_name} (${c.roll_number}) from this roster? Their access code stops working.`)) return;
-  try { await api('/roster/' + id, { method: 'DELETE' }); aToast('Removed.'); loadRoster(); }
+  try { await api('/roster/' + id, { method: 'DELETE' }); aToast('Removed.'); await loadRoster(); }
   catch (e) { handleApiError(e); }
 }
 
 // ---------------------------------------------------------------- wiring
+// download / pickFile / loadRoster / loadTests never reject (each shows its own error), so their promises are not awaited.
 document.addEventListener('admin:ready', () => {
-  $('templateBtn').addEventListener('click', e => { e.preventDefault(); download('/roster/template.csv', 'roster-template.csv'); });
-  $('exportBtn').addEventListener('click', e => { e.preventDefault(); if (TEST) download('/roster/export.csv?test_id=' + TEST.id, 'roster.csv'); });
-  $('csvFile').addEventListener('change', e => pickFile(e.target.files[0]));
+  $('templateBtn').addEventListener('click', e => { e.preventDefault(); void download('/roster/template.csv', 'roster-template.csv'); });
+  $('exportBtn').addEventListener('click', e => { e.preventDefault(); if (TEST) void download('/roster/export.csv?test_id=' + TEST.id, 'roster.csv'); });
+  $('csvFile').addEventListener('change', e => { void pickFile(e.target.files[0]); });
   const drop = $('drop');
   ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
-  drop.addEventListener('drop', e => pickFile(e.dataTransfer.files[0]));
+  drop.addEventListener('drop', e => { void pickFile(e.dataTransfer.files[0]); });
   $('rosterRows').addEventListener('click', e => { const el = e.target.closest('.reveal'); if (el) toggleReveal(el, el.dataset.real); });
-  $('deptFilter').addEventListener('change', () => { page = 1; loadRoster(); });
-  $('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { page = 1; loadRoster(); }, 250); });
-  loadTests();
+  $('deptFilter').addEventListener('change', () => { page = 1; void loadRoster(); });
+  $('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { page = 1; void loadRoster(); }, 250); });
+  void loadTests();
 });

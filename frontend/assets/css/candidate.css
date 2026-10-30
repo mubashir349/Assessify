@@ -114,7 +114,7 @@
 /* ---- Phase 6: live test (these pages don't load admin-shell.css) ---- */
 .a-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:9px 16px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; border:0; }
 .a-btn-amber { background: var(--apt-primary); color:#1c1206; }
-.a-btn-ghost { background: rgba(255,255,255,.06); color:#fff; border:1px solid rgba(255,255,255,.12); }
+.a-btn-ghost { background: var(--tint-white); color:#fff; border:1px solid rgba(255,255,255,.12); }
 .a-btn[disabled] { opacity:.45; cursor:not-allowed; }
 .a-card { background: rgba(255,255,255,0.045); border:1px solid rgba(255,255,255,0.09); border-radius:16px; padding:20px; }
 .a-modal-bg { position:fixed; inset:0; background:rgba(2,6,23,0.7); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:450; padding:20px; }

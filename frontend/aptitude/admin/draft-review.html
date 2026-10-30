@@ -11,22 +11,22 @@
 <div class="a-modal-bg" id="editModal"><div class="a-modal">
   <div class="a-modal-head"><h3>Edit draft question</h3><button class="a-modal-x" onclick="closeModal('editModal')">✕</button></div>
   <div style="display:flex;flex-direction:column;gap:12px;">
-    <div class="a-field"><label>Question</label><textarea class="a-textarea" id="eText"></textarea><div class="field-err" id="err-text"></div></div>
-    <div class="a-field" id="eOptsWrap"><label>Options (one per line, 2–6)</label><textarea class="a-textarea" id="eOpts" style="min-height:100px"></textarea><div class="field-err" id="err-options"></div></div>
+    <div class="a-field"><label for="eText">Question</label><textarea class="a-textarea" id="eText"></textarea><div class="field-err" id="err-text"></div></div>
+    <div class="a-field" id="eOptsWrap"><label for="eOpts">Options (one per line, 2–6)</label><textarea class="a-textarea" id="eOpts" style="min-height:100px"></textarea><div class="field-err" id="err-options"></div></div>
     <div class="a-grid a-grid-3" style="gap:10px;">
-      <div class="a-field"><label>Correct option</label><select class="a-select" id="eAns"></select><div class="field-err" id="err-correct_index"></div></div>
-      <div class="a-field"><label>Difficulty</label><select class="a-select" id="eDiff"></select></div>
-      <div class="a-field"><label>Marks</label><input class="a-input" type="number" id="eMarks" min="1" max="100" /><div class="field-err" id="err-marks"></div></div>
+      <div class="a-field"><label for="eAns">Correct option</label><select class="a-select" id="eAns"></select><div class="field-err" id="err-correct_index"></div></div>
+      <div class="a-field"><label for="eDiff">Difficulty</label><select class="a-select" id="eDiff"></select></div>
+      <div class="a-field"><label for="eMarks">Marks</label><input class="a-input" type="number" id="eMarks" min="1" max="100" /><div class="field-err" id="err-marks"></div></div>
     </div>
-    <div class="a-field"><label>Topic (optional)</label><input class="a-input" id="eTopic" maxlength="120" /></div>
-    <div class="a-field"><label>Explanation (optional)</label><textarea class="a-textarea" id="eExpl"></textarea><div class="field-err" id="err-explanation"></div></div>
+    <div class="a-field"><label for="eTopic">Topic (optional)</label><input class="a-input" id="eTopic" maxlength="120" /></div>
+    <div class="a-field"><label for="eExpl">Explanation (optional)</label><textarea class="a-textarea" id="eExpl"></textarea><div class="field-err" id="err-explanation"></div></div>
     <button class="btn btn-amber" id="eSave" onclick="saveEdit()">Save changes</button>
   </div></div></div>
 
 <div class="a-modal-bg" id="rejectModal"><div class="a-modal">
   <div class="a-modal-head"><h3>Reject question</h3><button class="a-modal-x" onclick="closeModal('rejectModal')">✕</button></div>
   <div style="display:flex;flex-direction:column;gap:12px;">
-    <div class="a-field"><label>Reason (optional)</label><textarea class="a-textarea" id="rReason" maxlength="500" placeholder="e.g. Answer is not supported by the PDF"></textarea></div>
+    <div class="a-field"><label for="rReason">Reason (optional)</label><textarea class="a-textarea" id="rReason" maxlength="500" placeholder="e.g. Answer is not supported by the PDF"></textarea></div>
     <button class="btn btn-amber" onclick="confirmReject()">Reject question</button>
   </div></div></div>
 
@@ -44,7 +44,8 @@ function fmt(t) { return t ? new Date(t).toLocaleString([], { month: 'short', da
 function openModal(id) { $(id).classList.add('open'); }
 function closeModal(id) { $(id).classList.remove('open'); }
 async function withBusy(fn) {            // stops double clicks while a request is running
-  if (busy) return; busy = true; document.body.style.cursor = 'progress';
+  if (busy) { return; }
+  busy = true; document.body.style.cursor = 'progress';
   try { await fn(); } catch (e) { handleApiError(e); } finally { busy = false; document.body.style.cursor = ''; }
 }
 
@@ -71,12 +72,17 @@ async function list() {
         <div class="qbody"><p class="qtext"><b>${esc(a.department_name)} → ${esc(a.subject)}</b></p>
           <div class="qmeta"><span class="badge badge-${esc(a.status)}">${esc(a.status)}</span><span class="a-chip">${esc(a.level)}</span>
           <span class="a-chip">${esc(L(META.question_types, a.question_type))} · ${esc(L(META.difficulties, a.difficulty))}</span>
-          <span class="a-chip">${a.source.kind === 'description' ? '✎ Description only' : (a.source.ocr ? '📷 ' : '📄 ') + esc(a.source.filename)}</span><span class="a-chip">🕒 ${fmt(a.created_at)}</span></div>
+          <span class="a-chip">${sourceChip(a.source)}</span><span class="a-chip">🕒 ${fmt(a.created_at)}</span></div>
           ${a.error ? `<div class="q-reason">${esc(a.error.message)}</div>` : ''}</div>
         <div class="qmeta"><span class="badge badge-draft">${a.counts.draft} draft</span><span class="badge badge-approved">${a.counts.approved} approved</span><span class="badge badge-rejected">${a.counts.rejected} rejected</span></div>
       </div>`).join('') || '<div class="a-card a-empty">No generation attempts yet. Use “New generation” to create one.</div>'}</div>
     ${pager(d)}`;
   if (searching) { const s = $('sq'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+}
+function sourceChip(src) {
+  if (src.kind === 'description') return '✎ Description only';
+  const icon = src.ocr ? '📷 ' : '📄 ';
+  return icon + esc(src.filename);
 }
 function pager(d) {
   if (d.pages <= 1) return '';
@@ -96,11 +102,24 @@ async function openAttempt(id) {
   }
 }
 function back() { history.replaceState(null, '', 'draft-review.html'); list(); }
+function optionView(q, o, j) {
+  const ok = j === q.correct_index;
+  return `<span class="${ok ? 'ok' : ''}">${LETTER[j]}. ${esc(o)}${ok ? ' ✓' : ''}</span>`;
+}
+function questionActions(q) {
+  if (q.status === 'replaced' || q.status === 'approved') return '';
+  const editDis = q.status === 'draft' ? '' : 'disabled';
+  const regenDis = q.status === 'draft' || q.status === 'rejected' ? '' : 'disabled';
+  return `<div class="qactions" style="flex-direction:column;">
+      <button class="a-btn a-btn-amber a-btn-sm" onclick="act(${q.id},'approve')" ${editDis}>Approve</button>
+      <button class="a-btn a-btn-ghost a-btn-sm" onclick="openEdit(${q.id})" ${editDis}>Edit</button>
+      <button class="a-btn a-btn-ghost a-btn-sm" onclick="act(${q.id},'regenerate')" ${regenDis}>Regenerate</button>
+      <button class="a-btn a-btn-danger a-btn-sm" onclick="openReject(${q.id})" ${editDis}>Reject</button></div>`;
+}
 function questionCard(q, i) {
-  const editable = q.status === 'draft', regen = q.status === 'draft' || q.status === 'rejected';
   return `<div class="a-card qrow"><div class="qbody">
     <p class="qtext">${i + 1}. ${esc(q.text)}</p>
-    <div class="opt-view">${q.options.map((o, j) => `<span class="${j === q.correct_index ? 'ok' : ''}">${LETTER[j]}. ${esc(o)}${j === q.correct_index ? ' ✓' : ''}</span>`).join('')}</div>
+    <div class="opt-view">${q.options.map((o, j) => optionView(q, o, j)).join('')}</div>
     ${q.explanation ? `<div class="q-expl">💡 ${esc(q.explanation)}</div>` : ''}
     ${q.rejection_reason ? `<div class="q-reason">Rejected: ${esc(q.rejection_reason)}</div>` : ''}
     <div class="qmeta"><span class="badge ${stBadge[q.status] || ''}">${esc(q.status)}</span>
@@ -108,12 +127,19 @@ function questionCard(q, i) {
       ${q.topic ? `<span class="a-chip">${esc(q.topic)}</span>` : ''}${q.is_edited ? '<span class="a-chip">✎ edited</span>' : ''}
       ${q.regenerated_from_id ? '<span class="a-chip">↻ regenerated</span>' : ''}
       ${q.reviewed_by ? `<span class="a-chip">by ${esc(q.reviewed_by)}</span>` : ''}</div></div>
-    ${q.status === 'replaced' || q.status === 'approved' ? '' : `<div class="qactions" style="flex-direction:column;">
-      <button class="a-btn a-btn-amber a-btn-sm" onclick="act(${q.id},'approve')" ${editable ? '' : 'disabled'}>Approve</button>
-      <button class="a-btn a-btn-ghost a-btn-sm" onclick="openEdit(${q.id})" ${editable ? '' : 'disabled'}>Edit</button>
-      <button class="a-btn a-btn-ghost a-btn-sm" onclick="act(${q.id},'regenerate')" ${regen ? '' : 'disabled'}>Regenerate</button>
-      <button class="a-btn a-btn-danger a-btn-sm" onclick="openReject(${q.id})" ${editable ? '' : 'disabled'}>Reject</button></div>`}
+    ${questionActions(q)}
   </div>`;
+}
+function sourceLines(src) {
+  const ai = `${esc(cur.provider || '')} ${esc(cur.model || '')}`;
+  if (src.kind === 'description') {
+    return `<p class="muted">✎ No PDF — generated from your description · ${ai}</p>
+           <p class="muted" style="color:#fbbf24;">These questions come from the AI's general knowledge, not from a document — check every answer carefully.</p>`;
+  }
+  const files = src.files > 1 ? src.files + ' PDFs: ' : '';
+  const pages = src.pages === 1 ? 'page' : 'pages';
+  const cut = src.truncated ? ' (very long — only part of it was kept)' : '';
+  return `<p class="muted">📄 ${files}${esc(src.filename)} · ${src.pages} ${pages} · ${src.characters.toLocaleString()} characters${cut} · ${ai}</p>`;
 }
 function detail() {
   const c = cur.counts, src = cur.source;
@@ -122,10 +148,7 @@ function detail() {
   <div class="a-card" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
     <div><h2 style="font-size:16px;">${esc(cur.department_name)} → ${esc(cur.subject)} <span class="badge badge-${esc(cur.status)}">${esc(cur.status)}</span></h2>
       <p class="muted">${esc(cur.level)} · ${esc(L(META.question_types, cur.question_type))} · ${esc(L(META.difficulties, cur.difficulty))} · ${fmt(cur.created_at)} · by ${esc(cur.created_by || '—')}</p>
-      ${src.kind === 'description'
-        ? `<p class="muted">✎ No PDF — generated from your description · ${esc(cur.provider || '')} ${esc(cur.model || '')}</p>
-           <p class="muted" style="color:#fbbf24;">These questions come from the AI's general knowledge, not from a document — check every answer carefully.</p>`
-        : `<p class="muted">📄 ${src.files > 1 ? src.files + ' PDFs: ' : ''}${esc(src.filename)} · ${src.pages} page${src.pages === 1 ? '' : 's'} · ${src.characters.toLocaleString()} characters${src.truncated ? ' (very long — only part of it was kept)' : ''} · ${esc(cur.provider || '')} ${esc(cur.model || '')}</p>`}
+      ${sourceLines(src)}
       ${cur.focus ? `<p class="muted">Instructions: “${esc(cur.focus)}”</p>` : ''}
       ${src.ocr ? '<p class="muted" style="color:#fbbf24;">📷 Some pages were photos / scans — the AI read the text from the pictures first, so check spellings, numbers and formulas extra carefully.</p>' : ''}
       ${cur.error ? `<p class="q-reason">${esc(cur.error.message)}</p>` : ''}

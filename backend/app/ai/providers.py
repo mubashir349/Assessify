@@ -60,6 +60,23 @@ class OpenAICompatibleProvider(AIProvider):
         self.max_output_tokens = max_output_tokens
 
     def complete(self, system: str, user: str, images: list[bytes] | None = None) -> str:
+        body = self._request_body(system, user, images)
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = "Bearer " + self._api_key
+
+        try:
+            resp = requests.post(self.base_url + "/chat/completions", json=body, headers=headers, timeout=self.timeout)
+        except requests.Timeout:
+            raise errors.timeout()
+        except requests.RequestException:
+            log.warning("AI provider %s could not be reached", self.name)   # no URL/key in the log line
+            raise errors.unavailable()
+
+        self._check_status(resp)
+        return self._read_answer(resp)
+
+    def _request_body(self, system: str, user: str, images: list[bytes] | None) -> dict:
         content = user
         if images:
             if not self.supports_images:
@@ -76,18 +93,9 @@ class OpenAICompatibleProvider(AIProvider):
             body["response_format"] = {"type": "json_object"}
         if self.max_output_tokens:
             body["max_tokens"] = self.max_output_tokens
-        headers = {"Content-Type": "application/json"}
-        if self._api_key:
-            headers["Authorization"] = "Bearer " + self._api_key
+        return body
 
-        try:
-            resp = requests.post(self.base_url + "/chat/completions", json=body, headers=headers, timeout=self.timeout)
-        except requests.Timeout:
-            raise errors.timeout()
-        except requests.RequestException:
-            log.warning("AI provider %s could not be reached", self.name)   # no URL/key in the log line
-            raise errors.unavailable()
-
+    def _check_status(self, resp) -> None:
         if resp.status_code in (401, 403):
             raise errors.auth_failed()
         if resp.status_code == 429:
@@ -98,6 +106,7 @@ class OpenAICompatibleProvider(AIProvider):
             log.warning("AI provider %s refused the request: HTTP %s", self.name, resp.status_code)
             raise errors.request_rejected()
 
+    def _read_answer(self, resp) -> str:
         try:
             data = resp.json()
             choice = data["choices"][0]

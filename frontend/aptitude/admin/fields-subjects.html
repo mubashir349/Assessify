@@ -32,12 +32,12 @@
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div class="a-field"><label>Assessment type</label>
         <div class="seg" id="modeSeg"></div></div>
-      <div class="a-field"><label>Degree level</label>
+      <div class="a-field"><label for="dLevel">Degree level</label>
         <select class="a-select" id="dLevel" onchange="lvlChange()"></select></div>
 
-      <div class="a-field"><label id="nameLbl">Field name</label><input class="a-input" id="dName" placeholder="e.g. Pre-Engineering, Law, Data Science" /></div>
-      <div class="a-field"><label>Subjects</label>
-        <div class="tag-in" id="tagBox"><input id="tagInput" placeholder="Type a subject, press Enter" /></div>
+      <div class="a-field"><label id="nameLbl" for="dName">Field name</label><input class="a-input" id="dName" placeholder="e.g. Pre-Engineering, Law, Data Science" /></div>
+      <div class="a-field"><label for="tagInput">Subjects</label>
+        <div class="tag-in" id="tagBox"><input id="tagInput" aria-label="Add a subject" placeholder="Type a subject, press Enter" /></div>
         <span class="hint">Add as many subjects as you like — nothing is fixed.</span></div>
       <button class="btn btn-amber" id="saveBtn" style="width:100%;" onclick="saveDept()">Save department</button>
     </div>

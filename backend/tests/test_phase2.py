@@ -19,9 +19,11 @@ def make_admin(app, email="admissions@ned.edu.pk", name="NED University"):
 
 def test_meta_is_public_and_complete(client):
     d = client.get("/api/v1/meta").get_json()["data"]
-    assert "University" in d["institution_types"] and "pending" in d["institution_statuses"]
+    assert "University" in d["institution_types"]
+    assert "pending" in d["institution_statuses"]
     assert [l["value"] for l in d["levels"]] == ["Undergraduate", "Masters", "PhD"]
-    assert d["levels"][0]["term"] == "Field" and d["levels"][1]["term"] == "Department"
+    assert d["levels"][0]["term"] == "Field"
+    assert d["levels"][1]["term"] == "Department"
     assert {m["value"] for m in d["modes"]} == {"general", "field"}
 
 
@@ -37,11 +39,14 @@ def test_create_list_update_delete(app):
     r = c.post("/api/v1/departments", json=DEPT)
     assert r.status_code == 201
     dept = r.get_json()["data"]["department"]
-    assert dept["subjects"] == DEPT["subjects"] and dept["term"] == "Field"
+    assert dept["subjects"] == DEPT["subjects"]
+    assert dept["term"] == "Field"
 
     r = c.put(f"/api/v1/departments/{dept['id']}", json={**DEPT, "name": "Pre-Eng", "subjects": ["Physics", "Mathematics", "Biology"]})
     upd = r.get_json()["data"]["department"]
-    assert r.status_code == 200 and upd["name"] == "Pre-Eng" and upd["subjects"] == ["Physics", "Mathematics", "Biology"]
+    assert r.status_code == 200
+    assert upd["name"] == "Pre-Eng"
+    assert upd["subjects"] == ["Physics", "Mathematics", "Biology"]
 
     assert len(c.get("/api/v1/departments?q=pre").get_json()["data"]["items"]) == 1
     assert c.get("/api/v1/departments?level=PhD").get_json()["data"]["items"] == []
@@ -55,7 +60,8 @@ def test_create_list_update_delete(app):
 def test_validation(app):
     c = make_admin(app)
     r = c.post("/api/v1/departments", json={"name": "", "level": "Nope", "mode": "x", "subjects": []})
-    assert r.status_code == 422 and set(r.get_json()["error"]["details"]) == {"name", "level", "mode", "subjects"}
+    assert r.status_code == 422
+    assert set(r.get_json()["error"]["details"]) == {"name", "level", "mode", "subjects"}
     r = c.post("/api/v1/departments", json={**DEPT, "subjects": ["  ", ""]})
     assert r.status_code == 422
     r = c.post("/api/v1/departments", json={**DEPT, "subjects": ["Maths", "maths", " Maths "]})
@@ -66,7 +72,8 @@ def test_duplicate_name_same_level_only(app):
     c = make_admin(app)
     assert c.post("/api/v1/departments", json=DEPT).status_code == 201
     r = c.post("/api/v1/departments", json={**DEPT, "name": "pre-engineering"})
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "DUPLICATE_NAME"
+    assert r.status_code == 409
+    assert r.get_json()["error"]["code"] == "DUPLICATE_NAME"
     assert c.post("/api/v1/departments", json={**DEPT, "level": "Masters"}).status_code == 201
 
 
@@ -84,8 +91,12 @@ def test_institutions_cannot_see_each_others_data(app):
 def test_dashboard_summary_is_computed_from_the_database(app):
     c = make_admin(app)
     d = c.get("/api/v1/dashboard/summary").get_json()["data"]
-    assert d["institution"]["name"] == "NED University" and d["departments"]["total"] == 0 and d["subjects"]["total"] == 0
+    assert d["institution"]["name"] == "NED University"
+    assert d["departments"]["total"] == 0
+    assert d["subjects"]["total"] == 0
     c.post("/api/v1/departments", json=DEPT)
     c.post("/api/v1/departments", json={"name": "General Test", "level": "Undergraduate", "mode": "general", "subjects": ["Maths", "English"]})
     d = c.get("/api/v1/dashboard/summary").get_json()["data"]
-    assert d["departments"]["total"] == 2 and d["departments"]["general_tests"] == 1 and d["subjects"]["total"] == 6
+    assert d["departments"]["total"] == 2
+    assert d["departments"]["general_tests"] == 1
+    assert d["subjects"]["total"] == 6
