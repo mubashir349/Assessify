@@ -29,13 +29,18 @@ def create_app(config_class=Config) -> Flask:
     _register_jwt_errors()
 
     # ---- One line per module. Later phases add more here ----
+    from app.modules.aptitude_tests.routes import bp as tests_bp
     from app.modules.auth.routes import bp as auth_bp
+    from app.modules.candidate_auth.routes import bp as candidate_bp
     from app.modules.dashboard.routes import bp as dashboard_bp
     from app.modules.departments.routes import bp as departments_bp
+    from app.modules.exam.routes import admin_bp as exam_admin_bp
+    from app.modules.exam.routes import bp as exam_bp
     from app.modules.health.routes import bp as health_bp
     from app.modules.institutions.routes import bp as institutions_bp
     from app.modules.meta.routes import bp as meta_bp
     from app.modules.questions.routes import bp as questions_bp
+    from app.modules.roster.routes import bp as roster_bp
     from app.modules.super_admin.routes import bp as super_bp
 
     app.register_blueprint(health_bp, url_prefix="/api/v1/health")
@@ -46,6 +51,14 @@ def create_app(config_class=Config) -> Flask:
     app.register_blueprint(dashboard_bp, url_prefix="/api/v1/dashboard")
     app.register_blueprint(meta_bp, url_prefix="/api/v1/meta")
     app.register_blueprint(questions_bp, url_prefix="/api/v1/questions")
+    app.register_blueprint(tests_bp, url_prefix="/api/v1/tests")
+    app.register_blueprint(roster_bp, url_prefix="/api/v1/roster")
+    app.register_blueprint(candidate_bp, url_prefix="/api/v1/candidate")
+    app.register_blueprint(exam_bp, url_prefix="/api/v1/exam")
+    app.register_blueprint(exam_admin_bp, url_prefix="/api/v1/attempts")
+
+    from app.modules.candidate_auth.service import reset_limits
+    reset_limits()          # wrong-attempt counters start empty for every new app (and every test)
 
     _serve_frontend(app)
 

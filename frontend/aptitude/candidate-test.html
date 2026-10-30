@@ -10,11 +10,14 @@
 </head>
 <body style="background:var(--n-950);">
 
-  <div class="test-shell active" id="testShell">
+  <div class="test-msg" id="loadMsg">Loading your paper…</div>
+
+  <div class="test-shell" id="testShell">
     <div class="test-top">
-      <div class="cand-brand"><div class="mark">Σ</div><span>Pre-Engineering · Undergraduate Admission Test</span></div>
-      <div class="top-mid"><div class="prog-track"><div class="prog-fill" id="progFill"></div></div><span id="progressLabel">0 of 20 answered</span></div>
-      <div class="timer" id="timer">⏱ 02:30:00</div>
+      <div class="cand-brand"><div class="mark">Σ</div><span id="testTitle">Aptitude Test</span></div>
+      <div class="top-mid"><div class="prog-track"><div class="prog-fill" id="progFill"></div></div><span id="progressLabel">0 answered</span></div>
+      <span class="save-state" id="saveState">All answers saved</span>
+      <div class="timer" id="timer">⏱ --:--:--</div>
     </div>
     <div class="sec-tabs" id="secTabs"></div>
 
@@ -28,12 +31,12 @@
           <div><span class="sw" style="background:rgba(255,255,255,.08);"></span>Unanswered</div>
           <div><span class="sw" style="background:transparent;border:1.5px solid var(--apt-primary);"></span>Current</div>
         </div>
-        <button class="btn btn-amber" style="width:100%;margin-top:18px;" onclick="openSubmitConfirm()">Submit test</button>
+        <button class="btn btn-amber" style="width:100%;margin-top:18px;" id="submitOpen">Submit test</button>
       </aside>
 
       <main class="q-panel">
         <div class="q-card">
-          <div class="q-card-head"><span class="qn" id="qNum"></span><button class="flag-btn" id="flagBtn" onclick="toggleFlag()">⚑ Flag for review</button></div>
+          <div class="q-card-head"><span class="qn" id="qNum"></span><button class="flag-btn" id="flagBtn">⚑ Flag for review</button></div>
           <p class="qtext" id="qText"></p>
           <div id="optList"></div>
         </div>
@@ -41,20 +44,31 @@
     </div>
 
     <div class="test-foot">
-      <button class="btn btn-ghost" id="prevBtn" onclick="go(-1)">← Previous</button>
-      <button class="btn btn-ghost" onclick="clearAns()">Clear answer</button>
-      <button class="btn btn-amber" id="nextBtn" onclick="go(1)">Next →</button>
+      <button class="btn btn-ghost" id="prevBtn">← Previous</button>
+      <button class="btn btn-ghost" id="clearBtn">Clear answer</button>
+      <button class="btn btn-amber" id="nextBtn">Next →</button>
     </div>
   </div>
 
-  <!-- Lock overlay: fullscreen exit / focus loss -->
+  <!-- Fullscreen gate: shown on load / after an unlock, before the questions are visible -->
+  <div class="lock-overlay fs-gate" id="fsGate">
+    <div class="lock-card fade-up">
+      <div class="lock-ic">🖥️</div>
+      <h2 id="fsTitle">Enter fullscreen to begin</h2>
+      <p>The questions appear in fullscreen. Leaving fullscreen or switching tabs locks your test until your proctor unlocks it.
+        <span id="fsTime"></span></p>
+      <button class="btn btn-amber" id="fsBtn">Enter fullscreen →</button>
+    </div>
+  </div>
+
+  <!-- Lock overlay: fullscreen exit / tab switch -->
   <div class="lock-overlay" id="lockOverlay">
     <div class="lock-card fade-up">
       <div class="lock-ic">🔒</div>
       <h2>Your test has been locked</h2>
-      <p>You exited fullscreen or switched away from the test window. Your answers and remaining time are safely frozen.
+      <p id="lockText">You exited fullscreen or switched away from the test window. Your saved answers are safe.
         Please contact your test proctor — only an Institution Admin can unlock your attempt.</p>
-      <p class="code">Locked at <span id="lockTime"></span> · Attempt ID APT-2026-FE-00734</p>
+      <p class="code">Locked at <span id="lockTime"></span> · Attempt <span id="lockRef"></span></p>
     </div>
   </div>
 
@@ -64,14 +78,13 @@
       <h3 style="margin-bottom:8px;">Submit your test?</h3>
       <p class="muted" style="margin-bottom:20px;" id="submitMsg">Unanswered questions will be marked incorrect. This cannot be undone.</p>
       <div style="display:flex;gap:10px;">
-        <button class="a-btn a-btn-ghost" style="flex:1;" onclick="closeSubmitConfirm()">Go back</button>
-        <button class="a-btn a-btn-amber" style="flex:1;" onclick="window.location.href='candidate-result.html'">Submit</button>
+        <button class="a-btn a-btn-ghost" style="flex:1;" id="submitCancel">Go back</button>
+        <button class="a-btn a-btn-amber" style="flex:1;" id="submitConfirm">Submit</button>
       </div>
     </div>
   </div>
 
-  <script src="../assets/js/store.js"></script>
-  <script src="../assets/js/admin-shell.js"></script>
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/candidate-test.js"></script>
 </body>
 </html>

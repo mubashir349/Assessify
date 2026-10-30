@@ -17,25 +17,26 @@
     <form class="cand-auth-card glass fade-up" id="loginForm" novalidate>
       <div class="mark-lg">📝</div>
       <h1>Aptitude Candidate Login</h1>
-      <p class="lead">NED University of Engineering &amp; Technology<br/>Undergraduate Admission Test — Fall 2026</p>
+      <p class="lead">Enter the access code and date of birth printed on the test slip your institution gave you.</p>
 
-      <div class="auth-err" id="authErr">Access code or date of birth is incorrect. Please check your test slip and try again.</div>
+      <div class="auth-err" id="authErr"></div>
 
       <div class="a-field">
         <label for="code">One-time access code</label>
-        <input class="a-input" id="code" placeholder="e.g. 8K4Q-2P1X" required />
+        <input class="a-input" id="code" placeholder="e.g. 8K4Q-2P1X" autocomplete="off" autocapitalize="characters" spellcheck="false" required />
       </div>
       <div class="a-field">
         <label for="dob">Date of birth</label>
         <input class="a-input" id="dob" type="date" required />
       </div>
 
-      <button type="submit" class="btn btn-amber" style="width:100%;margin-top:6px;">Continue →</button>
+      <button type="submit" class="btn btn-amber" id="loginBtn" style="width:100%;margin-top:6px;">Continue →</button>
 
       <p class="cand-attempts">Your access code and date of birth were supplied by your test proctor. Codes are one-time — they become invalid once your attempt is submitted or ended.</p>
     </form>
   </div>
 
+  <script src="../assets/js/api.js"></script>
   <script src="../assets/js/main.js"></script>
   <script src="../assets/js/candidate-login.js"></script>
 </body>
