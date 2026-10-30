@@ -17,7 +17,7 @@
 
 <template id="a-content-template">
   <div class="a-card ai-card" style="margin-bottom:18px;">
-    <div class="ai-tag">✦ AI INSIGHTS · QUESTION BANK</div>
+    <div class="ai-tag">✦ INSIGHTS · QUESTION BANK</div>
     <div class="a-grid a-grid-3">
       <div><div class="muted" style="margin-bottom:6px;">Difficulty balance</div><div id="diffBars"></div></div>
       <div><div class="muted" style="margin-bottom:6px;">Coverage by level</div><div id="lvlBars"></div></div>
@@ -25,17 +25,17 @@
     </div>
   </div>
   <div class="filters">
-    <select class="a-select" id="fDept" onchange="renderBank()"><option value="">All fields / departments</option></select>
-    <select class="a-select" id="fLevel" onchange="renderBank()"><option value="">All levels</option><option>Undergraduate</option><option>Masters</option><option>PhD</option></select>
-    <select class="a-select" id="fSubj" onchange="renderBank()"><option value="">All subjects</option></select>
-    <select class="a-select" id="fDiff" onchange="renderBank()"><option value="">All difficulties</option><option>Easy</option><option>Medium</option><option>Hard</option></select>
-    <select class="a-select" id="fStat" onchange="renderBank()"><option value="">Active</option><option value="retired">Retired</option></select>
-    <input class="a-input" id="fQ" placeholder="Search question text…" oninput="renderBank()" />
+    <select class="a-select" id="fDept" onchange="onDept()"><option value="">All fields / departments</option></select>
+    <select class="a-select" id="fLevel" onchange="relabel();applyFilters()"><option value="">All levels</option></select>
+    <select class="a-select" id="fSubj" onchange="applyFilters()"><option value="">All subjects</option></select>
+    <select class="a-select" id="fDiff" onchange="applyFilters()"><option value="">All difficulties</option></select>
+    <select class="a-select" id="fType" onchange="applyFilters()"><option value="">All types</option></select>
+    <input class="a-input" id="fQ" placeholder="Search question text…" oninput="onSearch()" />
   </div>
-  <div id="bankList" style="display:flex;flex-direction:column;gap:10px;"></div>
+  <div id="bankList" style="display:flex;flex-direction:column;gap:10px;"><div class="a-card a-empty">Loading…</div></div>
+  <div id="bankPager"></div>
 </template>
 
-<script src="../../assets/js/store.js"></script>
 <script src="../../assets/js/api.js"></script>
 <script src="../../assets/js/admin-shell.js"></script>
 <script src="../../assets/js/question-bank.js"></script>
