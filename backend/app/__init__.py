@@ -42,7 +42,9 @@ def create_app(config_class=Config) -> Flask:
     from app.modules.health.routes import bp as health_bp
     from app.modules.institutions.routes import bp as institutions_bp
     from app.modules.meta.routes import bp as meta_bp
+    from app.modules.monitor.routes import bp as monitor_bp
     from app.modules.questions.routes import bp as questions_bp
+    from app.modules.reports.routes import bp as reports_bp
     from app.modules.roster.routes import bp as roster_bp
     from app.modules.super_admin.routes import bp as super_bp
 
@@ -59,6 +61,8 @@ def create_app(config_class=Config) -> Flask:
     app.register_blueprint(candidate_bp, url_prefix="/api/v1/candidate")
     app.register_blueprint(exam_bp, url_prefix="/api/v1/exam")
     app.register_blueprint(exam_admin_bp, url_prefix="/api/v1/attempts")
+    app.register_blueprint(monitor_bp, url_prefix="/api/v1/monitor")
+    app.register_blueprint(reports_bp, url_prefix="/api/v1/reports")
 
     from app.modules.candidate_auth.service import reset_limits
     reset_limits()          # wrong-attempt counters start empty for every new app (and every test)

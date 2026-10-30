@@ -72,6 +72,10 @@ Errors: `422 VALIDATION_ERROR` (name 2–150 chars, valid level/mode, 1–50 sub
 ## Dashboard — Phase 2
 `GET /dashboard/summary` (institution_admin) → `{institution: {name}, departments: {total, by_level, general_tests, recent: [..]}, subjects: {total}}`
 
+Phase 7 adds: `tests: {total, published, draft, live, upcoming, ended, next: [{id, name, starts_at}]}`,
+`candidates: {total, in_progress, locked, submitted}`, `average_percent` (all submitted attempts, or `null`) and
+`questions: {approved, waiting_review}`. Overdue attempts are auto-submitted first, so the numbers are current.
+
 
 ## Phase 3 — AI question generation, draft review, question bank
 All routes: role **`institution_admin`** only (`401` not signed in / session expired · `403 FORBIDDEN` super admin ·
@@ -317,8 +321,9 @@ works and late requests get a clear `TIME_UP`), until the cookie expires 1 hour 
 | GET | `/exam/result` | → `{attempt, release, release_on, email, score}` — `score` only when `result_release = immediate`, else `null` |
 
 **Institution Admin:** `POST /attempts/<id>/unlock` → `{attempt}` (admin view with `score`, `events`). Another
-institution's attempt → `404`; not locked → `409 INVALID_TRANSITION`. The roster page shows an *Unlock* button; the
-Phase 7 monitor builds on this route.
+institution's attempt → `404`; not locked → `409 INVALID_TRANSITION`. The roster page and the Phase 7 monitor show
+an *Unlock* button. `POST /attempts/<id>/end` (Phase 7) → `{attempt}` submitted with `submit_reason: "admin"`, scored
+with the answers saved so far; already submitted → `409 ALREADY_SUBMITTED`.
 
 `gate` = `{state: "not_started"|"open"|"resume"|"submitted"|"closed", can_start, server_now, starts_at, ends_at,
 seconds_until_start, timing_mode, duration_minutes, minutes_if_started_now, attempt|null}`
@@ -355,3 +360,69 @@ choice: 0-based|null, flagged}` — **never** `correct_index`, `explanation`, `d
 | 409 | `NOT_SUBMITTED` | result before submitting |
 | 409 | `PAPER_UNAVAILABLE` | not enough approved questions left for a row (should not happen: approved questions stay approved) |
 | 423 | `ATTEMPT_LOCKED` | answer / submit while locked |
+
+
+## Live monitor (role `institution_admin` only) — Phase 7
+| Method | Path | Result |
+|---|---|---|
+| GET | `/monitor/tests` | `{tests: [{id, name, level, state: "live"\|"upcoming"\|"ended", starts_at, ends_at, timing_mode, candidates}]}` — published tests, live first |
+| GET | `/monitor?test_id=&status=&department_id=&q=` | `{test, server_now, disconnected_after_seconds, counts, items}` |
+| POST | `/attempts/<id>/unlock` | see Phase 6 |
+| POST | `/attempts/<id>/end` | ends one candidate's test now (`submit_reason: "admin"`) |
+
+The page polls `/monitor` every 5 seconds. Overdue attempts are auto-submitted before the snapshot is built.
+`counts` = `{all, not_started, in_progress, disconnected, locked, auto_submitted, completed}` for the **whole** test
+(filters only change `items`). Monitor status of a candidate:
+
+| status | when |
+|---|---|
+| `not_started` | no attempt yet |
+| `in_progress` | answering, and the test page reached the server in the last `MONITOR_DISCONNECTED_SECONDS` (default 75) |
+| `disconnected` | in progress, but nothing arrived for longer. Every candidate `/exam/...` request updates `last_seen_at` (the test page resyncs every 30 s) |
+| `locked` | waits for *Unlock* |
+| `auto_submitted` | submitted because the time ran out |
+| `completed` | submitted by the candidate, or ended by the admin |
+
+`item` = `{candidate_id, full_name, roll_number, email, department: {id, name}, status, attempt|null}` with
+`attempt` = `{id, reference, status, started_at, deadline_at, remaining_seconds, answered_count, question_count,
+lock_count, locked_at, lock_reason, submitted_at, submit_reason, score, max_score, last_seen_at, seconds_since_seen}`.
+Never the access code, date of birth or answers. Another institution's test → `404`; a draft test → `409 TEST_NOT_PUBLISHED`;
+unknown `status` → `400`.
+
+
+## Reports, insights and result emails (role `institution_admin` only) — Phase 7
+| Method | Path | Body → Result |
+|---|---|---|
+| GET | `/reports/tests?q=&level=&year=` | `{tests: [{id, name, level, state, starts_at, ends_at, result_release, candidates, submitted, average_percent}]}` (`year` = year of the start time) |
+| GET | `/reports/tests/<id>?department_id=&q=&status=&email=` | the report (below) |
+| GET | `/reports/tests/<id>/export.csv?(same filters)` | CSV of the candidate list (UTF-8 with BOM, opens in Excel) |
+| POST | `/reports/tests/<id>/send-results` | `{candidate_ids?: [..], resend?: false}` → `{sent, logged, failed, tried, remaining}` |
+| GET | `/reports/bank-insights` | `{subjects: [{field, subject, approved, waiting_review}], draft_tests_short_of_questions: [..], tips: [..]}` |
+| POST | `/reports/ai-summary` | `{scope: "test", test_id}` or `{scope: "bank"}` → `{scope, insights: [..3-6 strings..], provider, model}` |
+
+Report = `{test, summary, by_department, by_subject, hardest_questions, insights, email, candidates}`:
+- `summary` = `{candidates, submitted, in_progress, not_attempted, absent (only after the end), auto_submitted,
+  average_percent, median_percent, highest_percent, lowest_percent, distribution: [{label: "0-20%", count} x5]}`.
+  Percent = score / max score × 100 of one attempt; only submitted attempts count.
+- `by_department` = `[{id, name, candidates, submitted, average_percent, highest_percent}]`;
+  `by_subject` = `[{subject, questions, correct, unanswered, accuracy_percent}]` (weakest first);
+  `hardest_questions` = up to 5 `{question_id, subject, text, difficulty, asked, correct, accuracy_percent}` asked at least twice.
+- `insights` = plain-English tips worked out by rules (no AI needed).
+- `email` = `{ready, message, backend, counts: {sent, failed, logged, not_sent}}`.
+- `candidates` (filtered) = `[{candidate_id, full_name, roll_number, email, department, status: "submitted"|"in_progress"|"not_attempted",
+  attempt_id, score, max_score, percent, answered, questions, submitted_at, submit_reason, lock_count, rank, result_email|null}]`,
+  best first. `rank` = competition rank (90, 90, 80 → 1, 1, 3). Filters: `status` as above, `email` = `sent|logged|failed|not_sent`
+  (submitted candidates only), `q` = name / roll number / email.
+
+CSV cells that start with `= + - @` get a leading `'` so Excel never runs them as formulas.
+
+**Result emails.** One plain-text email per submitted candidate (score, correct answers, marks by subject, roll number).
+Candidates already sent are skipped unless `resend: true`; failed ones are tried again. Each try is stored in
+`result_emails` (one row per attempt: `status sent|failed|logged`, `error`, `attempts`, `sent_at`) — the email log.
+`MAIL_BACKEND=console` (default) sends nothing and writes the email to the server terminal (`logged`);
+`MAIL_BACKEND=smtp` sends through `MAIL_SERVER` (Gmail: an *app password*). Not set up → `503 MAIL_NOT_CONFIGURED`.
+The password is never stored or returned; errors are short safe messages.
+
+**AI summary.** The AI gets only numbers (averages, subjects, departments, hardest question texts; never names,
+emails, roll numbers or answer keys). Same errors as question generation (`AI_NOT_CONFIGURED`, `AI_RATE_LIMITED`, ...).
+Unknown `scope` → `422`.

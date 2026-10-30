@@ -9,7 +9,8 @@ POST /exam/submit          -> {attempt} (status submitted, scored on the server)
 GET  /exam/result          -> score (immediate release) or the release date (scheduled)
 
 Institution Admin:
-POST /attempts/<id>/unlock -> {attempt}   (the Phase 7 monitor page builds on this)
+POST /attempts/<id>/unlock -> {attempt}   (used by the Phase 7 monitor page)
+POST /attempts/<id>/end    -> {attempt}   (Phase 7: the proctor ends the test for this candidate)
 
 Every candidate route runs with allow_ended=True so that, after the end time, the attempt is submitted and the
 request gets a clear TIME_UP / result instead of a bare "session closed".
@@ -82,10 +83,30 @@ def result():
     return ok(service.result(g.current_candidate))
 
 
-@admin_bp.post("/<int:attempt_id>/unlock")
-@auth_required(ROLE_INSTITUTION_ADMIN)
-def unlock(attempt_id: int):
+def _admin_attempt(attempt_id: int) -> ExamAttempt:
     attempt = db.session.get(ExamAttempt, attempt_id)
     if attempt is None or attempt.candidate.institution_id != g.current_user.institution_id:
         raise ApiError("NOT_FOUND", "Attempt not found.", 404)
-    return ok({"attempt": service.unlock(attempt, g.current_user).admin_dict()})
+    return attempt
+
+
+@admin_bp.post("/<int:attempt_id>/unlock")
+@auth_required(ROLE_INSTITUTION_ADMIN)
+def unlock(attempt_id: int):
+    return ok({"attempt": service.unlock(_admin_attempt(attempt_id), g.current_user).admin_dict()})
+
+
+@bp.after_request
+def _mark_seen(response):
+    """Phase 7 monitor: every request from the candidate's page (answers, the 30 s resync) counts as 'online'.
+    The monitor shows an attempt as disconnected when nothing arrived for MONITOR_DISCONNECTED_SECONDS."""
+    candidate = g.get("current_candidate")
+    if candidate is not None and response.status_code < 500:
+        service.mark_seen(candidate)
+    return response
+
+
+@admin_bp.post("/<int:attempt_id>/end")
+@auth_required(ROLE_INSTITUTION_ADMIN)
+def end(attempt_id: int):
+    return ok({"attempt": service.end_by_admin(_admin_attempt(attempt_id)).admin_dict()})

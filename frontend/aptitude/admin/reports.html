@@ -7,83 +7,95 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../../assets/css/theme.css" />
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/reports.css" />
 </head>
-<body data-page="reports" data-title="Reports" data-sub="Aggregate-only — no per-candidate analytics in Institution mode">
+<body data-page="reports" data-title="Reports" data-sub="Results of your published tests, worked out on the server">
 
 <template id="a-content-template">
-  <div class="a-card ai-card" style="margin-bottom:20px;">
-    <div class="ai-tag">✦ AI INSIGHTS · ALL TESTS</div>
-    <div class="a-grid a-grid-2">
-      <div>
-        <div class="ai-item"><span class="ic">📉</span><span><b style="color:#fff;">Weakest area:</b> Physics averages 48% across Pre-Engineering — 14 points below Mathematics.</span></div>
-        <div class="ai-item"><span class="ic">📈</span><span><b style="color:#fff;">Trend:</b> Average score rose 6.2% versus the previous batch.</span></div>
-        <div class="ai-item"><span class="ic">🎯</span><span><b style="color:#fff;">Cut-off suggestion:</b> A pass mark of 55/100 would admit roughly the top 62% of candidates.</span></div>
-      </div>
-      <div>
-        <div class="muted" style="margin-bottom:6px;">Average score by department</div>
-        <div class="bar-row"><span class="lb">Pre-Engineering</span><span class="tr"><span class="fl" style="width:64%;display:block"></span></span><span class="v">64%</span></div>
-        <div class="bar-row"><span class="lb">Pre-Medical</span><span class="tr"><span class="fl" style="width:58%;display:block"></span></span><span class="v">58%</span></div>
-        <div class="bar-row"><span class="lb">Computer Science</span><span class="tr"><span class="fl" style="width:71%;display:block"></span></span><span class="v">71%</span></div>
-        <div class="bar-row"><span class="lb">Commerce</span><span class="tr"><span class="fl" style="width:61%;display:block"></span></span><span class="v">61%</span></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="filters">
-    <input class="a-input" id="rq" placeholder="Search tests or candidates (name, roll no., email)…" oninput="filterReports()" style="min-width:280px" />
-    <select class="a-select" id="rDept" onchange="filterReports()"><option value="">All fields / departments</option><option>Pre-Eng</option><option>Pre-Med</option><option>CS</option><option>Commerce</option></select>
-    <select class="a-select" id="rLevel" onchange="filterReports()"><option value="">All levels</option><option>Undergraduate</option><option>Masters</option><option>PhD</option></select>
-    <select class="a-select" id="rYear" onchange="filterReports()"><option value="">Any year</option><option>2026</option></select>
-    <select class="a-select" id="rOut" onchange="filterReports()"><option value="">All email outcomes</option><option>Sent</option><option>Failed</option></select>
-  </div>
-
-  <div class="a-card" id="mainReport" style="margin-bottom:20px;" data-search="commerce placement test batch 12" data-dept="Commerce" data-level="Undergraduate" data-year="2026">
-    <div class="section-head">
-      <div><h2>Commerce Placement Test — Batch 12</h2><p>Completed Sep 18, 2026 · 234 candidates</p></div>
-      <button class="a-btn a-btn-amber" onclick="aToast('Aggregate PDF downloaded.')">Export PDF ⬇</button>
-    </div>
-    <div class="a-grid a-grid-3">
-      <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Highest score</div><div class="num" style="color:var(--success);">92 / 100</div></div>
-      <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Lowest score</div><div class="num" style="color:#f87171;">18 / 100</div></div>
-      <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Average score</div><div class="num">61.4 / 100</div></div>
-    </div>
-    <div class="ai-item" style="margin-top:14px;"><span class="ic">✦</span><span>AI summary: scores are roughly bell-shaped; 3 accounting questions were answered correctly by under 20% of candidates — review them for ambiguity.</span></div>
-  </div>
 
   <div class="a-card" style="margin-bottom:20px;">
-    <div class="section-head"><div><h2>Result-release email log</h2><p>Scheduled batch — sent Sep 19, 2026</p></div><span class="badge badge-approved">1,190 / 1,190 sent</span></div>
+    <div class="section-head"><div><h2>Tests</h2><p>Pick a test to see its report</p></div></div>
+    <div class="filters">
+      <input class="a-input" id="tQ" aria-label="Search tests" placeholder="Search tests…" style="min-width:220px" />
+      <select class="a-select" id="tLevel" aria-label="Filter by level"><option value="">All levels</option></select>
+      <select class="a-select" id="tYear" aria-label="Filter by year"><option value="">Any year</option></select>
+    </div>
     <div class="a-table-wrap"><table class="a-table">
-      <thead><tr><th>Roll No.</th><th>Name</th><th>Email</th><th>Outcome</th></tr></thead>
-      <tbody id="logBody">
-        <tr data-dept="Pre-Eng" data-out="Sent"><td class="mono">PE-2026-014</td><td class="name">Ahmed Raza</td><td>ahmed.raza@mail.com</td><td><span class="badge badge-approved">Sent</span></td></tr>
-        <tr data-dept="Pre-Med" data-out="Sent"><td class="mono">PM-2026-091</td><td class="name">Sana Fatima</td><td>sana.fatima@mail.com</td><td><span class="badge badge-approved">Sent</span></td></tr>
-        <tr data-dept="CS" data-out="Failed"><td class="mono">CS-2026-208</td><td class="name">Bilal Hussain</td><td>bilal.h@mail.com</td><td><span class="badge badge-locked">Failed — bounced</span></td></tr>
-      </tbody></table></div>
+      <thead><tr><th>Test</th><th>Level</th><th>Date</th><th>State</th><th>Candidates</th><th>Submitted</th><th>Average</th><th></th></tr></thead>
+      <tbody id="testsBody"><tr><td colspan="8" class="muted">Loading…</td></tr></tbody>
+    </table></div>
   </div>
 
-  <div class="a-card">
-    <div class="section-head"><div><h2>Past tests</h2></div></div>
-    <div class="a-table-wrap"><table class="a-table">
-      <thead><tr><th>Test</th><th>Fields / Departments</th><th>Date</th><th>Candidates</th><th></th></tr></thead>
-      <tbody id="pastBody">
-        <tr data-level="Undergraduate" data-year="2026"><td class="name">Spring Intake Aptitude Test</td><td>Pre-Eng, CS</td><td class="mono">Mar 2, 2026</td><td>612</td><td><button class="a-btn a-btn-ghost a-btn-sm">Export PDF</button></td></tr>
-        <tr data-level="Undergraduate" data-year="2026"><td class="name">Commerce Placement Test — Batch 11</td><td>Commerce</td><td class="mono">Jan 14, 2026</td><td>198</td><td><button class="a-btn a-btn-ghost a-btn-sm">Export PDF</button></td></tr>
-        <tr data-level="Masters" data-year="2026"><td class="name">Masters Entry Test — Data Science</td><td>CS</td><td class="mono">Feb 20, 2026</td><td>144</td><td><button class="a-btn a-btn-ghost a-btn-sm">Export PDF</button></td></tr>
-      </tbody></table></div>
-    <div class="a-empty" id="noRes" style="display:none;padding:14px;">No results match your filters.</div>
+  <div id="reportArea" hidden>
+    <div class="a-card" style="margin-bottom:20px;">
+      <div class="section-head">
+        <div><h2 id="rName"></h2><p id="rMeta"></p></div>
+        <div class="rep-actions">
+          <button type="button" class="a-btn a-btn-ghost" id="exportBtn">Export CSV ⬇</button>
+          <button type="button" class="a-btn a-btn-amber" id="sendBtn">✉ Send results</button>
+        </div>
+      </div>
+      <div class="a-grid a-grid-4">
+        <div class="a-card a-stat rep-stat"><div class="lbl">Submitted</div><div class="num" id="stSubmitted">–</div><div class="delta" id="stSubmittedSub"></div></div>
+        <div class="a-card a-stat rep-stat"><div class="lbl">Average score</div><div class="num" id="stAvg">–</div><div class="delta" id="stMedian"></div></div>
+        <div class="a-card a-stat rep-stat"><div class="lbl">Highest score</div><div class="num ok" id="stHigh">–</div></div>
+        <div class="a-card a-stat rep-stat"><div class="lbl">Lowest score</div><div class="num bad" id="stLow">–</div></div>
+      </div>
+    </div>
+
+    <div class="a-grid a-grid-2" style="margin-bottom:20px;">
+      <div class="a-card">
+        <div class="section-head"><div><h2>Score distribution</h2><p>Submitted candidates per score band</p></div></div>
+        <div id="distBars"></div>
+        <div class="muted rep-h">Average by field / department</div>
+        <div id="deptBars"></div>
+      </div>
+      <div class="a-card">
+        <div class="section-head"><div><h2>Subjects</h2><p>Share of questions answered correctly</p></div></div>
+        <div id="subjBars"></div>
+        <div class="muted rep-h">Hardest questions</div>
+        <div id="hardList"></div>
+      </div>
+    </div>
+
+    <div class="a-card ai-card" style="margin-bottom:20px;">
+      <div class="ai-tag">✦ INSIGHTS · THIS TEST</div>
+      <div class="ai-more ai-more-top">
+        <div id="ruleTips"></div>
+        <div>
+          <button type="button" class="a-btn a-btn-ghost a-btn-sm" id="aiBtn">✦ Ask AI for a summary</button>
+          <div id="aiTips"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="a-card">
+      <div class="section-head">
+        <div><h2>Candidates &amp; result emails</h2><p id="mailNote"></p></div>
+        <span class="badge" id="mailBadge"></span>
+      </div>
+      <div class="filters">
+        <input class="a-input" id="cQ" aria-label="Search candidates" placeholder="Search name, roll no. or email…" style="min-width:220px" />
+        <select class="a-select" id="cDept" aria-label="Filter by field / department"><option value="">All fields / departments</option></select>
+        <select class="a-select" id="cStatus" aria-label="Filter by status">
+          <option value="">All candidates</option><option value="submitted">Submitted</option>
+          <option value="in_progress">Still taking it</option><option value="not_attempted">Did not attempt</option>
+        </select>
+        <select class="a-select" id="cEmail" aria-label="Filter by email outcome">
+          <option value="">All email outcomes</option><option value="sent">Sent</option><option value="logged">Logged (test mode)</option>
+          <option value="failed">Failed</option><option value="not_sent">Not sent yet</option>
+        </select>
+      </div>
+      <div class="a-table-wrap"><table class="a-table">
+        <thead><tr><th>Rank</th><th>Candidate</th><th>Roll No.</th><th>Field / Department</th><th>Status</th><th>Score</th><th>Locks</th><th>Result email</th></tr></thead>
+        <tbody id="candBody"></tbody>
+      </table></div>
+    </div>
   </div>
+
 </template>
 <script src="../../assets/js/api.js"></script>
 <script src="../../assets/js/admin-shell.js"></script>
-<script>
-function filterReports(){
-  const q=rq.value.toLowerCase(), d=rDept.value, l=rLevel.value, y=rYear.value, o=rOut.value; let n=0;
-  const deptOk=t=>!d||t.toLowerCase().includes(d.toLowerCase());
-  const main=document.getElementById('mainReport'); const mOk=(!q||main.dataset.search.includes(q))&&(!d||main.dataset.dept===d)&&(!l||main.dataset.level===l)&&(!y||main.dataset.year===y);
-  main.style.display=mOk?'':'none'; n+=mOk;
-  document.querySelectorAll('#logBody tr').forEach(r=>{const ok=(!q||r.textContent.toLowerCase().includes(q))&&(!d||r.dataset.dept===d)&&(!o||r.dataset.out===o); r.style.display=ok?'':'none';});
-  document.querySelectorAll('#pastBody tr').forEach(r=>{const ok=(!q||r.textContent.toLowerCase().includes(q))&&deptOk(r.children[1].textContent)&&(!l||r.dataset.level===l)&&(!y||r.dataset.year===y); r.style.display=ok?'':'none'; n+=ok;});
-  document.getElementById('noRes').style.display=n?'none':'block';
-}
-</script>
+<script src="../../assets/js/ai-insights.js"></script>
+<script src="../../assets/js/reports.js"></script>
 </body></html>

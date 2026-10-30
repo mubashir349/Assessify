@@ -78,6 +78,19 @@ class Config:
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
     AI_TIMEOUT_SECONDS = int(os.getenv("AI_TIMEOUT_SECONDS", "90"))
     AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "2"))      # extra tries after the first one (bounded)
+
+    # ---- Phase 7: result emails ----
+    # console = nothing is sent, each email is written to the server log (local testing). smtp = really send.
+    MAIL_BACKEND = os.getenv("MAIL_BACKEND", "console").strip().lower()
+    MAIL_SERVER = os.getenv("MAIL_SERVER", "").strip()          # e.g. smtp.gmail.com
+    MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
+    MAIL_USE_TLS = _flag("MAIL_USE_TLS", "true")                # STARTTLS on port 587
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "").strip()
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
+    MAIL_FROM = os.getenv("MAIL_FROM", "").strip()              # empty -> MAIL_USERNAME
+    MAIL_TIMEOUT_SECONDS = int(os.getenv("MAIL_TIMEOUT_SECONDS", "20"))
+    # Phase 7: an in-progress candidate whose page has not called the server for this long shows as "Disconnected"
+    MONITOR_DISCONNECTED_SECONDS = int(os.getenv("MONITOR_DISCONNECTED_SECONDS", "75"))
     AI_BATCH_SIZE = int(os.getenv("AI_BATCH_SIZE", "10"))       # questions asked for in one AI request
     AI_MAX_OUTPUT_TOKENS = os.getenv("AI_MAX_OUTPUT_TOKENS", "").strip()  # empty -> provider default
     MAX_QUESTIONS_PER_ATTEMPT = int(os.getenv("MAX_QUESTIONS_PER_ATTEMPT", "100"))

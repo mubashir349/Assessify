@@ -23,6 +23,13 @@
       <div><div class="muted" style="margin-bottom:6px;">Coverage by level</div><div id="lvlBars"></div></div>
       <div><div class="muted" style="margin-bottom:2px;">Suggestions</div><div id="aiTips"></div></div>
     </div>
+    <div class="ai-more">
+      <div><div class="muted" style="margin-bottom:2px;">For your tests</div><div id="bankTips"></div></div>
+      <div>
+        <button type="button" class="a-btn a-btn-ghost a-btn-sm" id="bankAiBtn">✦ Ask AI about the bank</button>
+        <div id="bankAi"></div>
+      </div>
+    </div>
   </div>
   <div class="filters">
     <select class="a-select" id="fDept" onchange="onDept()"><option value="">All fields / departments</option></select>
@@ -38,6 +45,7 @@
 
 <script src="../../assets/js/api.js"></script>
 <script src="../../assets/js/admin-shell.js"></script>
+<script src="../../assets/js/ai-insights.js"></script>
 <script src="../../assets/js/question-bank.js"></script>
 </body>
 </html>

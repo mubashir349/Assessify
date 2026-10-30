@@ -8,7 +8,7 @@ Lifecycle (column `status`):
     in_progress -> started, answers are saved one by one.
     locked      -> the browser reported a fullscreen exit / tab switch. Answers are refused until an Institution Admin
                    unlocks it (Phase 7 monitor). Fixed time keeps running; a flexible timer is frozen.
-    submitted   -> final. Scored on the server. `submit_reason` = candidate | time_up.
+    submitted   -> final. Scored on the server. `submit_reason` = candidate | time_up | admin (ended from the monitor).
 
 Times are naive UTC like everywhere else. `deadline_at` is the moment the paper closes for THIS candidate:
     fixed    -> the test's end time (a late starter gets less time),
@@ -24,7 +24,7 @@ from app.common.utils import iso, utcnow
 from app.extensions import db
 
 ATTEMPT_STATUSES = ("in_progress", "locked", "submitted")
-SUBMIT_REASONS = ("candidate", "time_up")
+SUBMIT_REASONS = ("candidate", "time_up", "admin")
 # What the browser may report as the reason for a lock. Anything else is stored as "other".
 LOCK_REASONS = {
     "fullscreen_exit": "Left fullscreen",
@@ -50,6 +50,7 @@ class ExamAttempt(db.Model):
     lock_count = db.Column(db.Integer, nullable=False, default=0)
     submitted_at = db.Column(db.DateTime, nullable=True)
     submit_reason = db.Column(db.String(15), nullable=True)
+    last_seen_at = db.Column(db.DateTime, nullable=True)       # Phase 7: last request from the candidate's page
 
     # filled once, on submit (server-side scoring)
     score = db.Column(db.Integer, nullable=True)
@@ -65,6 +66,7 @@ class ExamAttempt(db.Model):
                             order_by="PaperItem.position", lazy="selectin")
     events = db.relationship("LockEvent", back_populates="attempt", cascade="all, delete-orphan",
                              order_by="LockEvent.id", lazy="selectin")
+    result_email = db.relationship("ResultEmail", uselist=False, viewonly=True, lazy="selectin")   # Phase 7
 
     @property
     def reference(self) -> str:
