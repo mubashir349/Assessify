@@ -16,6 +16,42 @@
 
 <template id="a-content-template">
 
+  <div class="a-grid a-grid-4" style="margin-bottom:22px;">
+    <div class="a-card a-stat">
+      <div class="lbl">Tests live now</div>
+      <div class="num" id="sLive">–</div>
+      <div class="delta"><span id="sLiveSub">&nbsp;</span></div>
+    </div>
+    <div class="a-card a-stat">
+      <div class="lbl">Candidates on rosters</div>
+      <div class="num" id="sCands">–</div>
+      <div class="delta"><span id="sCandsSub">&nbsp;</span></div>
+    </div>
+    <div class="a-card a-stat">
+      <div class="lbl">Average score</div>
+      <div class="num" id="sAvg">–</div>
+      <div class="delta"><span id="sAvgSub">&nbsp;</span></div>
+    </div>
+    <div class="a-card a-stat">
+      <div class="lbl">Approved questions</div>
+      <div class="num" id="sQs">–</div>
+      <div class="delta"><span id="sQsSub">&nbsp;</span></div>
+    </div>
+  </div>
+
+  <div class="a-card" style="margin-bottom:22px;">
+    <div class="section-head">
+      <div><h2>Tests</h2><p id="sTestsSub">&nbsp;</p></div>
+      <div style="display:flex;gap:8px;"><a href="monitor.html" class="a-btn a-btn-ghost a-btn-sm">Live monitor →</a><a href="reports.html" class="a-btn a-btn-ghost a-btn-sm">Reports →</a></div>
+    </div>
+    <div class="a-table-wrap">
+      <table class="a-table">
+        <thead><tr><th>Next tests</th><th>Starts</th></tr></thead>
+        <tbody id="nextBody"><tr><td colspan="2" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="a-grid a-grid-3" style="margin-bottom:22px;">
     <div class="a-card a-stat">
       <div class="lbl">Fields &amp; departments configured</div>
@@ -62,10 +98,26 @@ async function loadSummary() {
     $('sGeneral').textContent = d.departments.general_tests;
     const parts = Object.entries(d.departments.by_level).map(([lvl, n]) => `${esc(lvl)} ${n}`);
     $('sDeptsSub').innerHTML = parts.length ? parts.join(' · ') : 'None yet';
+    showPhase7(d);
     $('recentBody').innerHTML = d.departments.recent.map(r =>
       `<tr><td class="name">${esc(r.name)}</td><td>${esc(r.level)}</td><td class="mono">${r.subject_count}</td></tr>`).join('')
       || '<tr><td colspan="3" class="muted">Nothing configured yet — <a href="fields-subjects.html">add your first field / department</a>.</td></tr>';
   } catch (e) { $('recentBody').innerHTML = `<tr><td colspan="3" style="color:#f87171;">${esc(e.message)}</td></tr>`; }
+}
+function showPhase7(d) {
+  const t = d.tests, c = d.candidates;
+  $('sLive').textContent = t.live;
+  $('sLiveSub').textContent = `${c.in_progress} answering · ${c.locked} locked`;
+  $('sCands').textContent = c.total;
+  $('sCandsSub').textContent = `${c.submitted} submitted`;
+  $('sAvg').textContent = d.average_percent === null ? '–' : `${d.average_percent}%`;
+  $('sAvgSub').textContent = 'of all submitted attempts';
+  $('sQs').textContent = d.questions.approved;
+  $('sQsSub').textContent = `${d.questions.waiting_review} waiting for review`;
+  $('sTestsSub').textContent = `${t.published} published · ${t.draft} draft · ${t.upcoming} upcoming · ${t.ended} ended`;
+  $('nextBody').innerHTML = t.next.map(x => `<tr><td class="name">${esc(x.name)}</td>`
+    + `<td class="mono">${esc(new Date(x.starts_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))}</td></tr>`).join('')
+    || '<tr><td colspan="2" class="muted">No upcoming tests — <a href="create-test.html">create one</a>.</td></tr>';
 }
 document.addEventListener('DOMContentLoaded', () => setTimeout(loadSummary, 0));   // after the shell injects the template
 </script>

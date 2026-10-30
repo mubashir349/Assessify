@@ -7,3 +7,11 @@
 .status-pill.active { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
 .status-pill .n { font-family:var(--font-display); font-size:1.4rem; font-weight:700; color:#fff; }
 .status-pill .l { font-size:11px; color:var(--n-500); }
+.status-pill { font: inherit; text-align: left; }
+.status-pill:focus-visible { outline: 2px solid var(--amber, #f59e0b); outline-offset: 2px; }
+.live-note { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--n-400); }
+.live-dot.paused { background: var(--n-500); box-shadow:none; animation:none; }
+.mon-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.mon-sub { display:block; font-size:11px; color:var(--n-500); margin-top:2px; }
+.progress-mini { display:inline-block; width:60px; height:5px; border-radius:4px; background:rgba(255,255,255,.08); vertical-align:middle; margin-left:6px; overflow:hidden; }
+.progress-mini span { display:block; height:100%; background:var(--success); }

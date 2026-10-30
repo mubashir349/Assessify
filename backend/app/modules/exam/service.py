@@ -326,3 +326,21 @@ def result(candidate: Candidate, now=None) -> dict:
             "by_subject": list(subjects.values()),
         }
     return data
+
+
+# ------------------------------------------------------------------------------------------------ Phase 7 (monitor)
+def mark_seen(candidate: Candidate, now=None) -> None:
+    """One small UPDATE: the candidate's page is still talking to the server."""
+    (ExamAttempt.query.filter(ExamAttempt.candidate_id == candidate.id, ExamAttempt.status != "submitted")
+     .update({ExamAttempt.last_seen_at: now or utcnow()}, synchronize_session=False))
+    db.session.commit()
+
+
+def end_by_admin(attempt: ExamAttempt, now=None) -> ExamAttempt:
+    """The proctor ends a candidate's test from the monitor: scored with the answers saved so far."""
+    now = now or utcnow()
+    if finalize_if_overdue(attempt, now) or attempt.status == "submitted":
+        raise ApiError("ALREADY_SUBMITTED", "This attempt is already submitted.", 409)
+    _score_and_submit(attempt, "admin", now)
+    db.session.commit()
+    return attempt

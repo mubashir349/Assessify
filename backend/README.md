@@ -212,7 +212,9 @@ backend/
       aptitude_tests/    Phase 4: tests, the 1.5x pool check, schedules, publish
       roster/            Phase 5: candidate roster, CSV import, access codes
       candidate_auth/    Phase 5: candidate login (access code + date of birth); app/common/candidate.py = candidate_required
-      exam/              Phase 6: time gate, random paper, answers, lock, auto-submit, scoring (+ admin unlock)
+      exam/              Phase 6: time gate, random paper, answers, lock, auto-submit, scoring (+ admin unlock / end)
+      monitor/           Phase 7: live monitor snapshot (statuses, counts, filters)
+      reports/           Phase 7: reports + CSV export (service.py), result emails (emails.py), AI insights (ai_summary.py)
   migrations/            database versions (Alembic)
   seed.py                creates the Super Admin
   tests/                 pytest suite
@@ -346,3 +348,41 @@ python -m pytest tests/test_phase6.py -v
 ```
 The migration was generated and checked (upgrade → downgrade → upgrade) on SQLite only. Run `flask --app run db upgrade`
 on your SQL Server and check SSMS shows `exam_attempts`, `exam_paper_items` and `exam_lock_events`.
+
+## Phase 7 — live monitor, reports, insights, result emails
+
+**Live Monitor** (admin menu): pick a test → every candidate with their status (Not started, In progress,
+Disconnected, Locked, Auto-submitted, Completed), answered count, time left and when the page was last seen. It
+refreshes every 5 seconds. Click a status box to filter; *Unlock* frees a locked candidate, *End* ends one candidate's
+test and scores it. **Reports**: search / filter tests by name, level and year → average, median, highest, lowest,
+score bands, averages by field, subjects, the hardest questions, rule-based insights and *Ask AI for a summary* →
+candidate list with rank, filters and *Export CSV* → *Send results* emails every submitted candidate their score
+(email log in the same table). **Dashboard** now shows live tests, candidates, average score and approved questions.
+**Question Bank** shows tips for your draft tests and an *Ask AI about the bank* button.
+
+### One-time setup after pulling Phase 7 (PowerShell, inside `backend/`)
+```powershell
+.\venv\Scripts\Activate.ps1
+flask --app run db upgrade                     # adds result_emails + exam_attempts.last_seen_at (nothing is deleted)
+python seed_phase7.py <your institution admin email>
+python run.py
+```
+No new packages. New optional `.env` lines (see `.env.example`): `MAIL_BACKEND=console` (default: emails are only
+printed in the server terminal) or `smtp` with `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`,
+`MAIL_PASSWORD` (Gmail: an app password), `MAIL_FROM`; and `MONITOR_DISCONNECTED_SECONDS` (default 75).
+
+### Done-when demo
+1. Log in as the institution admin → **Live Monitor** → *Phase 7 Live Test*: 6 candidates, one in each status
+   (Hamza Ali is 🔒 Locked, Fatima Noor is ⚠ Disconnected, Mariam Javed not started, Saad Qureshi completed).
+2. Press **Unlock** on Hamza Ali → the toast says unlocked and the Locked count drops to 0. (Live too: sign in as
+   **LIVE-0002 / 2007-08-15** in another window, press Esc to lock, watch the row turn Locked within 5 s, Unlock it.)
+3. **Reports** → *Phase 7 Past Test* (8 submitted, 1 absent) → **Export CSV** downloads the ranked list →
+   **Send results** → the email column shows *Logged (test mode)* for all 8 (with `MAIL_BACKEND=smtp` they are really sent).
+
+### Tests
+```powershell
+python -m pytest -q                       # 200 tests: Phase 1-7
+python -m pytest tests/test_phase7.py -v
+```
+The migration was checked (upgrade → downgrade → upgrade) on SQLite only. Run `flask --app run db upgrade` on your
+SQL Server and check SSMS shows `result_emails` and the new `last_seen_at` column in `exam_attempts`.

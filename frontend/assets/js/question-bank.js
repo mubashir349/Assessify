@@ -91,4 +91,14 @@ document.addEventListener('admin:ready', async () => {
   $('fDept').innerHTML += DEPTS.map(d => `<option value="${d.id}">${esc(d.name)} (${esc(d.level)})</option>`).join('');
   $('fSubj').innerHTML += subjectsFor('').map(s => `<option>${esc(s)}</option>`).join('');
   renderBank();
+  void loadBankTips();
+  $('bankAiBtn').addEventListener('click', () => void askAi({ scope: 'bank' }, $('bankAi'), $('bankAiBtn')));
 });
+
+// Phase 7: server-side tips (questions waiting for review, thin subjects, draft tests that can't publish yet).
+async function loadBankTips() {
+  try {
+    const d = await api('/reports/bank-insights');
+    $('bankTips').innerHTML = d.tips.map(t => `<div class="ai-item"><span class="ic">🎯</span><span>${esc(t)}</span></div>`).join('');
+  } catch (e) { $('bankTips').textContent = e.message; }
+}

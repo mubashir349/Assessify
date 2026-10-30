@@ -77,3 +77,21 @@ function handleApiError(e, fallbackIcon = '⚠') {
   const field = e?.details && Object.values(e.details).find(v => typeof v === 'string');
   if (typeof aToast === 'function') aToast(esc(field || e?.message || 'Something went wrong.'), fallbackIcon);
 }
+
+// CSV downloads go through fetch so the login cookie is sent and an error shows as a toast, not a JSON page.
+async function downloadFile(path, fallbackName) {
+  try {
+    const res = await fetch(API_BASE + path, { credentials: 'include' });
+    if (!res.ok) {
+      let msg = 'Download failed.';
+      try { msg = (await res.json()).error.message; } catch (e) { /* not JSON */ }
+      if (res.status === 401) return window.location.replace('../institution-login.html');
+      return aToast(esc(msg), '⚠');
+    }
+    const name = (/filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || fallbackName;
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) { aToast('Cannot reach the server. Is the backend running?', '⚠'); }
+}
