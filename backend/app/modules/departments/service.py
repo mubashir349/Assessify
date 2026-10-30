@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from app.common.errors import ApiError
 from app.common.validation import raise_if, text
 from app.extensions import db
+from app.models.aptitude_test import Composition
 from app.models.department import LEVELS, MAX_SUBJECTS, MODES, Department, Subject
 from app.common.utils import utcnow
 
@@ -86,6 +87,31 @@ def _commit() -> None:
         raise ApiError("DB_CONSTRAINT", "Database rejected this save: " + detail[:300], 409)
 
 
+def _rows_using(department_id: int) -> list[Composition]:
+    """Phase 4: composition rows of tests that use this department. Deleting or reshaping it would break those tests,
+    so it is refused with 409 (the FK has no cascade on purpose)."""
+    return Composition.query.filter_by(department_id=department_id).all()
+
+
+def _test_names(rows: list[Composition]) -> str:
+    names = sorted({r.test.name for r in rows})
+    return ", ".join(f'"{n}"' for n in names[:3]) + (f" and {len(names) - 3} more" if len(names) > 3 else "")
+
+
+def _guard_in_use(dept: Department, level: str, subjects: list[str]) -> None:
+    rows = _rows_using(dept.id)
+    if not rows:
+        return
+    if level != dept.level:
+        raise ApiError("DEPARTMENT_IN_USE", f"Can't change the level: used by test {_test_names(rows)}.", 409,
+                       {"level": "Used by a test."})
+    keep = {s.lower() for s in subjects}
+    gone = [r for r in rows if r.subject_name.lower() not in keep]
+    if gone:
+        raise ApiError("SUBJECT_IN_USE", f"Can't remove or rename {gone[0].subject_name}: used by test "
+                       f"{_test_names(gone)}.", 409, {"subjects": f"{gone[0].subject_name} is used by a test."})
+
+
 def create_department(institution_id: int, data: dict) -> Department:
     name, level, mode, subjects = _clean(data)
     _ensure_unique_name(institution_id, level, name)
@@ -100,6 +126,7 @@ def update_department(institution_id: int, department_id: int, data: dict) -> De
     dept = get_department(institution_id, department_id)
     name, level, mode, subjects = _clean(data)
     _ensure_unique_name(institution_id, level, name, ignore_id=dept.id)
+    _guard_in_use(dept, level, subjects)
     dept.name, dept.level, dept.mode = name, level, mode
     dept.updated_at = utcnow() 
     # keep existing Subject rows for names that stay (future questions will point at them), add/remove the rest
@@ -116,5 +143,9 @@ def update_department(institution_id: int, department_id: int, data: dict) -> De
 
 def delete_department(institution_id: int, department_id: int) -> None:
     dept = get_department(institution_id, department_id)
+    rows = _rows_using(dept.id)
+    if rows:
+        raise ApiError("DEPARTMENT_IN_USE", f"Used by test {_test_names(rows)}. Delete those draft tests first "
+                       "(published tests keep it for good).", 409)
     db.session.delete(dept)
     db.session.commit()

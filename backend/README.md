@@ -200,7 +200,7 @@ backend/
     config.py            reads .env
     extensions.py        db, migrate, cors
     common/              responses.py (JSON shape), errors.py (ApiError)
-    models/              database tables (institution.py, user.py, department.py, question.py)
+    models/              database tables (institution.py, user.py, department.py, question.py, aptitude_test.py, candidate.py, exam.py)
     ai/                  Phase 3: provider-independent AI layer (providers.py = gemini / groq / ollama presets)
     modules/
       health/            routes.py  <- pattern every future module follows
@@ -209,6 +209,10 @@ backend/
       super_admin/       list / approve / reject / suspend institutions
       departments/       Phase 2: fields / departments + subjects
       questions/         Phase 3: routes, service (lifecycle), pdf.py, generator.py (prompt + retries), validation.py
+      aptitude_tests/    Phase 4: tests, the 1.5x pool check, schedules, publish
+      roster/            Phase 5: candidate roster, CSV import, access codes
+      candidate_auth/    Phase 5: candidate login (access code + date of birth); app/common/candidate.py = candidate_required
+      exam/              Phase 6: time gate, random paper, answers, lock, auto-submit, scoring (+ admin unlock)
   migrations/            database versions (Alembic)
   seed.py                creates the Super Admin
   tests/                 pytest suite
@@ -220,3 +224,125 @@ backend/
 - Responses always go through `ok()` / `fail()` / `raise ApiError(...)`.
 - New module = new folder in `app/modules/` with `routes.py` (HTTP only) and `service.py` (rules), then one `register_blueprint` line in `app/__init__.py`.
 - Tables are changed only through migrations (`flask db migrate`, `flask db upgrade`) — never by hand in SSMS.
+
+## Phase 4 — creating tests
+
+**Flow:** *Aptitude Tests → Create* → pick a level and fields/departments → build each paper (subject, type, difficulty,
+questions per candidate) → the server counts approved questions and needs **1.5× per row** → set a flexible window or a
+fixed start/end → *Save as draft* or *Publish*. Publishing is refused on the server (`409 POOL_TOO_SMALL`) while any row is
+short, so the disabled button can't be bypassed.
+
+### One-time setup after pulling Phase 4 (PowerShell, inside `backend/`)
+```powershell
+.\venv\Scripts\Activate.ps1
+flask --app run db upgrade                    # adds tests, test_compositions, test_schedules (nothing is deleted)
+python seed_phase4.py <your institution admin email>   # demo: 15 approved Maths + 4 approved Physics MCQs
+```
+
+### Done-when demo (each of the four, on your own machine)
+1. Sign in as the institution admin and open *Aptitude Tests*.
+2. Select **Pre-Engineering**, keep Mathematics (MCQ, Any, 10 per candidate → needs 15, bank 15 ✓), set Physics to 5
+   (needs 8, bank 4 ✗) and remove Chemistry and English.
+3. Step 3: *Fixed time*, 2:00 pm – 4:00 pm. Step 4 shows **Publish is blocked**. *Save as draft*, then in Postman
+   `POST /api/v1/tests/<id>/publish` → `409 POOL_TOO_SMALL`.
+4. Go back, set Physics to 2 (needs 3) → *Publish* works.
+5. In SSMS: `SELECT starts_at, ends_at, duration_minutes FROM test_schedules;` → `09:00`, `11:00` (UTC; Pakistan is
+   UTC+5) and `120`.
+
+Times are stored in UTC. The browser converts the admin's local date and time before sending, so the server needs no
+timezone library.
+
+## Phase 5 — candidate roster and candidate login
+
+**Flow:** publish a test (Phase 4) → *Candidate Roster* → choose the test → drop the roster CSV → the server checks every
+row and shows "N ready · M need fixing" (nothing saved yet) → *Import* saves the good rows and lists each bad row with
+its row number and the reason → missing access codes are generated → *Export codes* gives a CSV for printing test slips.
+A candidate opens *Candidate Login*, types the access code + date of birth from the slip → the start page shows their
+name, field, subjects and the countdown. A wrong code or date is refused.
+
+A roster belongs to one **published** test, because a published test is locked: the fields candidates are assigned to
+can't change any more (Phase 6 builds each candidate's paper from their field).
+
+### One-time setup after pulling Phase 5 (PowerShell, inside `backend/`)
+```powershell
+.\venv\Scripts\Activate.ps1
+flask --app run db upgrade                     # adds the candidates table (nothing is deleted)
+python seed_phase5.py <your institution admin email>   # demo: a published test + demo_roster.csv
+python run.py
+```
+No new packages. Optional `.env` lines are in `.env.example` (Phase 5 block: login lockout limits, session length).
+
+### CSV format
+`name, email, roll number, access code, date of birth, field` — *Download template CSV* on the Roster page gives a
+ready file. Access code may be empty (one is generated). Dates as `2008-03-14` or `14/03/2008` (day first). In Excel:
+*File → Save As → CSV UTF-8*. Full rules and every error: `docs/API.md` → "Candidate roster".
+
+### Done-when demo (each of the four, on your own machine)
+1. Sign in as the institution admin, open *Candidate Roster*, choose **Phase 5 Demo Test**.
+2. Drop `backend/demo_roster.csv` → preview says **6 rows · 4 ready · 2 need fixing** (`"Pre-Eng"` with a
+   "did you mean Pre-Engineering?" hint, and a bad date + duplicate roll number). Click *Import 4 candidates*.
+3. Open http://127.0.0.1:5000/aptitude/candidate-login.html (a private window is not needed — the candidate cookie
+   is separate from the admin one). Code **WRNG-CODE**, date 2007-07-02 → *"Access code or date of birth is incorrect"*.
+4. Code **DEMO-2026** (or `demo2026`), date of birth **2007-07-02** → the start page says *Welcome, Sana Fatima ·
+   PE-2026-002* with the countdown to tomorrow 2:00 pm.
+5. Back on the Roster page, Sana's *Signed in* column shows the time. Postman: `POST /api/v1/candidate/login` with a
+   wrong code → `401 INVALID_ACCESS_CODE`; 5 wrong dates for one code → `429 TOO_MANY_ATTEMPTS`.
+
+### Tests
+```powershell
+python -m pytest -q                       # 155 tests: Phase 1-5
+python -m pytest tests/test_phase5.py -v
+```
+The migration was generated and checked (upgrade → downgrade → upgrade) on SQLite only. Run `flask --app run db upgrade`
+on your SQL Server and check SSMS shows the `candidates` table.
+
+## Phase 6 — taking the test
+
+**Flow:** the candidate signs in (Phase 5) → the start page asks the **server** whether the test is open (a wrong clock
+on the candidate's PC changes nothing) → *Start test* builds their own random paper → the test page asks for fullscreen →
+every click is saved on the server at once ("All answers saved" in the top bar) → leaving fullscreen or switching tab
+**locks** the test until the admin presses *Unlock* on the Roster page → *Submit*, or the timer reaches 0 → the server
+scores it → the result page shows the score (tests with "Show score immediately") or the email date (scheduled release).
+
+What the server guarantees (the page can't bypass any of it): no start before the start time; a fixed-time test ends
+for everyone at its end time (a late starter gets less time); a flexible test gives each candidate their own duration
+but never past the window; answers after the end are refused (`409 TIME_UP`) and the test is submitted with what was
+saved before; the correct answers are never sent to the candidate's browser. Full rules and errors: `docs/API.md` →
+"Taking the test".
+
+### One-time setup after pulling Phase 6 (PowerShell, inside `backend/`)
+```powershell
+.\venv\Scripts\Activate.ps1
+flask --app run db upgrade                     # adds exam_attempts, exam_paper_items, exam_lock_events (nothing is deleted)
+python seed_phase6.py <your institution admin email>
+python run.py
+```
+No new packages, no new `.env` lines. `seed_phase6.py` makes demo tests that are running **now**; run it again for a
+fresh demo (it resets only its own demo tests and their attempts).
+
+### Done-when demo (each of the four, on your own machine)
+Open http://127.0.0.1:5000/aptitude/candidate-login.html. Use a second browser profile (or a private window) for the
+second candidate, because one browser holds one candidate cookie.
+1. **Can't start early:** code **EARL-Y001**, date of birth **2007-03-03** (Phase 5 Demo Test, tomorrow) → the start page
+   counts down and *Start* stays disabled. Postman `POST /api/v1/exam/start` with that cookie → `403 TEST_NOT_STARTED`.
+2. **Late starter ends at the fixed end:** code **LIVE-0001**, 2007-05-01 (Phase 6 Live Test, started 15 minutes ago,
+   1 hour long) → the start page says ~45 min, and after *Start* the timer shows ~45:00, not 1:00:00.
+3. **Different papers:** in the other window code **LIVE-0002**, 2007-08-15 → different questions and option order.
+   Answer a few questions, press Esc → the test locks. On the admin's *Candidate Roster* (Phase 6 Live Test) the row
+   says 🔒 Locked → *Unlock* → the candidate's page asks for fullscreen again within 10 seconds. Submit → score.
+4. **Answers after the end are refused:** run `python seed_phase6.py <email>` again (the Short Test ends 3 minutes later).
+   In Postman, before the end: `POST /api/v1/candidate/login {"access_code": "SHRT-0001", "date_of_birth": "2007-09-09"}`,
+   `POST /api/v1/exam/start`, `PUT /api/v1/exam/answers/1 {"choice": 0}` → `200`. After the end time:
+   `PUT /api/v1/exam/answers/2 {"choice": 0}` → **`409 TIME_UP`**, and the attempt is submitted with answer 1 only
+   (a second late answer → `409 ALREADY_SUBMITTED`). In the browser, **SHRT-0002** (2007-10-10) shows the other path:
+   keep the test page open and it submits itself at 00:00 → "Time is up — test submitted".
+5. **No correct answers sent:** in DevTools → Network, open any `/exam/...` response: questions have `text`, `options`,
+   `choice`, `flagged` — never `correct_index`, `explanation` or `difficulty`.
+
+### Tests
+```powershell
+python -m pytest -q                       # 177 tests: Phase 1-6
+python -m pytest tests/test_phase6.py -v
+```
+The migration was generated and checked (upgrade → downgrade → upgrade) on SQLite only. Run `flask --app run db upgrade`
+on your SQL Server and check SSMS shows `exam_attempts`, `exam_paper_items` and `exam_lock_events`.

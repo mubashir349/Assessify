@@ -85,3 +85,9 @@ class Config:
     OCR_MAX_PAGES = int(os.getenv("OCR_MAX_PAGES", "60"))                  # pictures read from one PDF
     OCR_PAGES_PER_REQUEST = int(os.getenv("OCR_PAGES_PER_REQUEST", "4"))   # pictures sent in one AI request
     OCR_IMAGE_MAX_SIDE = int(os.getenv("OCR_IMAGE_MAX_SIDE", "1600"))      # pixels; bigger photos are shrunk
+
+    # ---- Phase 5: candidate sign-in (access code + date of birth) ----
+    CANDIDATE_SESSION_HOURS = int(os.getenv("CANDIDATE_SESSION_HOURS", "12"))       # never longer than test end + 1 h
+    CANDIDATE_LOGIN_MAX_FAILS = int(os.getenv("CANDIDATE_LOGIN_MAX_FAILS", "5"))      # wrong tries per access code
+    CANDIDATE_LOGIN_MAX_FAILS_PER_IP = int(os.getenv("CANDIDATE_LOGIN_MAX_FAILS_PER_IP", "50"))  # exam halls share an IP
+    CANDIDATE_LOGIN_WINDOW_SECONDS = int(os.getenv("CANDIDATE_LOGIN_WINDOW_SECONDS", "900"))  # ...within 15 minutes

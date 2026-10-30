@@ -2,7 +2,7 @@
 from functools import wraps
 
 from flask import g
-from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
+from flask_jwt_extended import get_jwt, get_jwt_identity, verify_jwt_in_request
 
 from app.common.errors import ApiError
 from app.extensions import db
@@ -13,7 +13,10 @@ def load_current_user() -> User:
     """Reads the login cookie, loads the user from the database and re-checks they may still act.
     Re-checking on every request means suspending an institution cuts off sessions immediately."""
     verify_jwt_in_request()
-    user = db.session.get(User, int(get_jwt_identity()))
+    identity = str(get_jwt_identity())
+    if get_jwt().get("kind") == "candidate" or not identity.isdigit():   # a candidate token is never an admin login
+        raise ApiError("UNAUTHORIZED", "Please sign in.", 401)
+    user = db.session.get(User, int(identity))
     if user is None or not user.is_active:
         raise ApiError("UNAUTHORIZED", "Please sign in again.", 401)
     if user.role == ROLE_INSTITUTION_ADMIN and (user.institution is None or user.institution.status != "approved"):
