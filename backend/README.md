@@ -368,7 +368,7 @@ python seed_phase7.py <your institution admin email>
 python run.py
 ```
 No new packages. New optional `.env` lines (see `.env.example`): `MAIL_BACKEND=console` (default: emails are only
-printed in the server terminal) or `smtp` with `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`,
+printed in the server terminal) or `smtp` with `MAIL_SERVER`, `MAIL_PORT` (587 or 465, always encrypted), `MAIL_USERNAME`,
 `MAIL_PASSWORD` (Gmail: an app password), `MAIL_FROM`; and `MONITOR_DISCONNECTED_SECONDS` (default 75).
 
 ### Done-when demo

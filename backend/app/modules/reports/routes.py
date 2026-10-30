@@ -7,7 +7,9 @@ POST /reports/tests/<id>/send-results {candidate_ids?, resend?}  result emails, 
 GET  /reports/bank-insights                                  rule-based tips about the question bank
 POST /reports/ai-summary {scope: test | bank, test_id?}      short AI-written insights from the numbers
 """
-from flask import Blueprint, Response, current_app, g, request
+import io
+
+from flask import Blueprint, current_app, g, request, send_file
 
 from app.common.decorators import auth_required
 from app.common.responses import ok
@@ -35,9 +37,12 @@ def report(test_id: int):
 @auth_required(ADMIN)
 def export(test_id: int):
     filename, text = service.export_csv(g.current_user.institution_id, test_id, request.args)
-    # BOM so Excel opens UTF-8 names (e.g. Urdu) correctly
-    return Response("﻿" + text, mimetype="text/csv",
-                    headers={"Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "no-store"})
+    # a file download (never shown as a page); UTF-8 with BOM so Excel opens Urdu names correctly
+    response = send_file(io.BytesIO(text.encode("utf-8-sig")), mimetype="text/csv", as_attachment=True,
+                         download_name=filename, max_age=0)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @bp.post("/tests/<int:test_id>/send-results")

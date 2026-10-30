@@ -1,4 +1,5 @@
 """Phase 7 - live monitor (statuses, unlock, end), reports (numbers, filters, CSV), result emails and AI insights."""
+import secrets
 import smtplib
 from datetime import timedelta
 
@@ -289,8 +290,9 @@ def test_email_body_has_the_score(app, finished):
 
 def test_send_results_failure_is_logged_and_can_be_retried(app, finished, monkeypatch):
     admin, test_id, _ = finished
+    password = secrets.token_hex(8)                           # a throwaway value, never a real secret
     app.config.update(MAIL_BACKEND="smtp", MAIL_SERVER="smtp.example.com", MAIL_USERNAME="me@example.com",
-                      MAIL_PASSWORD="x")
+                      MAIL_PASSWORD=password)
 
     class Refusing:
         def __init__(self, *a, **k):
@@ -314,7 +316,7 @@ def test_send_results_failure_is_logged_and_can_be_retried(app, finished, monkey
     row_ = ResultEmail.query.one()
     assert row_.status == "failed"
     assert "username / password" in row_.error
-    assert "x" != row_.error                                  # the password itself is never stored
+    assert password not in row_.error                         # the password itself is never stored
 
     class Accepting(Refusing):
         sent = []
