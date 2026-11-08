@@ -23,10 +23,11 @@ import secrets
 from datetime import timedelta
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.common.errors import ApiError
 from app.common.utils import iso, utcnow
-from app.extensions import db
+from app.extensions import commit_keep, db
 from app.models.aptitude_test import ANY_DIFFICULTY
 from app.models.candidate import Candidate
 from app.models.exam import LOCK_REASONS, ExamAttempt, LockEvent, PaperItem
@@ -37,7 +38,8 @@ _rng = secrets.SystemRandom()
 
 # ------------------------------------------------------------------------------------------------ helpers
 def attempt_of(candidate: Candidate) -> ExamAttempt | None:
-    return ExamAttempt.query.filter_by(candidate_id=candidate.id).first()
+    """The candidate's attempt. Already loaded with the candidate on every exam request (Phase 8: no second query)."""
+    return candidate.attempt
 
 
 def _require_attempt(candidate: Candidate) -> ExamAttempt:
@@ -192,10 +194,11 @@ def start(candidate: Candidate, now=None) -> ExamAttempt:
     attempt.max_score = sum(i.marks for i in attempt.items)
     db.session.add(attempt)
     try:
-        db.session.commit()
+        commit_keep()
     except IntegrityError:            # a double click started it twice at the same moment: keep the first one
         db.session.rollback()
         return _require_attempt(candidate)
+    set_committed_value(candidate, "attempt", attempt)    # the loaded candidate now knows its attempt
     return attempt
 
 
@@ -243,7 +246,7 @@ def save_answer(candidate: Candidate, number: int, data: dict, now=None) -> Pape
     if errors:
         db.session.rollback()
         raise ApiError("VALIDATION_ERROR", "Please fix the highlighted fields.", 422, errors)
-    db.session.commit()
+    commit_keep()
     return item
 
 
@@ -329,11 +332,20 @@ def result(candidate: Candidate, now=None) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------ Phase 7 (monitor)
+SEEN_EVERY_SECONDS = 15
+
+
 def mark_seen(candidate: Candidate, now=None) -> None:
-    """One small UPDATE: the candidate's page is still talking to the server."""
-    (ExamAttempt.query.filter(ExamAttempt.candidate_id == candidate.id, ExamAttempt.status != "submitted")
-     .update({ExamAttempt.last_seen_at: now or utcnow()}, synchronize_session=False))
-    db.session.commit()
+    """The candidate's page is still talking to the server. Written at most every 15 s (the monitor counts a
+    candidate as disconnected after 75 s), so most requests cost no extra database write."""
+    now = now or utcnow()
+    attempt = candidate.attempt
+    if attempt is None or attempt.status == "submitted":
+        return
+    if attempt.last_seen_at and (now - attempt.last_seen_at).total_seconds() < SEEN_EVERY_SECONDS:
+        return
+    attempt.last_seen_at = now
+    commit_keep()
 
 
 def end_by_admin(attempt: ExamAttempt, now=None) -> ExamAttempt:

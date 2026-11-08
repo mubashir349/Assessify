@@ -1,0 +1,45 @@
+# Phase 8: the whole platform on one machine (or a VPS): SQL Server 2022 Express + Assessify.
+#   1. copy deploy.env.example to deploy.env and fill in the passwords / secret
+#   2. docker compose --env-file deploy.env up -d --build
+#   3. docker compose exec app python seed.py      (creates the Super Admin, once)
+# Open http://<this machine>:8000
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Express
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in deploy.env}
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      retries: 12
+    restart: unless-stopped
+
+  dbinit:   # creates the empty database once; the app creates the tables
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      SA_PW: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-AssessifyDB}
+    entrypoint: ["sh", "-c", "/opt/mssql-tools18/bin/sqlcmd -C -S db -U sa -P \"$$SA_PW\" -Q \"IF DB_ID('$$DB_NAME') IS NULL CREATE DATABASE [$$DB_NAME]\""]
+    restart: "no"
+
+  app:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    depends_on:
+      dbinit: { condition: service_completed_successfully }
+    env_file: deploy.env
+    environment:
+      DB_SERVER: db
+      DB_TRUSTED: "no"
+      DB_USER: sa
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    restart: unless-stopped
+
+volumes:
+  sqldata:

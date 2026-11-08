@@ -105,7 +105,23 @@ class ExamAttempt(db.Model):
                 "correct_count": self.correct_count, "events": [e.to_dict() for e in self.events]}
 
     def paper_dict(self) -> list[dict]:
+        load_question_texts([i.question for i in self.items])
         return [i.candidate_dict() for i in self.items]
+
+
+def load_question_texts(questions: list) -> None:
+    """Phase 8 (load test): exam requests load the paper's questions WITHOUT their long text columns (fetching
+    NVARCHAR(MAX) rows is the slowest part on SQL Server). When the whole paper is shown, fetch the texts of all
+    its questions in ONE query instead of one query per question."""
+    from sqlalchemy import inspect, select
+    from sqlalchemy.orm import load_only
+
+    from app.models.question import Question
+    missing = [q.id for q in questions if "text" in inspect(q).unloaded]
+    if missing:
+        db.session.execute(select(Question).where(Question.id.in_(missing))
+                           .options(load_only(Question.text, Question.options))
+                           .execution_options(populate_existing=True)).scalars().all()
 
 
 class PaperItem(db.Model):

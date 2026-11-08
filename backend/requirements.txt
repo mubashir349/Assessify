@@ -10,3 +10,4 @@ waitress>=3.0.0
 pypdf>=6.0          # Phase 3: PDF text extraction (pure Python, no system packages)
 requests>=2.32      # Phase 3: calls the free AI provider's HTTP API
 Pillow>=10.0        # Phase 3: reads page pictures from photographed / scanned PDFs (sent to Gemini)
+gunicorn>=23.0; sys_platform != "win32"   # Phase 8: production server in Docker / Linux (Windows uses waitress: python serve.py)

@@ -426,3 +426,30 @@ The password is never stored or returned; errors are short safe messages.
 **AI summary.** The AI gets only numbers (averages, subjects, departments, hardest question texts; never names,
 emails, roll numbers or answer keys). Same errors as question generation (`AI_NOT_CONFIGURED`, `AI_RATE_LIMITED`, ...).
 Unknown `scope` → `422`.
+
+## Hardening — Phase 8
+
+**Every answer** carries `X-Request-ID` (16 characters, or the caller's own `X-Request-ID` when it is up to 64 letters,
+digits and dashes), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin` and a
+`Content-Security-Policy`. API answers are also `Cache-Control: no-store`. On https (`JWT_COOKIE_SECURE=true`) the
+site sends `Strict-Transport-Security`.
+
+**Admin login limits.** 5 wrong passwords for one email (also for emails that do not exist) or 30 failed logins from
+one network address within 15 minutes → `429 TOO_MANY_ATTEMPTS` with `details.retry_after` (seconds), even for the
+right password. A successful login clears that email's count. Settings: `ADMIN_LOGIN_MAX_FAILS`,
+`ADMIN_LOGIN_MAX_FAILS_PER_IP`, `ADMIN_LOGIN_WINDOW_SECONDS`. Candidate sign-in limits are unchanged (Phase 5).
+
+**Errors.**
+| Status | Code | When |
+|---|---|---|
+| 503 | `DB_UNAVAILABLE` | the database cannot be reached; `details.request_id` |
+| 500 | `SERVER_ERROR` | anything unexpected; the message includes the request id to report. No stack trace is ever sent. |
+| 404 | `NOT_FOUND` | unknown `/api/...` path |
+| 405 | `METHOD_NOT_ALLOWED` | wrong method on a known path |
+
+`GET /api/v1/health/db` works on SQL Server (`{status, database, server}`) and any other database (`SELECT 1`);
+`503` when the database is down.
+
+**Production start check.** With `FLASK_ENV=production` the server refuses to start when `SECRET_KEY` is the default,
+the `.env.example` value or shorter than 32 characters, and logs warnings for SQLite, `JWT_COOKIE_SECURE=false`,
+`JWT_COOKIE_CSRF=false` and `MAIL_BACKEND=console`.

@@ -1,0 +1,4 @@
+deploy.env
+*.db
+__pycache__/
+backend/assessify-azure.zip

@@ -1,5 +1,5 @@
 """GET /api/v1/health          -> is the API alive?
-GET /api/v1/health/db       -> can the API reach SQL Server?
+GET /api/v1/health/db       -> can the API reach its database? (503 when not - used by the deployment's health check)
 """
 from flask import Blueprint
 from sqlalchemy import text
@@ -17,9 +17,15 @@ def health():
 
 @bp.get("/db")
 def health_db():
+    dialect = db.engine.dialect.name
     try:
-        version = db.session.execute(text("SELECT @@VERSION")).scalar()
-        name = db.session.execute(text("SELECT DB_NAME()")).scalar()
+        if dialect == "mssql":
+            version = db.session.execute(text("SELECT @@VERSION")).scalar()
+            name = db.session.execute(text("SELECT DB_NAME()")).scalar()
+        else:
+            db.session.execute(text("SELECT 1"))
+            version, name = dialect, db.engine.url.database
     except Exception as exc:  # connection problems end up here
-        return fail("DB_UNREACHABLE", f"Cannot reach SQL Server: {exc.__class__.__name__}", 503)
+        db.session.rollback()
+        return fail("DB_UNREACHABLE", f"Cannot reach the database: {exc.__class__.__name__}", 503)
     return ok({"status": "ok", "database": name, "server": str(version).splitlines()[0]})

@@ -18,3 +18,14 @@ db = SQLAlchemy(metadata=MetaData(naming_convention=NAMING))
 migrate = Migrate()
 cors = CORS()
 jwt = JWTManager()
+
+
+def commit_keep() -> None:
+    """Commit without throwing away the loaded objects (Phase 8, load test). Use it only where what was just written
+    is exactly what the answer sends back, so reloading everything after the commit would be wasted work."""
+    session = db.session()
+    session.expire_on_commit = False
+    try:
+        session.commit()
+    finally:
+        session.expire_on_commit = True

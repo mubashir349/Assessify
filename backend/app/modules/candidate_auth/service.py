@@ -9,55 +9,25 @@ Refusals:
 Before the start time the login works; the start page shows the countdown (Phase 6 enforces it on the server).
 
 The failure counters live in this process's memory. That is enough for one server (python run.py / waitress);
-several server processes would need a shared store (Phase 8).
+several server processes would need a shared store (see app/common/throttle.py).
 """
-import threading
-import time
 from datetime import timedelta
 
 from flask import current_app
 
+from app.common import throttle
+from app.common.candidate import candidate_query
 from app.common.errors import ApiError
 from app.common.utils import utcnow
-from app.extensions import db
+from app.extensions import commit_keep, db
 from app.models.candidate import Candidate
 from app.modules.roster.service import canonical_code, parse_dob
 
-_lock = threading.Lock()
-_fails: dict[str, list[float]] = {}          # "code:XXXX" / "ip:1.2.3.4" -> times of recent failures
-
-
-def _recent(key: str, window: int, now: float) -> list[float]:
-    times = [t for t in _fails.get(key, []) if now - t < window]
-    if times:
-        _fails[key] = times
-    else:
-        _fails.pop(key, None)
-    return times
-
-
-def _check_limits(keys: list[tuple[str, int]]) -> None:
-    window = current_app.config["CANDIDATE_LOGIN_WINDOW_SECONDS"]
-    now = time.monotonic()
-    with _lock:
-        for key, limit in keys:
-            times = _recent(key, window, now)
-            if len(times) >= limit:
-                wait = int(window - (now - times[0])) + 1
-                raise ApiError("TOO_MANY_ATTEMPTS", f"Too many wrong attempts. Wait {max(1, round(wait / 60))} "
-                               "minute(s) and try again, or ask your proctor for help.", 429, {"retry_after": wait})
-
-
-def _record_failure(keys: list[tuple[str, int]]) -> None:
-    now = time.monotonic()
-    with _lock:
-        for key, _ in keys:
-            _fails.setdefault(key, []).append(now)
+_TRY_LATER = "Too many wrong attempts. Wait {minutes} minute(s) and try again, or ask your proctor for help."
 
 
 def reset_limits() -> None:
-    with _lock:
-        _fails.clear()
+    throttle.reset()
 
 
 def authenticate(access_code, date_of_birth, remote_addr: str | None) -> Candidate:
@@ -75,18 +45,18 @@ def authenticate(access_code, date_of_birth, remote_addr: str | None) -> Candida
 
     cfg = current_app.config
     keys = [(f"code:{code}", cfg["CANDIDATE_LOGIN_MAX_FAILS"]), (f"ip:{remote_addr}", cfg["CANDIDATE_LOGIN_MAX_FAILS_PER_IP"])]
-    _check_limits(keys)
+    throttle.check(keys, cfg["CANDIDATE_LOGIN_WINDOW_SECONDS"], _TRY_LATER)
 
-    candidate = Candidate.query.filter_by(access_code=code).first()
+    candidate = db.session.execute(candidate_query().where(Candidate.access_code == code)).unique().scalar_one_or_none()
     if candidate is None or candidate.date_of_birth != dob:
-        _record_failure(keys)
+        throttle.record_failure(keys)
         raise ApiError("INVALID_ACCESS_CODE", "Access code or date of birth is incorrect. Please check your test slip "
                        "and try again.", 401)
 
     check_can_continue(candidate)
     candidate.last_login_at = utcnow()
     candidate.login_count = (candidate.login_count or 0) + 1
-    db.session.commit()
+    commit_keep()
     return candidate
 
 
