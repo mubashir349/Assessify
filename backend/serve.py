@@ -17,7 +17,8 @@ def main() -> None:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     app = create_app()
-    host = os.getenv("HOST", "0.0.0.0")   # nosec B104 NOSONAR - a server must listen on its network address to be reachable
+    # a server must listen on its network address to be reachable
+    host = os.getenv("HOST", "0.0.0.0")  # NOSONAR
     port = int(os.getenv("PORT", "8000"))
     threads = int(os.getenv("WAITRESS_THREADS", "16"))
     logging.getLogger(__name__).info("Assessify on http://%s:%s (%s threads, env=%s)", host, port, threads,
