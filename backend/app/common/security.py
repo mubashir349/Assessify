@@ -9,6 +9,7 @@ Headers (every response):
     Strict-Transport-Security             only when the site runs on https (JWT_COOKIE_SECURE=true)
     Cache-Control: no-store (API)          answers with personal data are never kept in a browser or proxy cache
 """
+import hashlib
 import logging
 import uuid
 
@@ -18,8 +19,14 @@ from app.config import DEFAULT_SECRET
 
 log = logging.getLogger(__name__)
 
-# the key printed in .env.example: everyone who copied the file has it, so it is as public as the default
-EXAMPLE_SECRET = "4c15c34134bb502754680ef5ad60997c58af3966006bb199c8e9087c8e69d01a"  # NOSONAR - a known-bad value
+# The key that used to be printed in .env.example is public (everyone who copied the file has it), so production
+# refuses it. Only its SHA-256 fingerprint is kept here, so no key value is stored in the source code.
+_PUBLISHED_KEY_FINGERPRINT = "2bbfb8136becdd558019a4df2f3e792fdec189bff44a0d1b6ca9aad6acb03077"
+
+
+def is_published_key(secret: str) -> bool:
+    return hashlib.sha256(secret.encode("utf-8")).hexdigest() == _PUBLISHED_KEY_FINGERPRINT
+
 
 _PAGE_CSP = ("default-src 'self'; "
              "script-src 'self' 'unsafe-inline'; "            # the pages still have small inline scripts
@@ -67,7 +74,7 @@ def production_problems(config) -> tuple[list[str], list[str]]:
     """(errors that stop the server, warnings) for FLASK_ENV=production."""
     errors, warnings = [], []
     secret = config.get("SECRET_KEY") or ""
-    if secret in (DEFAULT_SECRET, EXAMPLE_SECRET) or len(secret) < 32:
+    if secret == DEFAULT_SECRET or is_published_key(secret) or len(secret) < 32:
         errors.append("Set SECRET_KEY in .env to a long random value (at least 32 characters). "
                       "Make one with:  python -c \"import secrets; print(secrets.token_hex(32))\"")
     if config.get("SQLALCHEMY_DATABASE_URI", "").startswith("sqlite"):
