@@ -11,7 +11,7 @@ resyncs every 30 s like the real page -> submits -> reads the result. One admin 
 """
 import itertools
 import os
-import random
+import secrets
 import threading
 
 from locust import HttpUser, between, events, task
@@ -57,7 +57,7 @@ class Candidate(HttpUser):
             self.done = True
             return
         q = self.questions[self.n]
-        self.client.put(f"/api/v1/exam/answers/{q['number']}", json={"choice": random.randrange(len(q["options"]))},
+        self.client.put(f"/api/v1/exam/answers/{q['number']}", json={"choice": secrets.randbelow(len(q["options"]))},
                         name="exam/answer")
         self.n += 1
 

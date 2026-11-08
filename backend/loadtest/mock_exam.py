@@ -13,7 +13,7 @@ submits and reads the result -> the admin checks the live monitor, the report, t
 Prints one line per step and ends with PASS (exit code 0) or FAIL (exit code 1).
 """
 import argparse
-import random
+import secrets
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -117,7 +117,7 @@ def run(args) -> None:
 
     for c, paper in zip(people, papers, strict=True):
         for q in paper:
-            c.call("PUT", f"/exam/answers/{q['number']}", json={"choice": random.randrange(len(q["options"]))})
+            c.call("PUT", f"/exam/answers/{q['number']}", json={"choice": secrets.randbelow(len(q["options"]))})
     step(f"{len(people) * len(papers[0])} answers saved")
 
     live = admin.call("GET", f"/monitor?test_id={test_id}")
