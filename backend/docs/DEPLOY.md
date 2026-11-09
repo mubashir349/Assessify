@@ -154,6 +154,12 @@ docker compose exec app python seed.py # Super Admin
 ```
 The site is on port 8000 (`APP_PORT` to change). SQL Server Express runs in its own container with its data in the
 `sqldata` volume. The app image runs `flask db upgrade` and then gunicorn (`WEB_CONCURRENCY` processes, default 2).
+The image installs `backend/requirements.lock` (exact versions with hashes, wheels only). After changing
+`requirements.txt`, make the lock again on Linux or in WSL with Python 3.12 and commit it:
+```bash
+pip install pip-tools
+pip-compile --generate-hashes --allow-unsafe --strip-extras --no-emit-index-url --output-file=requirements.lock requirements.txt
+```
 Put it behind https (nginx, Caddy or a tunnel) and set `JWT_COOKIE_SECURE=true` and `TRUST_PROXY_HOPS=1`.
 
 ---

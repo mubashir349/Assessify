@@ -1,7 +1,7 @@
 """Phase 8 "done when" check: a full mock exam, end to end, over HTTP against any running copy of Assessify.
 
-    python loadtest/mock_exam.py https://assessify-xyz.azurewebsites.net admin@ned.edu.pk "<admin password>"
-    python loadtest/mock_exam.py http://127.0.0.1:8000 admin@ned.edu.pk "<admin password>" --candidates 5 --lead 90
+    python loadtest/mock_exam.py https://assessify-xyz.azurewebsites.net admin@ned.edu.pk "Strong#Pass1"
+    python loadtest/mock_exam.py http://127.0.0.1:8000 admin@ned.edu.pk "Strong#Pass1" --candidates 5 --lead 90
 
 Needs: an approved institution admin whose "Pre-Engineering" (Undergraduate) field has approved Mathematics
 questions (seed_phase4.py / seed_phase6.py add them). Only talks to the public API, the same as the pages do.

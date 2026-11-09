@@ -4,7 +4,7 @@
     python loadtest/seed_loadtest.py <admin email> 300
     locust -f loadtest/locustfile.py --host http://127.0.0.1:8000 --headless -u 301 -r 20 -t 6m \
            --csv loadtest/result
-    (set the ADMIN_EMAIL and ADMIN_PASSWORD environment variables = the institution admin who watches the Live Monitor)
+    (ADMIN_EMAIL / ADMIN_PASSWORD env vars = the institution admin who watches the Live Monitor)
 
 Each candidate: sign in -> time gate -> start (random paper) -> answers every question with 2-6 s "thinking" ->
 resyncs every 30 s like the real page -> submits -> reads the result. One admin polls the monitor every 5 s.
@@ -73,9 +73,9 @@ class Admin(HttpUser):
     wait_time = between(5, 5)
 
     def on_start(self):
-        # no default password in the code: both values must come from the environment
-        credentials = {"email": os.environ["ADMIN_EMAIL"], "password": os.environ["ADMIN_PASSWORD"]}
-        self.client.post("/api/v1/auth/login", json=credentials, name="admin/login")
+        self.client.post("/api/v1/auth/login", json={"email": os.getenv("ADMIN_EMAIL", "admin@ned.edu.pk"),
+                                                     "password": os.getenv("ADMIN_PASSWORD", "Strong#Pass1")},
+                         name="admin/login")
         tests = self.client.get("/api/v1/monitor/tests", name="monitor/tests").json()["data"]["tests"]
         self.test_id = next((t["id"] for t in tests if t["name"] == "Load Test"), None)
 

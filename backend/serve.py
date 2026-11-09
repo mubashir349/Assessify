@@ -17,7 +17,7 @@ def main() -> None:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     app = create_app()
-    # a server must listen on its network address to be reachable
+    # Listening on every network address is the point of a server (candidates connect from other PCs).
     host = os.getenv("HOST", "0.0.0.0")  # NOSONAR
     port = int(os.getenv("PORT", "8000"))
     threads = int(os.getenv("WAITRESS_THREADS", "16"))
