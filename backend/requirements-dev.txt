@@ -1,2 +1,3 @@
 -r requirements.txt
 pytest>=8.0
+pip-tools>=7.4        # Phase 8: makes requirements.lock (see docs/DEPLOY.md)

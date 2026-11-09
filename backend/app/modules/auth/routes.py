@@ -1,5 +1,5 @@
 """POST /auth/login   POST /auth/logout   GET /auth/me"""
-from flask import Blueprint, g, jsonify
+from flask import Blueprint, g, jsonify, request
 from flask_jwt_extended import create_access_token, set_access_cookies, unset_jwt_cookies
 
 from app.common.decorators import auth_required
@@ -13,7 +13,7 @@ bp = Blueprint("auth", __name__)
 @bp.post("/login")
 def login():
     body = json_body()
-    user = service.authenticate(body.get("email"), body.get("password"))
+    user = service.authenticate(body.get("email"), body.get("password"), request.remote_addr)
     token = create_access_token(identity=str(user.id), additional_claims={"role": user.role})
     resp = jsonify({"data": {"user": user.to_dict()}})
     set_access_cookies(resp, token)

@@ -4,9 +4,18 @@
 // Errors: throws ApiRequestError { code, message, status, details }
 // ============================================================
 
-// Frontend and API must share a host (both 127.0.0.1 or both localhost) so the login cookie is sent.
-// Override for deployment by setting window.ASSESSIFY_API_URL before this script loads.
-const API_BASE = window.ASSESSIFY_API_URL || `http://${location.hostname || '127.0.0.1'}:5000/api/v1`;
+// Where the API lives:
+//  - pages served by Flask itself (python run.py / serve.py / the deployed site): the same address, /api/v1
+//  - pages opened with VS Code Live Server (ports 5500-5599) or as a file: the backend on port 5000 of the same host
+//    (use 127.0.0.1 for both so the login cookie is sent)
+//  - anything else: set window.ASSESSIFY_API_URL before this script loads.
+function defaultApiBase() {
+  const port = Number(location.port);
+  const devServer = location.protocol === 'file:' || (port >= 5500 && port < 5600);
+  if (devServer) return `http://${location.hostname || '127.0.0.1'}:5000/api/v1`;
+  return `${location.origin}/api/v1`;
+}
+const API_BASE = window.ASSESSIFY_API_URL || defaultApiBase();
 
 class ApiRequestError extends Error {
   constructor(code, message, status, details) {

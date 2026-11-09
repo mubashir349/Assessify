@@ -980,8 +980,9 @@ def test_without_pillow_typed_pdfs_still_work(app, fake, monkeypatch):
 def test_old_database_gives_clear_message(app, fake):
     from sqlalchemy import text
     c, _ = setup_admin(app)
-    with app.app_context():                                    # simulate "forgot to run flask db upgrade"
-        db.session.execute(text("ALTER TABLE generation_attempts DROP COLUMN source_kind"))
+    with app.app_context():                     # simulate "forgot to run flask db upgrade" (a column with no default,
+        # so SQL Server can drop it too)
+        db.session.execute(text("ALTER TABLE generation_attempts DROP COLUMN focus"))
         db.session.commit()
     r = c.get("/api/v1/questions/attempts")
     assert r.status_code == 500

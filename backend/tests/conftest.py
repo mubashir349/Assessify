@@ -1,7 +1,11 @@
-"""Tests run against an in-memory SQLite database, so no SQL Server is needed to run them."""
+"""Tests run against an in-memory SQLite database, so no SQL Server is needed to run them.
+
+Phase 8: TEST_DATABASE_URL runs the same tests on a real (EMPTY, throw-away) database, e.g. SQL Server:
+    TEST_DATABASE_URL="mssql+pyodbc://sa:<password>@localhost/AssessifyTest?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+Every test creates and drops all tables, so never point it at a database with real data."""
 import os
 
-os.environ["DATABASE_URL"] = "sqlite://"   # must be set BEFORE app.config is imported
+os.environ["DATABASE_URL"] = os.getenv("TEST_DATABASE_URL") or "sqlite://"   # must be set BEFORE app.config is imported
 
 import pytest
 

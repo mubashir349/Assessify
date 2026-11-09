@@ -23,7 +23,10 @@ def build_database_uri() -> str:
         f"DRIVER={{{driver}}}",
         f"SERVER={server}",
         f"DATABASE={name}",
-        "TrustServerCertificate=yes",  # fine for local/dev servers
+        "Encrypt=yes",
+        # yes = accept the server's self-made certificate (local / lab SQL Server). Azure SQL has a real certificate:
+        # set DB_TRUST_CERT=no there so it is checked.
+        f"TrustServerCertificate={'yes' if _flag('DB_TRUST_CERT', 'yes') else 'no'}",
     ]
     if trusted:
         parts.append("Trusted_Connection=yes")
@@ -100,6 +103,14 @@ class Config:
 
     # ---- Phase 5: candidate sign-in (access code + date of birth) ----
     CANDIDATE_SESSION_HOURS = int(os.getenv("CANDIDATE_SESSION_HOURS", "12"))       # never longer than test end + 1 h
+    # Phase 8: deployment
+    TRUST_PROXY_HOPS = int(os.getenv("TRUST_PROXY_HOPS", "0"))   # 1 behind Azure App Service / nginx / a tunnel
+    API_ORIGIN = os.getenv("API_ORIGIN", "").strip()             # only when the API runs on another host than the pages
+
+    # Phase 8: admin / super admin sign-in, wrong passwords
+    ADMIN_LOGIN_MAX_FAILS = int(os.getenv("ADMIN_LOGIN_MAX_FAILS", "5"))               # per email address
+    ADMIN_LOGIN_MAX_FAILS_PER_IP = int(os.getenv("ADMIN_LOGIN_MAX_FAILS_PER_IP", "30"))
+    ADMIN_LOGIN_WINDOW_SECONDS = int(os.getenv("ADMIN_LOGIN_WINDOW_SECONDS", "900"))   # ...within 15 minutes
     CANDIDATE_LOGIN_MAX_FAILS = int(os.getenv("CANDIDATE_LOGIN_MAX_FAILS", "5"))      # wrong tries per access code
     CANDIDATE_LOGIN_MAX_FAILS_PER_IP = int(os.getenv("CANDIDATE_LOGIN_MAX_FAILS_PER_IP", "50"))  # exam halls share an IP
     CANDIDATE_LOGIN_WINDOW_SECONDS = int(os.getenv("CANDIDATE_LOGIN_WINDOW_SECONDS", "900"))  # ...within 15 minutes

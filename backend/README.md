@@ -386,3 +386,49 @@ python -m pytest tests/test_phase7.py -v
 ```
 The migration was checked (upgrade → downgrade → upgrade) on SQLite only. Run `flask --app run db upgrade` on your
 SQL Server and check SSMS shows `result_emails` and the new `last_seen_at` column in `exam_attempts`.
+
+## Phase 8 — security, load test, error handling, deployment
+
+**Security.** Admin logins lock for 15 minutes after 5 wrong passwords (per email) or 30 failures from one address.
+Every answer has security headers and a request id. A test visits every API route and checks it refuses visitors
+without a login, candidates on admin routes, and another institution's admin. With `FLASK_ENV=production` the server
+will not start with a weak `SECRET_KEY` (including the one in `.env.example`).
+**Errors.** Database down → `503 DB_UNAVAILABLE`; anything unexpected → `500` with a request id to report, never a
+stack trace. Unknown API paths answer JSON 404/405.
+**Speed.** An answer save went from 25 database queries to 4; 300 candidates at once finish with no errors
+([docs/LOAD-TEST.md](docs/LOAD-TEST.md)).
+**Deployment.** Azure for Students, a Windows PC on the lab network, or Docker: [docs/DEPLOY.md](docs/DEPLOY.md).
+The pages now call the API on their own address when Flask serves them (Live Server on port 5500 still uses port 5000).
+
+### One-time setup after pulling Phase 8 (PowerShell, inside `backend/`)
+```powershell
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt               # nothing new on Windows (gunicorn is Linux only)
+python run.py                                  # development, as before
+```
+No database changes. Optional new `.env` lines: see the Phase 8 block of `.env.example`.
+
+### Production server on your PC
+```powershell
+# .env: FLASK_ENV=production, your own SECRET_KEY, JWT_COOKIE_CSRF=true, FRONTEND_URL=http://<PC IP>:8000
+python serve.py                                # waitress on port 8000, serves the pages too
+```
+
+### Done-when demo: a full mock exam
+```powershell
+python seed_phase6.py <institution admin email>        # approved Maths questions in Pre-Engineering
+python loadtest/mock_exam.py http://127.0.0.1:8000 <institution admin email> "<password>"
+```
+Works the same against the deployed address. It creates and publishes a test, adds 5 candidates who wait at the
+gate, start, answer (one is locked and unlocked by the admin) and submit, then checks the monitor, report, CSV and
+result emails, and prints `PASS`.
+
+### Tests
+```powershell
+python -m pytest -q                       # 218 tests: Phase 1-8
+python -m pytest tests/test_phase8.py -v
+```
+To run the tests on SQL Server instead of SQLite, set `TEST_DATABASE_URL` to an **empty test database** (the tests
+delete everything in it), e.g.
+`mssql+pyodbc://sa:<password>@localhost/AssessifyTest?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes`.
+All Phase 1-8 tests also pass on SQL Server 2022.

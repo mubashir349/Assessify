@@ -1,9 +1,10 @@
 """Application factory: builds the Flask app and plugs in every module."""
 from flask import Flask
 
+from app.common import security
 from app.common.errors import register_error_handlers
 from app.common.responses import fail
-from app.config import DEFAULT_SECRET, Config
+from app.config import Config
 from app.extensions import cors, db, jwt, migrate
 
 
@@ -14,8 +15,12 @@ def create_app(config_class=Config) -> Flask:
     app = Flask(__name__)  # NOSONAR
     app.config.from_object(config_class)
 
-    if app.config["ENV"] == "production" and app.config["SECRET_KEY"] == DEFAULT_SECRET:
-        raise RuntimeError("Set a real SECRET_KEY in .env before running in production.")
+    security.check_production(app)          # Phase 8: refuses a default SECRET_KEY, warns about weak settings
+    if app.config.get("TRUST_PROXY_HOPS"):
+        # behind Azure / nginx / a tunnel: take the visitor's address from X-Forwarded-For (login limits per IP)
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        hops = app.config["TRUST_PROXY_HOPS"]
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=hops, x_proto=hops, x_host=hops)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -29,6 +34,7 @@ def create_app(config_class=Config) -> Flask:
     from app import models  # noqa: F401  (registers tables with Flask-Migrate)
 
     register_error_handlers(app)
+    security.install(app)
     _register_jwt_errors()
 
     # ---- One line per module. Later phases add more here ----
@@ -77,8 +83,11 @@ def _serve_frontend(app: Flask) -> None:
 
     from flask import abort, send_from_directory
 
-    frontend_dir = os.path.abspath(os.path.join(app.root_path, "..", "..", "frontend"))
-    if not os.path.isdir(frontend_dir):
+    # repo layout: backend/app + frontend/. Azure zip layout (deploy/make_azure_zip.py): app/ + frontend/ side by side.
+    candidates = [os.environ.get("FRONTEND_DIR", ""), os.path.join(app.root_path, "..", "..", "frontend"),
+                  os.path.join(app.root_path, "..", "frontend")]
+    frontend_dir = next((os.path.abspath(d) for d in candidates if d and os.path.isdir(d)), None)
+    if frontend_dir is None:
         return
 
     @app.get("/")

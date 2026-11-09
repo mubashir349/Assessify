@@ -1,5 +1,5 @@
 """Global error handlers so every failure comes back in the same JSON shape."""
-from flask import Flask
+from flask import Flask, g, request
 from werkzeug.exceptions import HTTPException
 
 from app.common.responses import fail
@@ -36,13 +36,27 @@ def register_error_handlers(app: Flask) -> None:
             _rollback()
             return fail("DB_NOT_UPGRADED", "The database is out of date for this version of the app. Stop the server, run "
                         "'flask --app run db upgrade' in backend/, then start it again.", 500)
-        app.logger.exception("Unhandled error")
         _rollback()
-        return fail("SERVER_ERROR", "Something went wrong on the server.", 500)
+        rid = {"request_id": g.get("request_id", "")}
+        if _database_down(e):
+            app.logger.error("DATABASE UNREACHABLE [%s] %s %s: %s", rid["request_id"], request.method, request.path,
+                             type(getattr(e, "orig", e)).__name__)
+            return fail("DB_UNAVAILABLE", "The database is not answering right now. Please try again in a minute.",
+                        503, rid)
+        app.logger.exception("Unhandled error [%s] %s %s", rid["request_id"], request.method, request.path)
+        return fail("SERVER_ERROR", "Something went wrong on the server. If it keeps happening, tell the "
+                    "administrator this code: " + rid["request_id"], 500, rid)
 
 
 # Messages SQL Server / SQLite give when the code expects a table or column the database does not have yet
 _MISSING_SCHEMA = ("invalid column name", "invalid object name", "no such column", "no such table")
+
+
+def _database_down(e: Exception) -> bool:
+    """Phase 8: lost connection / server stopped / pool exhausted -> 503 instead of a 500 stack trace."""
+    from sqlalchemy.exc import InterfaceError, OperationalError
+    from sqlalchemy.exc import TimeoutError as PoolTimeout
+    return isinstance(e, (OperationalError, InterfaceError, PoolTimeout))
 
 
 def _schema_out_of_date(e: Exception) -> bool:
