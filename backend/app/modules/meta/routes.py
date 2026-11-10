@@ -5,6 +5,7 @@ from app.common.responses import ok
 from app.models.aptitude_test import (ANY_DIFFICULTY, MAX_DURATION, MAX_PER_ROW, MIN_DURATION, POOL_FACTOR,
                                       RESULT_RELEASES, TIMING_MODES)
 from app.models.department import DEFAULT_LEVEL, DEFAULT_MODE, LEVELS, MODES
+from app.common.email_rules import FREE_EMAIL_DOMAINS
 from app.models.institution import INSTITUTION_TYPES, STATUSES
 from app.models.question import DIFFICULTIES, QUESTION_STATUSES, QUESTION_TYPES
 
@@ -33,4 +34,9 @@ def meta():
         "result_releases": [{"value": k, "label": v} for k, v in RESULT_RELEASES.items()],
         "pool_factor": POOL_FACTOR,
         "test_limits": {"max_per_row": MAX_PER_ROW, "min_duration": MIN_DURATION, "max_duration": MAX_DURATION},
+        # Phase 10: signup
+        "free_email_domains": sorted(FREE_EMAIL_DOMAINS),
+        "signup_limits": {"otp_minutes": current_app.config["OTP_TTL_MINUTES"],
+                          "resend_seconds": current_app.config["OTP_RESEND_SECONDS"],
+                          "proof_max_mb": current_app.config["PROOF_MAX_MB"]},
     })

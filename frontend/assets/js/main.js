@@ -1,5 +1,5 @@
 // ============================================================
-// AssessAI — shared front-end behaviors
+// Assessify — shared front-end behaviors
 // ============================================================
 
 /** Sticky nav: adds a blurred background once the page scrolls. */

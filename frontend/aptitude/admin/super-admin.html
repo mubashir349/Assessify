@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Super Admin — AssessAI</title><link rel="icon" href="data:,">
+<title>Super Admin — Assessify</title><link rel="icon" href="data:,">
 <link rel="stylesheet" href="../../assets/css/theme.css" /><link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<style>
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; align-items: center; }
+  .tag { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag-ok { color: #4ade80; background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.28); }
+  .tag-new { color: #67e8f9; background: rgba(6,182,212,.10); border: 1px solid rgba(6,182,212,.28); }
+  .tag-warn { color: #fbbf24; background: rgba(245,158,11,.10); border: 1px solid rgba(245,158,11,.28); }
+  .tag-bad { color: #f87171; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.35); }
+</style>
 </head>
 <body data-page="super" data-role="super" data-title="Platform Super Admin" data-sub="Approve institutions and manage platform access">
 <template id="a-content-template">
@@ -11,7 +19,7 @@
     <div class="a-card a-stat"><div class="lbl">Total registered</div><div class="num" id="sTot">–</div></div>
   </div>
   <div class="filters">
-    <input class="a-input" id="q" placeholder="Search institution, city or admin email…" style="min-width:280px" />
+    <input class="a-input" id="q" placeholder="Search institution, campus, city or admin email…" style="min-width:280px" />
     <select class="a-select" id="st"><option value="">All statuses</option></select>
   </div>
   <div class="a-card"><div class="a-table-wrap"><table class="a-table">
@@ -34,14 +42,37 @@ async function loadInstitutions() {
     const { items, counts } = await api('/super/institutions' + (params.toString() ? '?' + params : ''));
     $('sPend').textContent = counts.pending; $('sAct').textContent = counts.approved; $('sTot').textContent = counts.total;
     $('instBody').innerHTML = items.map(i => `<tr>
-      <td class="name">${esc(i.name)}<div class="muted" style="font-size:11.5px;">${esc(i.city)}</div></td>
+      <td class="name">${esc(i.name)}<div class="muted" style="font-size:11.5px;">${i.campus_name ? esc(i.campus_name) + ' · ' : ''}${esc(i.city)}</div>
+        <div class="tags">${i.from_directory ? '<span class="tag tag-ok">From list</span>' : '<span class="tag tag-new">Not in list (typed)</span>'}</div></td>
       <td>${esc(i.type)}</td>
-      <td>${i.admin ? `${esc(i.admin.full_name)}<div class="muted" style="font-size:11.5px;">${esc(i.admin.email)} · ${esc(i.admin.phone || '')}</div>` : '—'}</td>
+      <td>${i.admin ? `${esc(i.admin.full_name)}<div class="muted" style="font-size:11.5px;">${esc(i.admin.email)}</div>` : '—'}
+        <div class="tags"><span class="tag tag-ok">✓ Email verified</span>${emailTags(i)}</div></td>
       <td class="mono">${esc((i.created_at || '').slice(0, 10))}</td>
       <td><span class="badge ${BADGE[i.status]}">${esc(i.status)}</span></td>
       <td style="white-space:nowrap;">${actions(i)}</td></tr>`).join('')
       || '<tr><td colspan="6" class="muted">No institutions found.</td></tr>';
   } catch (e) { $('instBody').innerHTML = `<tr><td colspan="6" style="color:#f87171;">${esc(e.message)}</td></tr>`; }
+}
+
+function emailTags(i) {
+  if (i.no_official_email) {
+    const link = i.has_proof ? ` <button class="a-btn a-btn-ghost a-btn-sm" onclick="downloadProof(${i.id})">View proof</button>` : '';
+    return `<span class="tag tag-bad">Free email: check proof</span>${link}`;
+  }
+  return i.email_domain_verified ? '<span class="tag tag-ok">Domain matches</span>' : '<span class="tag tag-warn">Domain not confirmed</span>';
+}
+
+async function downloadProof(id) {
+  // the file is behind the login cookie, so fetch it here and hand the browser a local copy to save / open
+  try {
+    const res = await fetch(API_BASE + '/super/institutions/' + id + '/proof', { credentials: 'include' });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error?.message || 'Could not load the proof.');
+    const name = (res.headers.get('Content-Disposition') || '').match(/filename="?([^";]+)"?/)?.[1] || 'proof';
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (e) { aToast(e.message, '⚠'); }
 }
 
 function actions(i) {

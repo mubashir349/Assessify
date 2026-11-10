@@ -114,3 +114,13 @@ class Config:
     CANDIDATE_LOGIN_MAX_FAILS = int(os.getenv("CANDIDATE_LOGIN_MAX_FAILS", "5"))      # wrong tries per access code
     CANDIDATE_LOGIN_MAX_FAILS_PER_IP = int(os.getenv("CANDIDATE_LOGIN_MAX_FAILS_PER_IP", "50"))  # exam halls share an IP
     CANDIDATE_LOGIN_WINDOW_SECONDS = int(os.getenv("CANDIDATE_LOGIN_WINDOW_SECONDS", "900"))  # ...within 15 minutes
+
+    # Phase 10: institution signup - email code (OTP), work email rules, proof upload
+    OTP_TTL_MINUTES = int(os.getenv("OTP_TTL_MINUTES", "10"))              # a code works for 10 minutes
+    OTP_MAX_TRIES = int(os.getenv("OTP_MAX_TRIES", "5"))                   # wrong codes before that code is dead
+    OTP_RESEND_SECONDS = int(os.getenv("OTP_RESEND_SECONDS", "60"))        # wait before asking for another code
+    OTP_MAX_PER_HOUR = int(os.getenv("OTP_MAX_PER_HOUR", "5"))             # codes per email address per hour
+    OTP_MAX_PER_IP_HOUR = int(os.getenv("OTP_MAX_PER_IP_HOUR", "30"))      # codes per visitor address per hour
+    OTP_VERIFIED_MINUTES = int(os.getenv("OTP_VERIFIED_MINUTES", "30"))    # signup must follow the code within this
+    EMAIL_MX_CHECK = _flag("EMAIL_MX_CHECK", "true")                       # look up the email domain's mail server (DNS)
+    PROOF_MAX_MB = int(os.getenv("PROOF_MAX_MB", "5"))                     # authorisation letter / certificate

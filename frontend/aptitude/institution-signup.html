@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Register your Institution — AssessAI Aptitude</title>
+<title>Register your Institution — Assessify Aptitude</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="../assets/css/theme.css" />
 <link rel="stylesheet" href="../assets/css/auth.css" />
@@ -11,54 +11,81 @@
 </head>
 <body class="mesh-bg">
   <div class="blob-field"></div>
-  <a href="../index.html" class="back-link">← Back to AssessAI</a>
+  <a href="../index.html" class="back-link">← Back to Assessify</a>
 
   <div class="signup-wrap">
     <form class="signup-card glass fade-up" id="signupForm" novalidate>
 
       <div class="signup-brand">
         <div class="mark">Σ</div>
-        <div><b>AssessAI</b><span>APTITUDE PORTAL</span></div>
+        <div><b>Assessify</b><span>APTITUDE PORTAL</span></div>
       </div>
 
       <h1>Register your Institution</h1>
       <p class="lead">
-        Set up your university or institute on AssessAI's Aptitude Test Portal. Once the platform team approves your account, you can add your own fields and departments, generate questions, and run large-scale aptitude tests with fullscreen integrity locking.
+        Set up your university, college or school on Assessify's Aptitude Test Portal. Once the platform team approves your account, you can add your own fields and departments, generate questions, and run large-scale aptitude tests with fullscreen integrity locking.
       </p>
 
-      <div class="approval-note"><span>🛡️</span><span>New institutions are reviewed by the AssessAI platform team. You'll be able to sign in as soon as your account is approved.</span></div>
+      <div class="approval-note"><span>🛡️</span><span>New institutions are reviewed by the Assessify platform team. You'll be able to sign in as soon as your account is approved.</span></div>
 
       <div class="auth-err" id="signupErr"></div>
       <div class="auth-ok" id="signupOk">Registration submitted — it is now awaiting Super Admin approval. Redirecting you to sign in…</div>
 
-      <!-- Section 1: Institution details -->
+      <!-- Section 1: Institution -->
       <div class="form-section">
         <div class="form-section-head">
           <span class="n">1</span>
-          <div><h2>Institution details</h2><p>This appears on candidate logins and reports</p></div>
+          <div><h2>Your institution</h2><p>Search by name, short name or city, then pick your campus</p></div>
         </div>
 
-        <div class="a-field">
-          <label for="instName">Institution name <span class="req">*</span></label>
-          <input class="a-input" id="instName" placeholder="e.g. NED University of Engineering &amp; Technology" required />
-        </div>
-
-        <div class="signup-grid" style="margin-bottom:14px;">
-          <div class="a-field">
-            <label for="instType">Institution type <span class="req">*</span></label>
-            <select class="a-select" id="instType" required>
-              <option value="" disabled selected>Select type</option>
-            </select>
-          </div>
-          <div class="a-field">
-            <label for="instCity">City / Location <span class="req">*</span></label>
-            <input class="a-input" id="instCity" placeholder="e.g. Karachi, Pakistan" required />
+        <div class="a-field inst-search-field" id="searchField">
+          <label for="instSearch">Institution and campus <span class="req">*</span></label>
+          <div class="combo">
+            <input class="a-input" id="instSearch" placeholder="Type e.g. NED, FAST Lahore, Punjab College…" autocomplete="off"
+                   role="combobox" aria-expanded="false" aria-controls="instList" aria-autocomplete="list" />
+            <ul class="combo-list" id="instList" role="listbox" hidden></ul>
           </div>
         </div>
 
-        <div class="a-field">
-          <label for="instSite">Official website <span class="hint">(optional)</span></label>
-          <input class="a-input" id="instSite" type="url" placeholder="https://www.your-institution.edu" />
+        <!-- chosen from the list -->
+        <div class="inst-picked" id="instPicked" hidden>
+          <div class="ip-main">
+            <div class="ip-name" id="ipName"></div>
+            <div class="ip-sub" id="ipSub"></div>
+            <div class="ip-meta" id="ipMeta"></div>
+          </div>
+          <button type="button" class="a-btn-link" id="ipChange">Change</button>
+        </div>
+        <p class="inst-alt" id="campusMissing" hidden>Your campus isn't listed? <a href="#" id="addCampusLink">Add a new campus of <span id="acParent"></span></a></p>
+
+        <!-- typed by hand: not in the list, or a new campus of a listed institution -->
+        <div class="manual-block" id="manualBlock" hidden>
+          <div class="manual-note" id="manualNote"></div>
+          <div class="a-field" id="nameField">
+            <label for="instName">Institution name <span class="req">*</span></label>
+            <input class="a-input" id="instName" placeholder="e.g. Bright Future College" />
+          </div>
+          <div class="signup-grid">
+            <div class="a-field" id="typeField">
+              <label for="instType">Institution type <span class="req">*</span></label>
+              <select class="a-select" id="instType"><option value="" disabled selected>Select type</option></select>
+            </div>
+            <div class="a-field">
+              <label for="instCampus">Campus / branch <span class="req" id="campusReq" hidden>*</span><span class="hint" id="campusHint">(optional)</span></label>
+              <input class="a-input" id="instCampus" placeholder="e.g. Clifton Campus" />
+            </div>
+          </div>
+          <div class="signup-grid">
+            <div class="a-field">
+              <label for="instCity">City <span class="req">*</span></label>
+              <input class="a-input" id="instCity" placeholder="e.g. Karachi" />
+            </div>
+            <div class="a-field" id="siteField">
+              <label for="instSite">Official website <span class="hint">(optional)</span></label>
+              <input class="a-input" id="instSite" type="url" placeholder="https://www.your-institution.edu.pk" />
+            </div>
+          </div>
+          <button type="button" class="a-btn-link" id="backToSearch">← Search the list again</button>
         </div>
       </div>
 
@@ -69,26 +96,38 @@
           <div><h2>Primary Admin</h2><p>This person gets the first Institution Admin account</p></div>
         </div>
 
-        <div class="signup-grid" style="margin-bottom:14px;">
-          <div class="a-field">
-            <label for="adminName">Full name <span class="req">*</span></label>
-            <input class="a-input" id="adminName" placeholder="e.g. Dr. Ayesha Khan" required />
-          </div>
-          <div class="a-field">
-            <label for="adminEmail">Work email <span class="req">*</span></label>
-            <input class="a-input" id="adminEmail" type="email" placeholder="admissions@your-institution.edu" required />
-          </div>
+        <div class="a-field">
+          <label for="adminName">Full name <span class="req">*</span></label>
+          <input class="a-input" id="adminName" placeholder="e.g. Dr. Ayesha Khan" required />
         </div>
 
-        <div class="signup-grid">
-          <div class="a-field">
-            <label for="adminPhone">Phone <span class="req">*</span></label>
-            <input class="a-input" id="adminPhone" type="tel" placeholder="e.g. 0300 1234567" required />
+        <div class="a-field">
+          <label for="adminEmail">Work email <span class="req">*</span> <span class="verified-tag" id="verifiedTag" hidden>✓ Verified</span></label>
+          <div class="email-row">
+            <input class="a-input" id="adminEmail" type="email" placeholder="admissions@your-institution.edu.pk" autocomplete="email" required />
+            <button type="button" class="btn btn-ghost send-btn" id="sendCode">Send code</button>
           </div>
-          <div class="a-field">
-            <label for="adminRole">Designation</label>
-            <input class="a-input" id="adminRole" placeholder="e.g. Registrar, Dean of Admissions" />
+          <div class="field-hint" id="emailHint">Use your institution's official email. Gmail, Yahoo, Outlook and other personal emails are not accepted.</div>
+        </div>
+
+        <div class="otp-box" id="otpBox" hidden>
+          <div class="otp-msg" id="otpMsg"></div>
+          <div class="email-row">
+            <input class="a-input otp-input" id="otpCode" inputmode="numeric" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code" />
+            <button type="button" class="btn btn-amber send-btn" id="verifyCode">Verify</button>
           </div>
+          <div class="otp-foot"><button type="button" class="a-btn-link" id="resendCode" disabled>Resend code</button> <span id="resendTimer"></span></div>
+        </div>
+
+        <div class="chk-row no-official" id="noOfficialRow">
+          <input type="checkbox" id="noOfficial" />
+          <label for="noOfficial">We don't have an official email address. I'll use a personal email and upload a proof document.</label>
+        </div>
+
+        <div class="proof-box" id="proofBox" hidden>
+          <label for="proofFile">Proof document <span class="req">*</span> <span class="hint" id="proofHint">(PDF, JPG or PNG, max 5 MB)</span></label>
+          <input type="file" id="proofFile" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" />
+          <p>An authorisation letter on your institution's letterhead, or its registration certificate. The platform team checks it before approving.</p>
         </div>
       </div>
 
@@ -114,10 +153,11 @@
 
       <div class="chk-row" style="margin-bottom:22px;">
         <input type="checkbox" id="terms" required />
-        <label for="terms">I confirm I'm authorised to register this institution, and agree to AssessAI's <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a>.</label>
+        <label for="terms">I confirm I'm authorised to register this institution, and agree to Assessify's <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a>.</label>
       </div>
 
-      <button type="submit" class="btn btn-amber" style="width:100%;">Create Institution Account →</button>
+      <button type="submit" class="btn btn-amber" style="width:100%;" id="submitBtn">Create Institution Account →</button>
+      <p class="submit-note" id="submitNote">Verify your work email to continue.</p>
 
       <p class="auth-foot">Already registered? <a href="institution-login.html">Sign in</a></p>
     </form>

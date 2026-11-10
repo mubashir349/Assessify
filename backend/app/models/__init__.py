@@ -7,3 +7,4 @@ from app.models.aptitude_test import AptitudeTest, Composition, Schedule  # noqa
 from app.models.candidate import Candidate  # noqa: F401
 from app.models.exam import ExamAttempt, LockEvent, PaperItem  # noqa: F401
 from app.models.report import ResultEmail  # noqa: F401
+from app.models.directory import DirectoryCampus, DirectoryInstitution, EmailOtp, InstitutionProof  # noqa: F401

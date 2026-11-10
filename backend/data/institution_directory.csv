@@ -1,0 +1,185 @@
+institution,short_name,type,website,email_domain,campus,city
+NED University of Engineering & Technology,NED,University,https://www.neduet.edu.pk,neduet.edu.pk,Main Campus,Karachi
+NED University of Engineering & Technology,NED,University,https://www.neduet.edu.pk,neduet.edu.pk,City Campus,Karachi
+NED University of Engineering & Technology,NED,University,https://www.neduet.edu.pk,neduet.edu.pk,Thar Campus,Mithi
+University of Karachi,KU,University,https://www.uok.edu.pk,uok.edu.pk,Main Campus,Karachi
+Institute of Business Administration,IBA,University,https://www.iba.edu.pk,iba.edu.pk,Main Campus,Karachi
+Institute of Business Administration,IBA,University,https://www.iba.edu.pk,iba.edu.pk,City Campus,Karachi
+Aga Khan University,AKU,University,https://www.aku.edu,aku.edu,Stadium Road Campus,Karachi
+Habib University,HU,University,https://habib.edu.pk,habib.edu.pk,Main Campus,Karachi
+Dow University of Health Sciences,DUHS,University,https://www.duhs.edu.pk,duhs.edu.pk,Mission Road Campus,Karachi
+Dow University of Health Sciences,DUHS,University,https://www.duhs.edu.pk,duhs.edu.pk,Ojha Campus,Karachi
+Sir Syed University of Engineering & Technology,SSUET,University,https://www.ssuet.edu.pk,ssuet.edu.pk,Main Campus,Karachi
+Hamdard University,,University,https://hamdard.edu.pk,hamdard.edu.pk,Main Campus,Karachi
+Hamdard University,,University,https://hamdard.edu.pk,hamdard.edu.pk,Islamabad Campus,Islamabad
+Ziauddin University,ZU,University,https://zu.edu.pk,zu.edu.pk,Clifton Campus,Karachi
+Karachi Institute of Economics & Technology,KIET,University,https://www.kiet.edu.pk,kiet.edu.pk,Main Campus,Karachi
+DHA Suffa University,DSU,University,https://www.dsu.edu.pk,dsu.edu.pk,Main Campus,Karachi
+Iqra University,IU,University,https://iqra.edu.pk,iqra.edu.pk,Main Campus,Karachi
+Iqra University,IU,University,https://iqra.edu.pk,iqra.edu.pk,Islamabad Campus,Islamabad
+"Federal Urdu University of Arts, Science & Technology",FUUAST,University,https://fuuast.edu.pk,fuuast.edu.pk,Gulshan-e-Iqbal Campus,Karachi
+"Federal Urdu University of Arts, Science & Technology",FUUAST,University,https://fuuast.edu.pk,fuuast.edu.pk,Abdul Haq Campus,Karachi
+"Federal Urdu University of Arts, Science & Technology",FUUAST,University,https://fuuast.edu.pk,fuuast.edu.pk,Islamabad Campus,Islamabad
+Jinnah Sindh Medical University,JSMU,University,https://www.jsmu.edu.pk,jsmu.edu.pk,Main Campus,Karachi
+Mohammad Ali Jinnah University,MAJU,University,https://jinnah.edu,jinnah.edu,Main Campus,Karachi
+Dawood University of Engineering & Technology,DUET,University,https://www.duet.edu.pk,duet.edu.pk,Main Campus,Karachi
+Shaheed Zulfikar Ali Bhutto Institute of Science & Technology,SZABIST,University,https://szabist.edu.pk,"szabist.edu.pk,szabist-isb.edu.pk",Karachi Campus,Karachi
+Shaheed Zulfikar Ali Bhutto Institute of Science & Technology,SZABIST,University,https://szabist.edu.pk,"szabist.edu.pk,szabist-isb.edu.pk",Islamabad Campus,Islamabad
+Shaheed Zulfikar Ali Bhutto Institute of Science & Technology,SZABIST,University,https://szabist.edu.pk,"szabist.edu.pk,szabist-isb.edu.pk",Larkana Campus,Larkana
+Shaheed Zulfikar Ali Bhutto Institute of Science & Technology,SZABIST,University,https://szabist.edu.pk,"szabist.edu.pk,szabist-isb.edu.pk",Hyderabad Campus,Hyderabad
+Mehran University of Engineering & Technology,MUET,University,https://www.muet.edu.pk,muet.edu.pk,Main Campus,Jamshoro
+Mehran University of Engineering & Technology,MUET,University,https://www.muet.edu.pk,muet.edu.pk,SZAB Campus,Khairpur Mir's
+University of Sindh,,University,https://usindh.edu.pk,usindh.edu.pk,Allama I.I. Kazi Campus,Jamshoro
+Liaquat University of Medical & Health Sciences,LUMHS,University,https://www.lumhs.edu.pk,lumhs.edu.pk,Main Campus,Jamshoro
+Shah Abdul Latif University,SALU,University,https://salu.edu.pk,salu.edu.pk,Main Campus,Khairpur
+Sukkur IBA University,,University,https://www.iba-suk.edu.pk,iba-suk.edu.pk,Main Campus,Sukkur
+Isra University,,University,https://isra.edu.pk,isra.edu.pk,Main Campus,Hyderabad
+Lahore University of Management Sciences,LUMS,University,https://lums.edu.pk,lums.edu.pk,Main Campus,Lahore
+University of the Punjab,PU,University,https://pu.edu.pk,pu.edu.pk,Quaid-e-Azam Campus,Lahore
+University of the Punjab,PU,University,https://pu.edu.pk,pu.edu.pk,Allama Iqbal Campus,Lahore
+University of the Punjab,PU,University,https://pu.edu.pk,pu.edu.pk,Gujranwala Campus,Gujranwala
+University of the Punjab,PU,University,https://pu.edu.pk,pu.edu.pk,Jhelum Campus,Jhelum
+University of Engineering & Technology Lahore,UET,University,https://www.uet.edu.pk,uet.edu.pk,Main Campus,Lahore
+University of Engineering & Technology Lahore,UET,University,https://www.uet.edu.pk,uet.edu.pk,KSK Campus,Lahore
+University of Engineering & Technology Lahore,UET,University,https://www.uet.edu.pk,uet.edu.pk,Faisalabad Campus,Faisalabad
+University of Engineering & Technology Lahore,UET,University,https://www.uet.edu.pk,uet.edu.pk,Narowal Campus,Narowal
+University of Engineering & Technology Lahore,UET,University,https://www.uet.edu.pk,uet.edu.pk,RCET Gujranwala,Gujranwala
+Government College University Lahore,GCU,University,https://gcu.edu.pk,gcu.edu.pk,Main Campus,Lahore
+National University of Computer & Emerging Sciences,FAST-NUCES,University,https://www.nu.edu.pk,nu.edu.pk,Lahore Campus,Lahore
+National University of Computer & Emerging Sciences,FAST-NUCES,University,https://www.nu.edu.pk,nu.edu.pk,Karachi Campus,Karachi
+National University of Computer & Emerging Sciences,FAST-NUCES,University,https://www.nu.edu.pk,nu.edu.pk,Islamabad Campus,Islamabad
+National University of Computer & Emerging Sciences,FAST-NUCES,University,https://www.nu.edu.pk,nu.edu.pk,Peshawar Campus,Peshawar
+National University of Computer & Emerging Sciences,FAST-NUCES,University,https://www.nu.edu.pk,nu.edu.pk,Chiniot-Faisalabad Campus,Chiniot
+National University of Computer & Emerging Sciences,FAST-NUCES,University,https://www.nu.edu.pk,nu.edu.pk,Multan Campus,Multan
+University of Management & Technology,UMT,University,https://www.umt.edu.pk,umt.edu.pk,Main Campus,Lahore
+University of Management & Technology,UMT,University,https://www.umt.edu.pk,umt.edu.pk,Sialkot Campus,Sialkot
+University of Central Punjab,UCP,University,https://ucp.edu.pk,ucp.edu.pk,Main Campus,Lahore
+King Edward Medical University,KEMU,University,https://kemu.edu.pk,kemu.edu.pk,Main Campus,Lahore
+Lahore College for Women University,LCWU,University,https://lcwu.edu.pk,lcwu.edu.pk,Main Campus,Lahore
+Forman Christian College,FCCU,University,https://www.fccollege.edu.pk,fccollege.edu.pk,Main Campus,Lahore
+Information Technology University,ITU,University,https://itu.edu.pk,itu.edu.pk,Main Campus,Lahore
+The University of Lahore,UOL,University,https://uol.edu.pk,uol.edu.pk,Main Campus,Lahore
+The University of Lahore,UOL,University,https://uol.edu.pk,uol.edu.pk,Sargodha Campus,Sargodha
+Beaconhouse National University,BNU,University,https://www.bnu.edu.pk,bnu.edu.pk,Main Campus,Lahore
+National College of Arts,NCA,University,https://nca.edu.pk,nca.edu.pk,Lahore Campus,Lahore
+National College of Arts,NCA,University,https://nca.edu.pk,nca.edu.pk,Rawalpindi Campus,Rawalpindi
+University of Education,UE,University,https://ue.edu.pk,ue.edu.pk,Township Campus,Lahore
+University of Health Sciences,UHS,University,https://uhs.edu.pk,uhs.edu.pk,Main Campus,Lahore
+University of Veterinary & Animal Sciences,UVAS,University,https://uvas.edu.pk,uvas.edu.pk,City Campus,Lahore
+Kinnaird College for Women,,College,https://www.kinnaird.edu.pk,kinnaird.edu.pk,Main Campus,Lahore
+Quaid-i-Azam University,QAU,University,https://qau.edu.pk,qau.edu.pk,Main Campus,Islamabad
+National University of Sciences & Technology,NUST,University,https://nust.edu.pk,nust.edu.pk,H-12 Main Campus,Islamabad
+National University of Sciences & Technology,NUST,University,https://nust.edu.pk,nust.edu.pk,College of E&ME,Rawalpindi
+National University of Sciences & Technology,NUST,University,https://nust.edu.pk,nust.edu.pk,Military College of Signals,Rawalpindi
+National University of Sciences & Technology,NUST,University,https://nust.edu.pk,nust.edu.pk,PNEC,Karachi
+National University of Sciences & Technology,NUST,University,https://nust.edu.pk,nust.edu.pk,Military College of Engineering,Risalpur
+International Islamic University,IIUI,University,https://www.iiu.edu.pk,iiu.edu.pk,H-10 Campus,Islamabad
+Air University,AU,University,https://au.edu.pk,au.edu.pk,Main Campus,Islamabad
+Air University,AU,University,https://au.edu.pk,au.edu.pk,Kamra Campus,Kamra
+Air University,AU,University,https://au.edu.pk,au.edu.pk,Multan Campus,Multan
+Allama Iqbal Open University,AIOU,University,https://aiou.edu.pk,aiou.edu.pk,Main Campus,Islamabad
+Pakistan Institute of Engineering & Applied Sciences,PIEAS,University,https://www.pieas.edu.pk,pieas.edu.pk,Main Campus,Islamabad
+Capital University of Science & Technology,CUST,University,https://cust.edu.pk,cust.edu.pk,Main Campus,Islamabad
+Riphah International University,,University,https://www.riphah.edu.pk,riphah.edu.pk,Islamabad Campus,Islamabad
+Riphah International University,,University,https://www.riphah.edu.pk,riphah.edu.pk,Rawalpindi Campus,Rawalpindi
+Riphah International University,,University,https://www.riphah.edu.pk,riphah.edu.pk,Lahore Campus,Lahore
+Riphah International University,,University,https://www.riphah.edu.pk,riphah.edu.pk,Faisalabad Campus,Faisalabad
+National University of Modern Languages,NUML,University,https://numl.edu.pk,numl.edu.pk,Main Campus,Islamabad
+National University of Modern Languages,NUML,University,https://numl.edu.pk,numl.edu.pk,Karachi Campus,Karachi
+National University of Modern Languages,NUML,University,https://numl.edu.pk,numl.edu.pk,Lahore Campus,Lahore
+National University of Modern Languages,NUML,University,https://numl.edu.pk,numl.edu.pk,Peshawar Campus,Peshawar
+National University of Modern Languages,NUML,University,https://numl.edu.pk,numl.edu.pk,Multan Campus,Multan
+National University of Modern Languages,NUML,University,https://numl.edu.pk,numl.edu.pk,Faisalabad Campus,Faisalabad
+National University of Modern Languages,NUML,University,https://numl.edu.pk,numl.edu.pk,Hyderabad Campus,Hyderabad
+National University of Modern Languages,NUML,University,https://numl.edu.pk,numl.edu.pk,Quetta Campus,Quetta
+Institute of Space Technology,IST,University,https://www.ist.edu.pk,ist.edu.pk,Main Campus,Islamabad
+Shifa Tameer-e-Millat University,STMU,University,https://stmu.edu.pk,stmu.edu.pk,Main Campus,Islamabad
+Bahria University,BU,University,https://www.bahria.edu.pk,bahria.edu.pk,E-8 Campus,Islamabad
+Bahria University,BU,University,https://www.bahria.edu.pk,bahria.edu.pk,H-11 Campus,Islamabad
+Bahria University,BU,University,https://www.bahria.edu.pk,bahria.edu.pk,Karachi Campus,Karachi
+Bahria University,BU,University,https://www.bahria.edu.pk,bahria.edu.pk,Lahore Campus,Lahore
+COMSATS University Islamabad,CUI,University,https://www.comsats.edu.pk,"comsats.edu.pk,cuilahore.edu.pk,cuiatd.edu.pk,ciitwah.edu.pk,cuisahiwal.edu.pk,cuivehari.edu.pk,cuiatk.edu.pk",Islamabad Campus,Islamabad
+COMSATS University Islamabad,CUI,University,https://www.comsats.edu.pk,"comsats.edu.pk,cuilahore.edu.pk,cuiatd.edu.pk,ciitwah.edu.pk,cuisahiwal.edu.pk,cuivehari.edu.pk,cuiatk.edu.pk",Lahore Campus,Lahore
+COMSATS University Islamabad,CUI,University,https://www.comsats.edu.pk,"comsats.edu.pk,cuilahore.edu.pk,cuiatd.edu.pk,ciitwah.edu.pk,cuisahiwal.edu.pk,cuivehari.edu.pk,cuiatk.edu.pk",Abbottabad Campus,Abbottabad
+COMSATS University Islamabad,CUI,University,https://www.comsats.edu.pk,"comsats.edu.pk,cuilahore.edu.pk,cuiatd.edu.pk,ciitwah.edu.pk,cuisahiwal.edu.pk,cuivehari.edu.pk,cuiatk.edu.pk",Wah Campus,Wah Cantt
+COMSATS University Islamabad,CUI,University,https://www.comsats.edu.pk,"comsats.edu.pk,cuilahore.edu.pk,cuiatd.edu.pk,ciitwah.edu.pk,cuisahiwal.edu.pk,cuivehari.edu.pk,cuiatk.edu.pk",Attock Campus,Attock
+COMSATS University Islamabad,CUI,University,https://www.comsats.edu.pk,"comsats.edu.pk,cuilahore.edu.pk,cuiatd.edu.pk,ciitwah.edu.pk,cuisahiwal.edu.pk,cuivehari.edu.pk,cuiatk.edu.pk",Sahiwal Campus,Sahiwal
+COMSATS University Islamabad,CUI,University,https://www.comsats.edu.pk,"comsats.edu.pk,cuilahore.edu.pk,cuiatd.edu.pk,ciitwah.edu.pk,cuisahiwal.edu.pk,cuivehari.edu.pk,cuiatk.edu.pk",Vehari Campus,Vehari
+Pir Mehr Ali Shah Arid Agriculture University,PMAS-AAUR,University,https://www.uaar.edu.pk,uaar.edu.pk,Main Campus,Rawalpindi
+Fatima Jinnah Women University,FJWU,University,https://fjwu.edu.pk,fjwu.edu.pk,Main Campus,Rawalpindi
+Foundation University,FUI,University,https://fui.edu.pk,fui.edu.pk,Islamabad Campus,Islamabad
+Foundation University,FUI,University,https://fui.edu.pk,fui.edu.pk,Rawalpindi Campus,Rawalpindi
+National Defence University,NDU,University,https://ndu.edu.pk,ndu.edu.pk,Main Campus,Islamabad
+University of Engineering & Technology Taxila,UET Taxila,University,https://www.uettaxila.edu.pk,uettaxila.edu.pk,Main Campus,Taxila
+HITEC University,,University,https://hitecuni.edu.pk,hitecuni.edu.pk,Main Campus,Taxila
+University of Agriculture Faisalabad,UAF,University,https://uaf.edu.pk,uaf.edu.pk,Main Campus,Faisalabad
+Government College University Faisalabad,GCUF,University,https://gcuf.edu.pk,gcuf.edu.pk,Main Campus,Faisalabad
+National Textile University,NTU,University,https://ntu.edu.pk,ntu.edu.pk,Main Campus,Faisalabad
+National Textile University,NTU,University,https://ntu.edu.pk,ntu.edu.pk,Karachi Campus,Karachi
+Bahauddin Zakariya University,BZU,University,https://www.bzu.edu.pk,bzu.edu.pk,Main Campus,Multan
+Nishtar Medical University,NMU,University,https://nmu.edu.pk,nmu.edu.pk,Main Campus,Multan
+Women University Multan,WUM,University,https://wum.edu.pk,wum.edu.pk,Main Campus,Multan
+The Islamia University of Bahawalpur,IUB,University,https://www.iub.edu.pk,iub.edu.pk,Baghdad-ul-Jadeed Campus,Bahawalpur
+University of Sargodha,UOS,University,https://su.edu.pk,,Main Campus,Sargodha
+University of Gujrat,UOG,University,https://uog.edu.pk,uog.edu.pk,Hafiz Hayat Campus,Gujrat
+Khwaja Fareed University of Engineering & IT,KFUEIT,University,https://kfueit.edu.pk,kfueit.edu.pk,Main Campus,Rahim Yar Khan
+University of Okara,UO,University,https://uo.edu.pk,uo.edu.pk,Main Campus,Okara
+Ghazi University,,University,https://gudgk.edu.pk,gudgk.edu.pk,Main Campus,Dera Ghazi Khan
+University of Peshawar,UOP,University,https://www.uop.edu.pk,uop.edu.pk,Main Campus,Peshawar
+University of Engineering & Technology Peshawar,UET Peshawar,University,https://www.uetpeshawar.edu.pk,uetpeshawar.edu.pk,Main Campus,Peshawar
+University of Engineering & Technology Peshawar,UET Peshawar,University,https://www.uetpeshawar.edu.pk,uetpeshawar.edu.pk,Mardan Campus,Mardan
+University of Engineering & Technology Peshawar,UET Peshawar,University,https://www.uetpeshawar.edu.pk,uetpeshawar.edu.pk,Abbottabad Campus,Abbottabad
+University of Engineering & Technology Peshawar,UET Peshawar,University,https://www.uetpeshawar.edu.pk,uetpeshawar.edu.pk,Bannu Campus,Bannu
+Khyber Medical University,KMU,University,https://www.kmu.edu.pk,kmu.edu.pk,Main Campus,Peshawar
+Islamia College Peshawar,ICP,University,https://icp.edu.pk,icp.edu.pk,Main Campus,Peshawar
+Ghulam Ishaq Khan Institute of Engineering Sciences & Technology,GIKI,University,https://giki.edu.pk,giki.edu.pk,Main Campus,"Topi, Swabi"
+Abdul Wali Khan University Mardan,AWKUM,University,https://awkum.edu.pk,awkum.edu.pk,Garden Campus,Mardan
+Hazara University,,University,https://hu.edu.pk,hu.edu.pk,Main Campus,Mansehra
+University of Malakand,UOM,University,https://www.uom.edu.pk,uom.edu.pk,Main Campus,Chakdara
+Kohat University of Science & Technology,KUST,University,https://kust.edu.pk,kust.edu.pk,Main Campus,Kohat
+Gomal University,,University,https://gu.edu.pk,gu.edu.pk,Main Campus,Dera Ismail Khan
+Institute of Management Sciences,IMSciences,University,https://imsciences.edu.pk,imsciences.edu.pk,Main Campus,Peshawar
+University of Swat,,University,https://uswat.edu.pk,uswat.edu.pk,Main Campus,Swat
+The University of Agriculture Peshawar,AUP,University,https://aup.edu.pk,aup.edu.pk,Main Campus,Peshawar
+University of Balochistan,UOB,University,https://www.uob.edu.pk,uob.edu.pk,Main Campus,Quetta
+"Balochistan University of IT, Engineering & Management Sciences",BUITEMS,University,https://www.buitms.edu.pk,buitms.edu.pk,Takatu Campus,Quetta
+Sardar Bahadur Khan Women's University,SBKWU,University,https://www.sbkwu.edu.pk,sbkwu.edu.pk,Main Campus,Quetta
+"Lasbela University of Agriculture, Water & Marine Sciences",LUAWMS,University,https://www.luawms.edu.pk,luawms.edu.pk,Main Campus,Uthal
+University of Turbat,UOT,University,https://uot.edu.pk,uot.edu.pk,Main Campus,Turbat
+University of Azad Jammu & Kashmir,UAJK,University,https://www.ajku.edu.pk,ajku.edu.pk,Chehla Campus,Muzaffarabad
+Mirpur University of Science & Technology,MUST,University,https://www.must.edu.pk,must.edu.pk,Main Campus,Mirpur
+Karakoram International University,KIU,University,https://www.kiu.edu.pk,kiu.edu.pk,Main Campus,Gilgit
+Punjab Group of Colleges,Punjab College,College,https://pgc.edu,,Lahore Branch,Lahore
+Punjab Group of Colleges,Punjab College,College,https://pgc.edu,,Faisalabad Branch,Faisalabad
+Punjab Group of Colleges,Punjab College,College,https://pgc.edu,,Multan Branch,Multan
+Punjab Group of Colleges,Punjab College,College,https://pgc.edu,,Rawalpindi Branch,Rawalpindi
+Punjab Group of Colleges,Punjab College,College,https://pgc.edu,,Gujranwala Branch,Gujranwala
+Punjab Group of Colleges,Punjab College,College,https://pgc.edu,,Sargodha Branch,Sargodha
+Punjab Group of Colleges,Punjab College,College,https://pgc.edu,,Islamabad Branch,Islamabad
+Aitchison College,,College,https://www.aitchison.edu.pk,,Main Campus,Lahore
+Cadet College Hasan Abdal,CCH,College,https://www.cch.edu.pk,,Main Campus,Hasan Abdal
+Cadet College Petaro,CCP,College,https://www.ccp.edu.pk,,Main Campus,"Petaro, Jamshoro"
+Government College of Technology,GCT,College,,,Karachi Branch,Karachi
+Government College of Technology,GCT,College,,,Lahore (Railway Road),Lahore
+D.J. Sindh Government Science College,DJ Science,College,,,Main Campus,Karachi
+Adamjee Government Science College,Adamjee,College,,,Main Campus,Karachi
+Karachi Grammar School,KGS,School,https://www.kgs.edu.pk,,Clifton Campus,Karachi
+Karachi Grammar School,KGS,School,https://www.kgs.edu.pk,,Saddar Campus,Karachi
+Lahore Grammar School,LGS,School,,,Lahore Branch,Lahore
+Beaconhouse School System,Beaconhouse,School,https://www.beaconhouse.net,,Karachi Branch,Karachi
+Beaconhouse School System,Beaconhouse,School,https://www.beaconhouse.net,,Lahore Branch,Lahore
+Beaconhouse School System,Beaconhouse,School,https://www.beaconhouse.net,,Islamabad Branch,Islamabad
+Beaconhouse School System,Beaconhouse,School,https://www.beaconhouse.net,,Rawalpindi Branch,Rawalpindi
+The City School,,School,https://www.thecityschool.edu.pk,,Karachi Branch,Karachi
+The City School,,School,https://www.thecityschool.edu.pk,,Lahore Branch,Lahore
+The City School,,School,https://www.thecityschool.edu.pk,,Islamabad Branch,Islamabad
+The City School,,School,https://www.thecityschool.edu.pk,,Peshawar Branch,Peshawar
+Roots Millennium Schools,Roots,School,,,Islamabad Branch,Islamabad
+Roots Millennium Schools,Roots,School,,,Rawalpindi Branch,Rawalpindi
+Roots Millennium Schools,Roots,School,,,Lahore Branch,Lahore
+Army Public Schools & Colleges,APS,School,,,Rawalpindi Branch,Rawalpindi
+Army Public Schools & Colleges,APS,School,,,Karachi Branch,Karachi
+Army Public Schools & Colleges,APS,School,,,Lahore Branch,Lahore
+Army Public Schools & Colleges,APS,School,,,Peshawar Branch,Peshawar
+Allied Schools,,School,,,Lahore Branch,Lahore
+Allied Schools,,School,,,Faisalabad Branch,Faisalabad

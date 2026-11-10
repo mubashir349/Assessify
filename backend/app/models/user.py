@@ -22,8 +22,6 @@ class User(db.Model):
     institution_id = db.Column(db.Integer, db.ForeignKey("institutions.id"), nullable=True, index=True)  # NULL = platform staff
     full_name = db.Column(db.String(150), nullable=False)
     email = db.Column(db.String(255), nullable=False, unique=True)
-    phone = db.Column(db.String(30), nullable=True)
-    designation = db.Column(db.String(120), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(30), nullable=False)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
@@ -48,6 +46,8 @@ class User(db.Model):
             "email": self.email,
             "role": self.role,
             "created_at": iso(self.created_at),
-            "institution": {"id": self.institution.id, "name": self.institution.name, "type": self.institution.type,
+            "institution": {"id": self.institution.id, "name": self.institution.name,
+                            "campus_name": self.institution.campus_name,
+                            "display_name": self.institution.display_name, "type": self.institution.type,
                             "status": self.institution.status} if self.institution else None,
         }

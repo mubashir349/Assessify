@@ -128,3 +128,57 @@
 .signup-card .chk-row input[type="checkbox"]:checked { background: var(--apt-primary); border-color: var(--apt-primary); }
 .signup-card .chk-row input[type="checkbox"]:checked::after { content: "✓"; color: #1c1206; font-size: 12px; font-weight: 800; line-height: 1; }
 .signup-card .chk-row input[type="checkbox"]:focus-visible { box-shadow: 0 0 0 4px rgba(245,158,11,.18); outline: none; }
+
+/* ---------- Phase 10: institution search, email code, proof ---------- */
+.combo { position: relative; }
+.combo-list {
+  position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; margin: 0; padding: 6px; list-style: none;
+  max-height: 320px; overflow-y: auto; border-radius: 14px; background: #0d1424; border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 24px 60px -12px rgba(0,0,0,.7);
+}
+.combo-item { padding: 10px 12px; border-radius: 10px; cursor: pointer; }
+.combo-item:hover, .combo-item.active { background: rgba(245,158,11,.10); }
+.combo-item.taken { opacity: .55; cursor: not-allowed; }
+.combo-item.taken b { color: #f87171; font-weight: 600; }
+.ci-name { color: #f8fafc; font-size: 13.5px; font-weight: 600; }
+.ci-short { font-family: var(--font-mono); font-size: 10.5px; color: var(--apt-light); background: rgba(245,158,11,.12); padding: 1px 6px; border-radius: 6px; margin-left: 4px; }
+.ci-sub { color: var(--n-400); font-size: 12px; margin-top: 2px; }
+.combo-manual { border-top: 1px solid rgba(255,255,255,.08); margin-top: 4px; }
+.combo-manual .ci-name { color: var(--apt-light); }
+.combo-empty { padding: 10px 12px; color: var(--n-500); font-size: 12.5px; }
+
+.inst-picked { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; padding: 16px 18px; border-radius: 14px; background: rgba(245,158,11,.06); border: 1px solid rgba(245,158,11,.30); }
+.ip-name { color: #fff; font-weight: 700; font-size: 15px; font-family: var(--font-display); }
+.ip-sub { color: var(--apt-light); font-size: 13px; margin-top: 3px; font-weight: 600; }
+.ip-meta { color: var(--n-400); font-size: 12px; margin-top: 4px; }
+.ip-meta a { color: var(--n-300); }
+.inst-alt { font-size: 12.5px; color: var(--n-500); margin-top: -6px; }
+.inst-alt a { color: var(--apt-light); font-weight: 600; }
+.manual-block { display: flex; flex-direction: column; gap: 16px; padding: 16px; border-radius: 14px; border: 1px dashed rgba(255,255,255,.16); }
+.manual-note { font-size: 12.5px; color: var(--n-300); line-height: 1.55; }
+.manual-note:empty { display: none; }
+.a-btn-link { background: none; border: 0; padding: 0; color: var(--apt-light); font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: left; width: fit-content; }
+.a-btn-link:hover { color: #fff; }
+.a-btn-link:disabled { color: var(--n-600); cursor: default; }
+
+.email-row { display: flex; gap: 10px; }
+.email-row .a-input { flex: 1; min-width: 0; }
+.send-btn { flex-shrink: 0; height: 46px; padding: 0 16px; border-radius: 12px; font-size: 13px; white-space: nowrap; }
+.field-hint { font-size: 11.5px; color: var(--n-500); line-height: 1.5; }
+.field-hint b { color: var(--apt-light); font-weight: 600; }
+.signup-card .a-input.verified { border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.05); }
+.verified-tag { margin-left: 6px; font-size: 11px; font-weight: 700; color: #4ade80; background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); padding: 1px 8px; border-radius: 999px; }
+.otp-box { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 12px; background: rgba(6,182,212,.06); border: 1px solid rgba(6,182,212,.25); }
+.otp-msg { font-size: 12.5px; color: var(--n-300); line-height: 1.55; }
+.otp-msg b { color: #fff; }
+.dev-note { color: var(--ai-light); font-size: 11.5px; }
+.otp-input { letter-spacing: .35em; font-family: var(--font-mono); font-size: 16px !important; }
+.otp-foot { font-size: 12px; color: var(--n-500); }
+.proof-box { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 12px; background: rgba(239,68,68,.05); border: 1px solid rgba(239,68,68,.25); }
+.proof-box label { font-size: 12.5px; font-weight: 600; color: var(--n-300); }
+.proof-box input[type="file"] { color: var(--n-300); font-size: 12.5px; }
+.proof-box input[type="file"].invalid { outline: 1px solid rgba(248,113,113,.7); border-radius: 6px; }
+.proof-box p { font-size: 11.5px; color: var(--n-500); line-height: 1.5; }
+.submit-note { text-align: center; font-size: 12px; color: var(--n-500); margin-top: 10px; }
+[hidden] { display: none !important; }
+@media (max-width: 560px) { .email-row { flex-direction: column; } .send-btn { width: 100%; } }

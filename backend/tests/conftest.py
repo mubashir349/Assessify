@@ -20,7 +20,7 @@ def app():
     app.config.update(TESTING=True)
     with app.app_context():
         db.create_all()
-        sa = User(full_name="Root", email="root@assessai.com", role=ROLE_SUPER_ADMIN)
+        sa = User(full_name="Root", email="root@assessify.com", role=ROLE_SUPER_ADMIN)
         sa.set_password("SuperSecret123")
         db.session.add(sa)
         db.session.commit()
@@ -37,8 +37,57 @@ def client(app):
 SIGNUP = {
     "institution_name": "NED University", "institution_type": "University", "city": "Karachi, Pakistan",
     "website": "https://www.neduet.edu.pk", "admin_name": "Dr. Ayesha Khan", "admin_email": "Admissions@NED.edu.pk",
-    "admin_phone": "0300 1234567", "admin_designation": "Registrar", "password": "Strong#Pass1",
+    "password": "Strong#Pass1",
 }
+
+SENT_MAIL: list[dict] = []      # every email the app "sent" during the current test (see the autouse fixture)
+_TOKENS: dict[str, str] = {}    # email -> its verified token in this test (the page also keeps it after a failed submit)
+
+
+@pytest.fixture(autouse=True)
+def _capture_mail_and_dns(monkeypatch):
+    """Phase 10: emails (signup codes) are captured instead of logged, and the DNS mail-server lookup says yes,
+    so tests need no network. Tests that check the lookup patch email_rules.accepts_mail themselves."""
+    from app.common import email_rules
+    from app.modules.email_otp import service as otp_service
+
+    SENT_MAIL.clear()
+    _TOKENS.clear()
+
+    def fake_send(to, subject, body):
+        SENT_MAIL.append({"to": to, "subject": subject, "body": body})
+        return "logged"
+
+    monkeypatch.setattr(otp_service, "send_mail", fake_send)
+    monkeypatch.setattr(email_rules, "accepts_mail", lambda domain: True)
+    yield
+
+
+def last_code(email: str) -> str:
+    import re
+    mail = next(m for m in reversed(SENT_MAIL) if m["to"] == email.lower())
+    return re.search(r"code is (\d{6})", mail["body"]).group(1)
+
+
+def email_token(client, email: str) -> str | None:
+    """Send + verify a signup code for this email. None when the email can't get one (invalid / taken)."""
+    if email.lower() in _TOKENS:
+        return _TOKENS[email.lower()]
+    if client.post("/api/v1/auth/otp/send", json={"email": email}).status_code != 200:
+        return None
+    r = client.post("/api/v1/auth/otp/verify", json={"email": email, "code": last_code(email)})
+    if r.status_code != 200:
+        return None
+    _TOKENS[email.lower()] = r.get_json()["data"]["email_token"]
+    return _TOKENS[email.lower()]
+
+
+def do_signup(client, **over):
+    """Institution signup the way the page does it: verify the email first, then submit."""
+    body = {**SIGNUP, **over}
+    if "email_token" not in over:
+        body["email_token"] = email_token(client, body.get("admin_email") or "")
+    return client.post("/api/v1/institutions/signup", json=body)
 
 
 def login(client, email, password):

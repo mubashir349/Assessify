@@ -477,3 +477,60 @@ python -m pytest tests/test_phase9.py -v
 ```
 Checked on SQL Server 2022: migration upgrade → downgrade → upgrade, `flask db check` clean, the Phase 5/6/7/9 tests,
 and `loadtest/mock_exam.py` PASS.
+
+## Phase 10 — Aptitude-only homepage, institution directory, work-email code
+
+**Homepage:** only the Aptitude Test platform (the Course Platform door and the "one engine, two modes" section are
+gone). The name is **Assessify** on every page.
+
+**Signup — finding the institution.** The name box is a search over the institution directory
+(`directory_institutions` + `directory_campuses`): type "NED", "FAST Lahore", "Punjab College"… and pick the campus.
+Type, city and website fill in from the directory. Each **campus** is its own account with its own admin and data
+(NED City Campus and NED Thar Campus register separately); a campus that is pending / approved / suspended cannot
+register again (a rejected one can). Not listed? "My institution isn't in the list" (type everything) or
+"Add a new campus of …" (institution listed, campus not). When the Super Admin **approves** such a signup it is added
+to the directory, so the next person finds it.
+The list comes from `data/institution_directory.csv` (one row per campus; universities with their official email
+domains, plus some college and school networks). It is typed from memory: **check it and add your own rows**, then
+run `python seed_directory.py` again (it only adds / updates). Leave `email_domain` empty when unsure: a wrong domain
+blocks that institution's real admins.
+
+**Signup — the admin.** No phone and no designation any more (the `users.phone` / `users.designation` columns are
+dropped). The **work email** gets a 6-digit code (10 minutes, 5 wrong tries, 60 s before *Resend*, 5 codes per hour);
+the signup is refused without a fresh verification. Rules:
+- Gmail / Yahoo / Outlook and other personal providers are refused…
+- …unless the admin ticks **"We don't have an official email"** and uploads a **proof** (PDF / JPG / PNG, max 5 MB:
+  authorisation letter or registration certificate). Not allowed when the directory knows the institution's domain.
+- A directory institution with a known domain: the email must be on it (sub-domains like `cs.neduet.edu.pk` are fine).
+- Any other domain must have a mail server in DNS (MX). If DNS can't be reached the check is skipped.
+
+**Super Admin:** each row shows *From list* / *Not in list (typed)*, *Email verified*, *Domain matches* /
+*Domain not confirmed*, and a red *Free email: check proof* with a **View proof** button.
+
+### One-time setup after pulling Phase 10 (PowerShell, inside `backend/`)
+```powershell
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt               # adds dnspython (email domain check)
+flask --app run db upgrade                     # directory, email codes, proof; drops users.phone + users.designation
+python seed_directory.py                       # loads data/institution_directory.csv (safe to run again)
+python run.py
+```
+With `MAIL_BACKEND=console` (the default) the signup code is **printed in this terminal** instead of emailed. To send
+real emails set the `MAIL_*` lines in `.env` (Gmail + App Password, see `.env.example`).
+
+### Done-when demo
+1. Homepage: only Aptitude Test, "Assessify" everywhere.
+2. Signup → type `ned` → pick **Thar Campus, Mithi** → type, city and website are filled in.
+3. Email `you@gmail.com` → refused. `admissions@neduet.edu.pk` → *Send code* → the code appears in the backend
+   terminal → a wrong code says "4 tries left" → the right code shows **✓ Verified** → submit.
+4. Signup again → `ned` → Thar Campus shows **Already registered**; City Campus is still free.
+5. A school without official email: pick *Beaconhouse School System · Lahore Branch*, tick "no official email",
+   Gmail + code + a PDF → submitted. Super Admin sees the red tag and downloads the proof.
+6. "My institution isn't in the list" → Bright Future College, Latifabad Campus, Hyderabad → Super Admin approves →
+   searching `bright` on the signup page now finds it (already registered).
+
+### Tests
+```powershell
+python -m pytest -q                       # 258 tests: Phase 1-10
+python -m pytest tests/test_phase10.py -v
+```

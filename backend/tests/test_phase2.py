@@ -1,6 +1,6 @@
 from app.extensions import db
 from app.models.institution import Institution
-from tests.conftest import SIGNUP, login
+from tests.conftest import SIGNUP, do_signup, login
 
 DEPT = {"name": "Pre-Engineering", "level": "Undergraduate", "mode": "field",
         "subjects": ["Mathematics", "Physics", "Chemistry", "English"]}
@@ -9,7 +9,7 @@ DEPT = {"name": "Pre-Engineering", "level": "Undergraduate", "mode": "field",
 def make_admin(app, email="admissions@ned.edu.pk", name="NED University"):
     """Approved institution + its admin; returns a logged-in test client."""
     c = app.test_client()
-    c.post("/api/v1/institutions/signup", json={**SIGNUP, "admin_email": email, "institution_name": name})
+    assert do_signup(c, admin_email=email, institution_name=name).status_code == 201
     with app.app_context():
         Institution.query.filter_by(name=name).first().status = "approved"
         db.session.commit()
@@ -29,7 +29,7 @@ def test_meta_is_public_and_complete(client):
 
 def test_departments_require_institution_admin(client, app):
     assert client.get("/api/v1/departments").status_code == 401
-    login(client, "root@assessai.com", "SuperSecret123")
+    login(client, "root@assessify.com", "SuperSecret123")
     assert client.get("/api/v1/departments").status_code == 403       # super admin has no institution
 
 

@@ -12,7 +12,7 @@ from app.extensions import db
 from app.models.institution import Institution
 from app.models.question import GenerationAttempt, Question
 from app.modules.questions import generator, pdf, service
-from tests.conftest import SIGNUP, login
+from tests.conftest import SIGNUP, do_signup, login
 from tests.pdf_factory import SAMPLE_TEXT, blank_pdf, encrypted_pdf, make_pdf, mixed_pdf, photo_pdf
 from tests.test_phase2 import DEPT, make_admin
 
@@ -604,7 +604,7 @@ ENDPOINTS = [("get", "/api/v1/questions/ai-status"), ("post", GEN), ("post", "/a
 def test_unauthenticated_and_wrong_role(client):
     for method, url in ENDPOINTS:
         assert getattr(client, method)(url).status_code == 401, url
-    login(client, "root@assessai.com", "SuperSecret123")                  # super admin: no institution
+    login(client, "root@assessify.com", "SuperSecret123")                  # super admin: no institution
     for method, url in ENDPOINTS:
         assert getattr(client, method)(url).status_code == 403, url
 
@@ -643,7 +643,7 @@ def test_institutions_are_isolated(app, fake):
 
 def test_pending_and_suspended_institutions_blocked(app, fake):
     c = app.test_client()
-    c.post("/api/v1/institutions/signup", json={**SIGNUP, "admin_email": "p@pending.edu", "institution_name": "Pending U"})
+    assert do_signup(c, admin_email="p@pending.edu", institution_name="Pending U").status_code == 201
     r = login(c, "p@pending.edu", SIGNUP["password"])
     assert r.status_code == 403
     assert r.get_json()["error"]["code"] == "INSTITUTION_PENDING"

@@ -34,7 +34,7 @@ function initAdminShell() {
     <aside class="a-sidebar">
       <div class="a-brand">
         <div class="mark">Σ</div>
-        <div class="txt"><b>AssessAI</b><span>APTITUDE ADMIN</span></div>
+        <div class="txt"><b>Assessify</b><span>APTITUDE ADMIN</span></div>
       </div>
       <nav class="a-nav">
         ${(document.body.dataset.role === 'super' ? A_NAV_SUPER : A_NAV).map(n => `
@@ -95,11 +95,11 @@ async function guardSession() {
     window.A_USER = user;                              // pages can read the signed-in user
     if (user.role === 'institution_admin' && typeof AA !== 'undefined' && AA.syncDepts) AA.syncDepts().catch(() => {});
     if (document.body.dataset.subFrom === 'institution' && user.institution) {
-      const subEl = document.getElementById('a-sub'); subEl.textContent = user.institution.name; subEl.hidden = false;
+      const subEl = document.getElementById('a-sub'); subEl.textContent = user.institution.display_name || user.institution.name; subEl.hidden = false;
     }
     const chip = document.querySelector('.a-inst-chip');
     if (chip) {
-      const name = user.institution ? user.institution.name : 'AssessAI Platform';  // super admin has no institution
+      const name = user.institution ? (user.institution.display_name || user.institution.name) : 'Assessify Platform';  // super admin has no institution
       chip.querySelector('.av').textContent = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
       chip.querySelector('.meta b').textContent = name;
       chip.querySelector('.meta span').textContent = user.full_name;

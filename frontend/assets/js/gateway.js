@@ -2,13 +2,14 @@
 // Gateway (index.html) — page script
 // ============================================================
 
-// Pipeline strip: Generate -> Review -> Validate -> Deliver -> Report
+// Pipeline strip: how one aptitude test runs, from PDF to report
 const GATEWAY_STEPS = [
-  { icon: '✦', label: 'Generate', grad: ['#6366f1', '#7c3aed'] },
-  { icon: '◎', label: 'Review',   grad: ['#7c3aed', '#9333ea'] },
-  { icon: '▦', label: 'Validate', grad: ['#9333ea', '#c026d3'] },
-  { icon: '📋', label: 'Deliver',  grad: ['#06b6d4', '#0891b2'] },
-  { icon: '📊', label: 'Report',   grad: ['#22c55e', '#0d9488'] },
+  { icon: '✦', label: 'Generate',  grad: ['#f59e0b', '#ea580c'] },
+  { icon: '◎', label: 'Review',    grad: ['#ea580c', '#dc2626'] },
+  { icon: '▦', label: 'Build test', grad: ['#6366f1', '#7c3aed'] },
+  { icon: '👥', label: 'Roster',    grad: ['#7c3aed', '#9333ea'] },
+  { icon: '📝', label: 'Take test', grad: ['#06b6d4', '#0891b2'] },
+  { icon: '📊', label: 'Report',    grad: ['#22c55e', '#0d9488'] },
 ];
 
 document.addEventListener('DOMContentLoaded', () => {

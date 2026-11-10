@@ -43,6 +43,8 @@ def create_app(config_class=Config) -> Flask:
     from app.modules.candidate_auth.routes import bp as candidate_bp
     from app.modules.dashboard.routes import bp as dashboard_bp
     from app.modules.departments.routes import bp as departments_bp
+    from app.modules.directory.routes import bp as directory_bp
+    from app.modules.email_otp.routes import bp as otp_bp
     from app.modules.exam.routes import admin_bp as exam_admin_bp
     from app.modules.exam.routes import bp as exam_bp
     from app.modules.health.routes import bp as health_bp
@@ -56,6 +58,8 @@ def create_app(config_class=Config) -> Flask:
 
     app.register_blueprint(health_bp, url_prefix="/api/v1/health")
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
+    app.register_blueprint(otp_bp, url_prefix="/api/v1/auth/otp")
+    app.register_blueprint(directory_bp, url_prefix="/api/v1/directory")
     app.register_blueprint(institutions_bp, url_prefix="/api/v1/institutions")
     app.register_blueprint(super_bp, url_prefix="/api/v1/super")
     app.register_blueprint(departments_bp, url_prefix="/api/v1/departments")
