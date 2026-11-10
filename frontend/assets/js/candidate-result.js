@@ -35,7 +35,7 @@ function showScheduled(res, who, submitted) {
   const release = res.release_on
     ? new Date(res.release_on + 'T00:00:00').toLocaleDateString([], { dateStyle: 'medium' })
     : 'To be announced';
-  $('scheduledRows').innerHTML = rows([...who, submitted, ['Result will be sent to', res.email], ['Release date', release]]);
+  $('scheduledRows').innerHTML = rows([...who, submitted, ['Result will be sent to', res.email || 'your institution (no email on the roster)'], ['Release date', release]]);
   $('scheduledCard').style.display = 'block';
 }
 
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('candInst').textContent = `${me.institution.name} · ${me.test.name}`;
   $('loadingCard').style.display = 'none';
   const term = me.test.level === 'Undergraduate' ? 'Field' : 'Department';
-  const who = [['Candidate', `${me.full_name} · ${me.roll_number}`], [term, me.department.name]];
+  const who = [['Candidate', `${me.full_name}${me.roll_number ? ' · ' + me.roll_number : ''}`], [term, me.department.name]];
   const submitted = ['Submitted', when(a.submitted_at) + (timeUp ? ' (time ran out)' : '')];
   if (timeUp) {
     document.querySelectorAll('.res-title').forEach(el => { el.textContent = 'Time is up — test submitted'; });

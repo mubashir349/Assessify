@@ -127,7 +127,7 @@ def test_bad_rows_are_reported_one_by_one_and_good_rows_still_import(app, admin)
     assert "Duplicate roll number R-1 (also row #2)" in errs[5]
     assert "Name is required" in errs[6]
     assert "Email" in errs[6]
-    assert "Roll number is required" in errs[6]
+    assert "Roll number is missing" in errs[6]          # Phase 9: the file has a roll column, so a blank one is an error
     assert "not realistic" in errs[8]                                              # blank line 7 was skipped
     assert roster(c, test_id)["total"] == 1
 
@@ -137,9 +137,9 @@ def test_reimporting_the_same_file_does_not_duplicate(app, admin):
     upload(c, test_id, GOOD)
     d = upload(c, test_id, GOOD).get_json()["data"]
     assert d["imported"] == 0
-    assert d["error_count"] == 2
-    assert all("already on this test's roster" in " ".join(e["issues"]) or "already in use" in " ".join(e["issues"])
-               for e in d["errors"])
+    assert d["error_count"] == 0                          # Phase 9: already-imported rows are skipped, not errors
+    assert d["skipped_count"] == 2
+    assert all("Already on the roster" in s["reason"] for s in d["skipped"])
     assert roster(c, test_id)["total"] == 2
 
 
@@ -188,9 +188,9 @@ def test_bad_files_are_refused_clearly(app, admin):
     r = upload(c, test_id, "   ")
     assert r.status_code == 422
     assert r.get_json()["error"]["code"] == "EMPTY_FILE"
-    r = upload(c, test_id, "name,email\nA,a@b.co\n")
+    r = upload(c, test_id, "name,email\nA,a@b.co\n")      # two-field test: the field column is needed
     assert r.get_json()["error"]["code"] == "CSV_MISSING_COLUMNS"
-    assert "roll number" in r.get_json()["error"]["details"]["columns"]
+    assert "field" in r.get_json()["error"]["details"]["columns"]
     r = upload(c, test_id, HEADER)
     assert r.get_json()["error"]["code"] == "EMPTY_FILE"
     r = c.post("/api/v1/roster/import", data={"test_id": str(test_id)}, content_type="multipart/form-data")
@@ -215,7 +215,7 @@ def test_template_and_export_csv(app, admin):
     r = c.get("/api/v1/roster/template.csv")
     assert r.status_code == 200
     assert r.mimetype == "text/csv"
-    assert r.get_data(as_text=True).lstrip("﻿").startswith("name,email,roll number,access code,date of birth,field")
+    assert r.get_data(as_text=True).lstrip("﻿").startswith("name,email,phone,roll number,date of birth,field")
     upload(c, test_id, GOOD)
     r = c.get(f"/api/v1/roster/export.csv?test_id={test_id}")
     body = r.get_data(as_text=True)

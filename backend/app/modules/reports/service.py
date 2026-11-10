@@ -20,7 +20,7 @@ from app.modules.monitor.service import test_state
 from app.modules.roster.service import published_test
 
 CANDIDATE_FILTERS = ("submitted", "in_progress", "not_attempted")
-EMAIL_FILTERS = ("sent", "failed", "logged", "not_sent")
+EMAIL_FILTERS = ("sent", "failed", "logged", "not_sent", "no_email")   # no_email: Phase 9, roster had none
 BUCKETS = ((0, 20), (20, 40), (40, 60), (60, 80), (80, 101))
 HARDEST_LIMIT = 5
 CSV_RISKY_START = ("=", "+", "-", "@", "\t", "\r")
@@ -237,7 +237,7 @@ def _filter_rows(rows: list[dict], args) -> list[dict]:
 def _row_matches(r: dict, status: str, email: str, dept_id: int | None, search: str) -> bool:
     checks = (
         not status or r["status"] == status,
-        not email or (r["status"] == "submitted" and (r["result_email"] or {}).get("status", "not_sent") == email),
+        not email or (r["status"] == "submitted" and mail_status(r) == email),
         not dept_id or r["department"]["id"] == dept_id,
         not search or any(search in (r[k] or "").lower() for k in ("full_name", "roll_number", "email")),
     )
@@ -245,7 +245,14 @@ def _row_matches(r: dict, status: str, email: str, dept_id: int | None, search: 
 
 
 def _sort_key(r: dict) -> tuple:
-    return (r["rank"] is None, r["rank"] or 0, r["roll_number"])
+    return (r["rank"] is None, r["rank"] or 0, r["roll_number"] or "", r["full_name"])
+
+
+def mail_status(r: dict) -> str:
+    """sent / logged / failed / not_sent, or no_email when the roster has no email for this candidate."""
+    if r["result_email"]:
+        return r["result_email"]["status"]
+    return "not_sent" if r["email"] else "no_email"
 
 
 def load(institution_id: int, test_id, now=None) -> tuple[AptitudeTest, list[Candidate], list[dict]]:
@@ -273,7 +280,7 @@ def email_overview(rows: list[dict], config) -> dict:
     counts = dict.fromkeys(EMAIL_FILTERS, 0)
     for r in rows:
         if r["status"] == "submitted":
-            counts[(r["result_email"] or {}).get("status", "not_sent")] += 1
+            counts[mail_status(r)] += 1
     return {"ready": ready, "message": message, "backend": config.get("MAIL_BACKEND", "console"), "counts": counts}
 
 
@@ -305,7 +312,7 @@ def export_csv(institution_id: int, test_id, args) -> tuple[str, str]:
     w.writerow(["rank", "name", "roll number", "email", "field", "status", "score", "max score", "percent",
                 "answered", "questions", "submitted at (UTC)", "submitted by", "locks", "result email"])
     for r in _filter_rows(rows, args):
-        mail = (r["result_email"] or {}).get("status", "not_sent") if r["status"] == "submitted" else ""
+        mail = mail_status(r) if r["status"] == "submitted" else ""
         w.writerow([_cell(v) for v in (r["rank"], r["full_name"], r["roll_number"], r["email"],
                                        r["department"]["name"], r["status"], r["score"], r["max_score"],
                                        r["percent"], r["answered"], r["questions"], r["submitted_at"],
