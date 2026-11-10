@@ -17,7 +17,7 @@ async function loadResult(tries = 0) {
     // NOT_SUBMITTED right at the end time (a clock a second ahead): ask again, then go back to the paper
     if (e.code === 'NOT_SUBMITTED' && tries < 3) { await wait(2000); return loadResult(tries + 1); }
     if (e.code === 'NOT_SUBMITTED') { window.location.replace('candidate-test.html'); return null; }
-    $('loadingCard').innerHTML = `<p style="color:#f87171;">${esc(e.message)}</p>`;
+    $('loadingCard').innerHTML = `<p style="color:var(--danger-text);">${esc(e.message)}</p>`;
     return null;
   }
 }

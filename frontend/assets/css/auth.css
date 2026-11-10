@@ -1,22 +1,74 @@
 /* ============================================================
-   Auth cards — Institution Admin login, generic centered login
-   (Candidate login reuses candidate.css .cand-auth-* classes;
-   this file covers the plain/indigo-neutral auth card style.)
+   Authentication layout — Institution login, Candidate login, Institution registration
+   Split screen: brand panel on the left, form card on the right (single column on tablets / phones).
    ============================================================ */
 
-.auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative; z-index: 1; }
-.auth-card { width: 100%; max-width: 400px; padding: 34px 32px; border-radius: 22px; }
-.auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; }
-.auth-brand .mark { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, var(--apt-primary), #ea580c); display:flex; align-items:center; justify-content:center; color:#1c1206; font-weight:800; }
-.auth-brand b { color: #fff; font-family: var(--font-display); font-size: 16px; }
-.auth-brand span { display:block; font-size: 10.5px; color: var(--apt-light); font-family: var(--font-mono); letter-spacing: .05em; }
-.auth-card h1 { color: #fff; font-size: 1.4rem; margin-bottom: 6px; }
-.auth-card p.lead { color: var(--n-400); font-size: 13px; margin-bottom: 26px; line-height: 1.5; }
+.auth-shell { overflow-x: clip; position: relative; z-index: 1; min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); }
+.auth-shell.wide { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+
+/* top bar */
+.auth-top { position: absolute; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 40px; }
+.auth-top .right { display: flex; align-items: center; gap: 12px; }
+.portal-switch { display: inline-flex; padding: 4px; border-radius: var(--r-pill); background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.portal-switch a { padding: 8px 18px; border-radius: var(--r-pill); font-size: 13.5px; font-weight: 600; color: var(--text-2); transition: all var(--t-fast); white-space: nowrap; }
+.portal-switch a:hover { color: var(--text); }
+.portal-switch a.active { background: var(--grad-brand); color: var(--on-accent); box-shadow: 0 6px 16px -8px rgba(var(--accent-rgb), .9); }
+.back-link { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--text-2); padding: 8px 10px; border-radius: 10px; transition: all var(--t-fast); }
+.back-link:hover { color: var(--text); background: var(--ov-6); }
+
+/* brand panel */
+.auth-aside { position: relative; display: flex; flex-direction: column; justify-content: center; padding: 120px 48px 56px 72px; overflow: hidden; }
+.auth-aside > * { position: relative; z-index: 1; }
+.auth-aside h2 { font-size: clamp(2.1rem, 3.8vw, 3.3rem); font-weight: 800; line-height: 1.07; letter-spacing: -.03em; margin: 18px 0 16px; max-width: 560px; }
+.auth-aside .lead2 { color: var(--text-2); max-width: 470px; line-height: 1.7; font-size: 1.02rem; }
+.steps { display: flex; flex-direction: column; gap: 10px; margin-top: 32px; max-width: 500px; }
+.step { display: flex; gap: 14px; align-items: center; padding: 13px 16px; border-radius: 16px; background: var(--glass-bg); border: 1px solid var(--border); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.step .n { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700; font-size: 14px; background: var(--ov-8); color: var(--text-2); }
+.step b { display: block; font-family: var(--font-display); font-size: 15px; color: var(--text); }
+.step span.s { display: block; font-size: 12.5px; color: var(--text-3); margin-top: 1px; }
+.step.on { border-color: rgba(var(--accent-rgb), .5); background: rgba(var(--accent-rgb), .09); }
+.step.on .n { background: var(--grad-brand); color: var(--on-accent); }
+.auth-aside .deco-circle { right: -90px; bottom: 60px; width: 280px; height: 280px; opacity: .5; z-index: 0; }
+.auth-aside .deco-square { right: 120px; bottom: -70px; width: 190px; height: 190px; opacity: .55; z-index: 0; }
+
+/* form side */
+.auth-main { position: relative; display: flex; align-items: center; justify-content: center; padding: 108px 40px 48px; }
+.auth-card { position: relative; width: 100%; max-width: 460px; padding: 36px 34px 30px; border-radius: 28px; }
+.auth-card .card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.card-ico { width: 52px; height: 52px; border-radius: 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 24px; background: var(--grad-brand); color: var(--on-accent); box-shadow: 0 10px 24px -10px rgba(var(--accent-rgb), .9); }
+.auth-card h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+.auth-card p.lead { color: var(--text-2); font-size: 13px; line-height: 1.6; margin-top: 4px; }
 .auth-card .a-field { margin-bottom: 16px; }
-.auth-err { display:none; background: rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:16px; text-align: left; }
-.auth-foot { margin-top: 22px; text-align:center; font-size: 12.5px; color: var(--n-500); }
-.auth-foot a { color: var(--apt-light); font-weight: 600; }
-.back-link { position:absolute; top:26px; left:26px; font-size:12.5px; color:var(--n-500); display:flex; align-items:center; gap:6px; z-index:2; }
-.back-link:hover { color: #fff; }
-.auth-ok { display:none; background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.3); color:#4ade80; font-size:12.5px; padding:10px 12px; border-radius:10px; margin-bottom:16px; }
-.auth-card .seg label { text-align:center; } .auth-card .a-select { width:100%; }
+.auth-card .a-input, .auth-card .a-select { height: 46px; }
+.auth-card .btn-block { height: 48px; margin-top: 6px; }
+.auth-err, .auth-ok { margin-bottom: 16px; text-align: left; }
+.auth-foot { margin-top: 22px; text-align: center; font-size: 12.5px; color: var(--text-3); line-height: 1.7; }
+.auth-foot a { color: var(--accent-text); font-weight: 600; }
+.auth-foot a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.auth-card [hidden] { display: none !important; }
+
+/* candidate: "Date of birth | PIN" switch */
+.factor-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 13px; background: var(--ov-5); border: 1px solid var(--border-strong); }
+.factor-switch label { position: relative; cursor: pointer; }
+.factor-switch input { position: absolute; opacity: 0; inset: 0; cursor: pointer; margin: 0; }
+.factor-switch span { display: block; text-align: center; padding: 9px 10px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--text-2); transition: all var(--t-fast); }
+.factor-switch input:checked + span { background: var(--grad-brand); color: var(--on-accent); font-weight: 600; box-shadow: 0 6px 14px -8px rgba(var(--accent-rgb), .9); }
+.factor-switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+#code, #pin { font-family: var(--font-mono); letter-spacing: .1em; }
+.cand-attempts { font-size: 11.5px; color: var(--text-3); margin-top: 16px; line-height: 1.6; display: flex; gap: 8px; align-items: flex-start; }
+.cand-attempts .ico { margin-top: 2px; color: var(--accent-text); }
+
+@media (max-width: 1100px) { .auth-aside { padding-left: 48px; } }
+@media (max-width: 960px) {
+  .auth-shell, .auth-shell.wide { grid-template-columns: minmax(0, 1fr); }
+  .auth-aside { display: none; }
+  .auth-top { padding: 16px 20px; }
+  .auth-main { padding: 96px 20px 40px; }
+}
+@media (max-width: 640px) {
+  .auth-top { flex-wrap: wrap; row-gap: 12px; }
+  .auth-top .brand-name, .back-link span { display: none; }
+  .portal-switch a { padding: 7px 14px; font-size: 13px; }
+  .auth-main { padding-top: 92px; }
+  .auth-card { padding: 28px 22px 24px; border-radius: 24px; }
+}

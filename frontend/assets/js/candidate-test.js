@@ -33,7 +33,7 @@ function render() {
   $('optList').innerHTML = q.options.map((o, j) => `<div class="opt${q.choice === j ? ' sel' : ''}" data-j="${j}"><span class="letter">${'ABCDEFGH'[j]}</span><span class="t">${esc(o)}</span></div>`).join('');
   $('flagBtn').classList.toggle('on', q.flagged);
   $('prevBtn').disabled = S.cur === 0;
-  $('nextBtn').textContent = S.cur === S.qs.length - 1 ? 'Review & submit' : 'Next →';
+  $('nextBtn').innerHTML = (S.cur === S.qs.length - 1 ? 'Review &amp; submit' : 'Next') + ' ' + AIcon('arrow-right');
   $('qGrid').innerHTML = S.qs.map((x, i) => `<div class="q-dot${x.choice !== null ? ' answered' : ''}${x.flagged ? ' flagged' : ''}${i === S.cur ? ' current' : ''}" data-i="${i}">${x.number}</div>`).join('');
   const subjects = [...new Set(S.qs.map(x => x.subject))];
   $('secTabs').innerHTML = subjects.length > 1 ? subjects.map(s => `<div class="sec-tab${s === q.subject ? ' active' : ''}" data-i="${S.qs.findIndex(x => x.subject === s)}">${esc(s)}</div>`).join('') : '';
@@ -111,16 +111,16 @@ function tick() {
   if (S.finishing || !S.attempt) return;
   const frozen = S.attempt.status === 'locked' && S.attempt.timing_mode === 'flexible';
   const left = frozen ? S.attempt.remaining_seconds : Math.max(0, Math.round((S.endsAtMs - Date.now()) / 1000));
-  const el = $('timer');
-  el.textContent = `⏱ ${pad(Math.floor(left / 3600))}:${pad(Math.floor(left % 3600 / 60))}:${pad(left % 60)}`;
-  el.classList.toggle('low', left < 300);
+  const el = $('timerText');
+  el.textContent = `${pad(Math.floor(left / 3600))}:${pad(Math.floor(left % 3600 / 60))}:${pad(left % 60)}`;
+  $('timer').classList.toggle('low', left < 300);
   if (left <= 0) void autoSubmit();   // never rejects: a failed submit is retried by the server
 }
 
 async function autoSubmit() {
   if (S.finishing) return;
   S.finishing = true;
-  $('timer').textContent = '⏱ 00:00:00';
+  $('timerText').textContent = '00:00:00';
   await new Promise(r => setTimeout(r, 1500));     // let the server's clock pass the deadline too
   try { await api('/exam/submit', { method: 'POST' }); } catch (e) { /* the server submits it on the next request anyway */ }
   window.location.replace('candidate-result.html');

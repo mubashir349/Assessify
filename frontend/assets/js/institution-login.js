@@ -22,13 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const email = $('email').value.trim(), password = $('password').value;
     if (!email || !password) return showErr('Enter your email and password.');
 
-    btn.disabled = true; btn.textContent = 'Signing in…';
+    setBtnLoading(btn, true);
     try {
       const { user } = await api('/auth/login', { method: 'POST', body: { email, password } });
       location.href = dest(user.role);
     } catch (ex) {
       showErr(ex.message);
-      btn.disabled = false; btn.textContent = 'Sign in →';
+      setBtnLoading(btn, false);
     }
   });
 });

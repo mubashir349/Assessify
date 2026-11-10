@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Aptitude Test — In Progress</title>
 <link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../assets/js/theme.js"></script>
+<script src="../assets/js/icons.js"></script>
 <link rel="stylesheet" href="../assets/css/theme.css" />
 <link rel="stylesheet" href="../assets/css/candidate.css" />
 </head>
-<body style="background:var(--n-950);">
+<body class="exam" data-portal="candidate">
 
   <div class="test-msg" id="loadMsg">Loading your paper…</div>
 
@@ -17,7 +20,8 @@
       <div class="cand-brand"><div class="mark">Σ</div><span id="testTitle">Aptitude Test</span></div>
       <div class="top-mid"><div class="prog-track"><div class="prog-fill" id="progFill"></div></div><span id="progressLabel">0 answered</span></div>
       <span class="save-state" id="saveState">All answers saved</span>
-      <div class="timer" id="timer">⏱ --:--:--</div>
+      <div class="timer" id="timer"><i data-icon="timer"></i><span id="timerText">--:--:--</span></div>
+      <button type="button" class="icon-btn" data-theme-toggle data-tip="Toggle theme" data-tip-pos="bottom"></button>
     </div>
     <div class="sec-tabs" id="secTabs"></div>
 
@@ -26,17 +30,17 @@
         <h4>Question map</h4>
         <div class="q-grid" id="qGrid"></div>
         <div class="q-legend">
-          <div><span class="sw" style="background:rgba(34,197,94,.5);"></span>Answered</div>
-          <div><span class="sw" style="background:rgba(245,158,11,.6);"></span>Flagged for review</div>
-          <div><span class="sw" style="background:rgba(255,255,255,.08);"></span>Unanswered</div>
-          <div><span class="sw" style="background:transparent;border:1.5px solid var(--apt-primary);"></span>Current</div>
+          <div><span class="sw" style="background:rgba(var(--success-rgb),.5);"></span>Answered</div>
+          <div><span class="sw" style="background:rgba(var(--warning-rgb),.6);"></span>Flagged for review</div>
+          <div><span class="sw" style="background:var(--ov-8);"></span>Unanswered</div>
+          <div><span class="sw" style="background:transparent;border:1.5px solid var(--accent);"></span>Current</div>
         </div>
-        <button class="btn btn-amber" style="width:100%;margin-top:18px;" id="submitOpen">Submit test</button>
+        <button class="btn btn-primary" id="submitOpen">Submit test</button>
       </aside>
 
       <main class="q-panel">
         <div class="q-card">
-          <div class="q-card-head"><span class="qn" id="qNum"></span><button class="flag-btn" id="flagBtn">⚑ Flag for review</button></div>
+          <div class="q-card-head"><span class="qn" id="qNum"></span><button class="flag-btn" id="flagBtn"><i data-icon="flag"></i> Flag for review</button></div>
           <p class="qtext" id="qText"></p>
           <div id="optList"></div>
         </div>
@@ -44,27 +48,27 @@
     </div>
 
     <div class="test-foot">
-      <button class="btn btn-ghost" id="prevBtn">← Previous</button>
+      <button class="btn btn-ghost" id="prevBtn"><i data-icon="arrow-left"></i> Previous</button>
       <button class="btn btn-ghost" id="clearBtn">Clear answer</button>
-      <button class="btn btn-amber" id="nextBtn">Next →</button>
+      <button class="btn btn-primary" id="nextBtn">Next <i data-icon="arrow-right"></i></button>
     </div>
   </div>
 
   <!-- Fullscreen gate: shown on load / after an unlock, before the questions are visible -->
   <div class="lock-overlay fs-gate" id="fsGate">
     <div class="lock-card fade-up">
-      <div class="lock-ic">🖥️</div>
+      <div class="lock-ic"><i data-icon="maximize"></i></div>
       <h2 id="fsTitle">Enter fullscreen to begin</h2>
       <p>The questions appear in fullscreen. Leaving fullscreen or switching tabs locks your test until your proctor unlocks it.
         <span id="fsTime"></span></p>
-      <button class="btn btn-amber" id="fsBtn">Enter fullscreen →</button>
+      <button class="btn btn-primary" id="fsBtn">Enter fullscreen <i data-icon="arrow-right"></i></button>
     </div>
   </div>
 
   <!-- Lock overlay: fullscreen exit / tab switch -->
   <div class="lock-overlay" id="lockOverlay">
     <div class="lock-card fade-up">
-      <div class="lock-ic">🔒</div>
+      <div class="lock-ic"><i data-icon="lock"></i></div>
       <h2>Your test has been locked</h2>
       <p id="lockText">You exited fullscreen or switched away from the test window. Your saved answers are safe.
         Please contact your test proctor — only an Institution Admin can unlock your attempt.</p>
@@ -78,8 +82,8 @@
       <h3 style="margin-bottom:8px;">Submit your test?</h3>
       <p class="muted" style="margin-bottom:20px;" id="submitMsg">Unanswered questions will be marked incorrect. This cannot be undone.</p>
       <div style="display:flex;gap:10px;">
-        <button class="a-btn a-btn-ghost" style="flex:1;" id="submitCancel">Go back</button>
-        <button class="a-btn a-btn-amber" style="flex:1;" id="submitConfirm">Submit</button>
+        <button class="btn btn-ghost" style="flex:1;" id="submitCancel">Go back</button>
+        <button class="btn btn-primary" style="flex:1;" id="submitConfirm">Submit</button>
       </div>
     </div>
   </div>

@@ -81,7 +81,7 @@ function fillSelect(select, items, { keepFirst = false } = {}) {
 }
 
 /** Shared error handling for admin pages: expired session -> login page, otherwise a toast with the server's message. */
-function handleApiError(e, fallbackIcon = '⚠') {
+function handleApiError(e, fallbackIcon = '✕') {
   if (e?.status === 401) { window.location.replace('../institution-login.html'); return; }
   const field = e?.details && Object.values(e.details).find(v => typeof v === 'string');
   if (typeof aToast === 'function') aToast(esc(field || e?.message || 'Something went wrong.'), fallbackIcon);

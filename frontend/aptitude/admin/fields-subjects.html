@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Fields &amp; Subjects — Institution Admin</title>
 <link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../../assets/js/theme.js"></script>
+<script src="../../assets/js/icons.js"></script>
 <link rel="stylesheet" href="../../assets/css/theme.css" />
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/fields-subjects.css" />
@@ -12,7 +15,7 @@
 <body data-page="fields" data-title="Fields &amp; Departments" data-sub="Fields for Undergraduate · Departments for Masters &amp; PhD — or one general test for everyone">
 
 <template id="a-actions-template">
-  <button class="a-btn a-btn-amber" onclick="openDeptModal()">+ New Field / Department</button>
+  <button class="a-btn a-btn-primary" onclick="openDeptModal()"><i data-icon="plus"></i> New Field / Department</button>
 </template>
 
 <template id="a-content-template">
@@ -27,7 +30,7 @@
   <div class="a-modal">
     <div class="a-modal-head">
       <div><h3 id="mTitle">New field / department</h3><p class="muted" style="font-size:12px;">Any name — Pre-Med, Law, Data Science, or a General Test</p></div>
-      <button class="a-modal-x" onclick="closeModal('fieldModal')">✕</button>
+      <button class="a-modal-x" onclick="closeModal('fieldModal')" aria-label="Close"><i data-icon="x"></i></button>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div class="a-field"><label>Assessment type</label>
@@ -39,7 +42,7 @@
       <div class="a-field"><label for="tagInput">Subjects</label>
         <div class="tag-in" id="tagBox"><input id="tagInput" aria-label="Add a subject" placeholder="Type a subject, press Enter" /></div>
         <span class="hint">Add as many subjects as you like — nothing is fixed.</span></div>
-      <button class="btn btn-amber" id="saveBtn" style="width:100%;" onclick="saveDept()">Save department</button>
+      <button class="btn btn-primary" id="saveBtn" style="width:100%;" onclick="saveDept()">Save department</button>
     </div>
   </div>
 </div>

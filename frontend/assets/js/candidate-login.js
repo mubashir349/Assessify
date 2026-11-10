@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!access_code || !second) return show(usePin ? 'Enter your access code and the 6-digit PIN from your slip.'
                                                     : 'Enter both your access code and your date of birth.');
     if (usePin && second.length !== 6) return show('The PIN has 6 digits.');
-    btn.disabled = true;
+    setBtnLoading(btn, true);
     try {
       const body = usePin ? { access_code, pin: second } : { access_code, date_of_birth: second };
       await api('/candidate/login', { method: 'POST', body });
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (ex) {
       const field = ex.code === 'VALIDATION_ERROR' && ex.details && Object.values(ex.details)[0];
       show(field || ex.message);
-      btn.disabled = false;
+      setBtnLoading(btn, false);
     }
   });
 });

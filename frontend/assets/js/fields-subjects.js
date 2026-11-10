@@ -12,7 +12,7 @@ function firstError(ex) { const d = ex.details && Object.values(ex.details)[0]; 
 function renderTags() {
   const box = $('tagBox'), inp = $('tagInput');
   box.querySelectorAll('.a-chip').forEach(c => c.remove());
-  tags.forEach((t, i) => { const c = document.createElement('span'); c.className = 'a-chip'; c.innerHTML = `${esc(t)}<button onclick="tags.splice(${i},1);renderTags()">✕</button>`; inp.before(c); });
+  tags.forEach((t, i) => { const c = document.createElement('span'); c.className = 'a-chip'; c.innerHTML = `${esc(t)}<button onclick="tags.splice(${i},1);renderTags()" aria-label="Remove"><i data-icon="x"></i></button>`; inp.before(c); });
 }
 function lvlChange() {
   const info = levelInfo($('dLevel').value), t = info.term;
@@ -32,11 +32,11 @@ function openDeptModal(id) {
 }
 async function saveDept() {
   const level = $('dLevel').value, name = $('dName').value.trim();
-  if (!name) return aToast('Enter a ' + term(level).toLowerCase() + ' name.', '⚠');
+  if (!name) return aToast('Enter a ' + term(level).toLowerCase() + ' name.', 'warn');
   const pending = $('tagInput').value.trim();                   // a subject typed but not yet confirmed with Enter
   if (pending && !tags.includes(pending)) tags.push(pending);
   $('tagInput').value = '';
-  if (!tags.length) return aToast('Add at least one subject.', '⚠');
+  if (!tags.length) return aToast('Add at least one subject.', 'warn');
   const body = { name, level, mode: document.querySelector('input[name=dmode]:checked').value, subjects: [...tags] };
   const btn = $('saveBtn'); btn.disabled = true;
   try {
@@ -45,13 +45,13 @@ async function saveDept() {
       : await api('/departments', { method: 'POST', body });
     closeModal('fieldModal'); await loadDepts(); aToast(department.term + ' saved.');
     if (typeof AA !== 'undefined' && AA.syncDepts) AA.syncDepts().catch(() => {});
-  } catch (ex) { aToast(firstError(ex), '⚠'); }
+  } catch (ex) { aToast(firstError(ex), 'warn'); }
   btn.disabled = false;
 }
 async function delDept(id) {
   if (!confirm('Delete this field / department?')) return;
   try { await api('/departments/' + id, { method: 'DELETE' }); await loadDepts(); aToast('Deleted.'); if (typeof AA !== 'undefined' && AA.syncDepts) AA.syncDepts().catch(() => {}); }
-  catch (ex) { aToast(ex.message, '⚠'); }
+  catch (ex) { aToast(ex.message, 'warn'); }
 }
 
 async function loadDepts() {
@@ -62,7 +62,7 @@ async function loadDepts() {
     DEPTS = (await api('/departments' + (params.toString() ? '?' + params : ''))).items;
     renderDepts();
   } catch (ex) {
-    $('deptGrid').innerHTML = `<div class="a-card a-empty" style="color:#f87171;">${esc(ex.message)}</div>`;
+    $('deptGrid').innerHTML = `<div class="a-card a-empty" style="color:var(--danger-text);">${esc(ex.message)}</div>`;
   }
 }
 function renderDepts() {
@@ -70,7 +70,7 @@ function renderDepts() {
     <div class="a-card field-card">
       <div class="field-card-head">
         <div><h3>${esc(d.name)}</h3><p class="muted">${d.subject_count} subjects · ${esc(d.level)} ${esc(d.term.toLowerCase())} · ${esc(META.modes.find(m => m.value === d.mode)?.label || d.mode)}</p></div>
-        <div style="display:flex;gap:6px;"><button class="a-btn a-btn-ghost a-btn-sm" onclick="openDeptModal(${d.id})">Edit</button><button class="a-btn a-btn-danger a-btn-sm" onclick="delDept(${d.id})">✕</button></div>
+        <div style="display:flex;gap:6px;"><button class="a-btn a-btn-ghost a-btn-sm" onclick="openDeptModal(${d.id})">Edit</button><button class="a-btn a-btn-danger a-btn-sm" onclick="delDept(${d.id})" aria-label="Delete"><i data-icon="trash"></i></button></div>
       </div>
       <div class="subj-list">${d.subjects.map(s => `<span class="a-chip">${esc(s)}</span>`).join('')}</div>
     </div>`).join('') || '<div class="a-card a-empty">Nothing here yet — click “New Field / Department”.</div>';
@@ -78,7 +78,7 @@ function renderDepts() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   try { META = await loadMeta(); }
-  catch (ex) { $('deptGrid').innerHTML = `<div class="a-card a-empty" style="color:#f87171;">${esc(ex.message)}</div>`; return; }
+  catch (ex) { $('deptGrid').innerHTML = `<div class="a-card a-empty" style="color:var(--danger-text);">${esc(ex.message)}</div>`; return; }
 
   fillSelect($('lvlFilter'), META.levels.map(l => l.value), { keepFirst: true });
   fillSelect($('dLevel'), META.levels.map(l => l.value));

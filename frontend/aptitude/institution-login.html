@@ -5,39 +5,70 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Institution Admin Login — Assessify Aptitude</title>
 <link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../assets/js/theme.js"></script>
+<script src="../assets/js/icons.js"></script>
 <link rel="stylesheet" href="../assets/css/theme.css" />
-<link rel="stylesheet" href="../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../assets/css/auth.css" />
 </head>
 <body class="mesh-bg">
   <div class="blob-field"></div>
-  <a href="../index.html" class="back-link">← Back to Assessify</a>
 
-  <div class="auth-wrap">
-    <form class="auth-card glass fade-up" id="loginForm" novalidate>
-      <div class="auth-brand">
-        <div class="mark">Σ</div>
-        <div><b>Assessify</b><span>APTITUDE PORTAL</span></div>
+  <div class="auth-shell">
+    <div class="auth-top">
+      <a class="brand" href="../index.html"><div class="brand-mark">Σ</div><span class="brand-name">Assessify</span></a>
+      <nav class="portal-switch" aria-label="Choose portal">
+        <a href="institution-login.html" class="active" aria-current="page">Institution</a>
+        <a href="candidate-login.html">Candidate</a>
+      </nav>
+      <div class="right">
+        <a href="../index.html" class="back-link"><i data-icon="arrow-left"></i><span>All portals</span></a>
+        <button type="button" class="icon-btn" data-theme-toggle data-tip="Toggle theme" data-tip-pos="bottom"></button>
       </div>
-      <h1 id="ttl">Welcome back</h1>
-      <p class="lead" id="lead">Sign in to manage fields and departments, question banks, rosters, and live aptitude tests.</p>
+    </div>
 
-      <div class="auth-err" id="authErr"></div>
-      <div class="auth-ok" id="authOk"></div>
-
-      <div class="a-field">
-        <label for="email">Email</label>
-        <input class="a-input" type="email" id="email" placeholder="admissions@your-institution.edu" required />
+    <aside class="auth-aside">
+      <span class="deco deco-circle"></span><span class="deco deco-square"></span>
+      <span class="eyebrow"><span class="dot"></span>Admin console</span>
+      <h2>Run every test from <span class="grad-text">one place.</span></h2>
+      <p class="lead2">Manage fields and departments, question banks, rosters and live aptitude tests.</p>
+      <div class="steps">
+        <div class="step on"><span class="n">1</span><div><b>Generate and review questions</b><span class="s">AI drafts from your PDFs, you approve them</span></div></div>
+        <div class="step"><span class="n">2</span><div><b>Build and schedule the test</b><span class="s">Paper, timing and result release</span></div></div>
+        <div class="step"><span class="n">3</span><div><b>Monitor live and report</b><span class="s">Watch candidates, export scores, email results</span></div></div>
       </div>
-      <div class="a-field">
-        <label for="password">Password</label>
-        <input class="a-input" type="password" id="password" placeholder="••••••••" required />
-      </div>
+    </aside>
 
-      <button type="submit" class="btn btn-amber" id="submitBtn" style="width:100%; margin-top:6px;">Sign in →</button>
+    <main class="auth-main">
+      <form class="auth-card glass fade-up" id="loginForm" novalidate>
+        <div class="card-head">
+          <div class="card-ico"><i data-icon="shield"></i></div>
+          <div>
+            <h1 id="ttl">Welcome back</h1>
+            <p class="lead" id="lead">Sign in to manage fields and departments, question banks, rosters, and live aptitude tests.</p>
+          </div>
+        </div>
 
-      <p class="auth-foot" id="foot">New institution? <a href="institution-signup.html">Register here</a><br/>Institutions and the platform Super Admin use this same login.</p>
-    </form>
+        <div class="auth-err" id="authErr" role="alert"></div>
+        <div class="auth-ok" id="authOk" role="status"></div>
+
+        <div class="a-field">
+          <label for="email">Email</label>
+          <input class="a-input" type="email" id="email" placeholder="admissions@your-institution.edu" autocomplete="email" required />
+        </div>
+        <div class="a-field">
+          <label for="password">Password</label>
+          <div class="a-input-wrap">
+            <input class="a-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password" required />
+            <button type="button" class="pw-toggle" data-for="password"></button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Sign in <i data-icon="arrow-right"></i></button>
+
+        <p class="auth-foot" id="foot">New institution? <a href="institution-signup.html">Register here</a><br/>Institutions and the platform Super Admin use this same login.</p>
+      </form>
+    </main>
   </div>
 
   <script src="../assets/js/api.js"></script>

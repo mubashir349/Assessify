@@ -5,47 +5,78 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Candidate Login — Aptitude Test</title>
 <link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../assets/js/theme.js"></script>
+<script src="../assets/js/icons.js"></script>
 <link rel="stylesheet" href="../assets/css/theme.css" />
-<link rel="stylesheet" href="../assets/css/candidate.css" />
 <link rel="stylesheet" href="../assets/css/auth.css" />
 </head>
-<body class="mesh-bg">
+<body class="mesh-bg" data-portal="candidate">
   <div class="blob-field"></div>
-  <a href="../index.html" class="back-link">← Back to Assessify</a>
 
-  <div class="cand-auth-wrap">
-    <form class="cand-auth-card glass fade-up" id="loginForm" novalidate>
-      <div class="mark-lg">📝</div>
-      <h1>Aptitude Candidate Login</h1>
-      <p class="lead">Enter the access code from the test slip your institution gave you, then your date of birth or the PIN on the slip.</p>
-
-      <div class="auth-err" id="authErr"></div>
-
-      <div class="a-field">
-        <label for="code">One-time access code</label>
-        <input class="a-input" id="code" placeholder="e.g. 8K4Q-2P1X" autocomplete="off" autocapitalize="characters" spellcheck="false" required />
+  <div class="auth-shell">
+    <div class="auth-top">
+      <a class="brand" href="../index.html"><div class="brand-mark">Σ</div><span class="brand-name">Assessify</span></a>
+      <nav class="portal-switch" aria-label="Choose portal">
+        <a href="institution-login.html">Institution</a>
+        <a href="candidate-login.html" class="active" aria-current="page">Candidate</a>
+      </nav>
+      <div class="right">
+        <a href="../index.html" class="back-link"><i data-icon="arrow-left"></i><span>All portals</span></a>
+        <button type="button" class="icon-btn" data-theme-toggle data-tip="Toggle theme" data-tip-pos="bottom"></button>
       </div>
-      <div class="a-field">
-        <span class="lbl-row" id="factorLbl">Sign in with</span>
-        <div class="factor-switch" role="radiogroup" aria-labelledby="factorLbl">
-          <label><input type="radio" name="factor" value="dob" checked /> <span>Date of birth</span></label>
-          <label><input type="radio" name="factor" value="pin" /> <span>PIN</span></label>
+    </div>
+
+    <aside class="auth-aside">
+      <span class="deco deco-circle"></span><span class="deco deco-square"></span>
+      <span class="eyebrow"><span class="dot"></span>Candidate portal</span>
+      <h2>Your test is <span class="grad-text">one code away.</span></h2>
+      <p class="lead2">No account to create. Sign in with the access code on your test slip.</p>
+      <div class="steps">
+        <div class="step on"><span class="n">1</span><div><b>Enter your access code</b><span class="s">It is printed on your slip</span></div></div>
+        <div class="step"><span class="n">2</span><div><b>Confirm it is you</b><span class="s">Date of birth, or the PIN on the slip</span></div></div>
+        <div class="step"><span class="n">3</span><div><b>Read the rules, then start</b><span class="s">The test runs in fullscreen</span></div></div>
+      </div>
+    </aside>
+
+    <main class="auth-main">
+      <form class="auth-card glass fade-up" id="loginForm" novalidate>
+        <div class="card-head">
+          <div class="card-ico"><i data-icon="ticket"></i></div>
+          <div>
+            <h1>Aptitude Candidate Login</h1>
+            <p class="lead">Enter the access code from the test slip your institution gave you, then your date of birth or the PIN on the slip.</p>
+          </div>
         </div>
-        <span class="hint" style="font-size:11.5px;color:var(--n-400);">Your slip says which one to use.</span>
-      </div>
-      <div class="a-field" id="dobField">
-        <label for="dob">Date of birth</label>
-        <input class="a-input" id="dob" type="date" />
-      </div>
-      <div class="a-field" id="pinField" hidden>
-        <label for="pin">6-digit PIN</label>
-        <input class="a-input" id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="e.g. 482913" />
-      </div>
 
-      <button type="submit" class="btn btn-amber" id="loginBtn" style="width:100%;margin-top:6px;">Continue →</button>
+        <div class="auth-err" id="authErr" role="alert"></div>
 
-      <p class="cand-attempts">Your access code (and PIN, if you have one) are on the slip from your test proctor. Codes are one-time — they become invalid once your attempt is submitted or ended.</p>
-    </form>
+        <div class="a-field">
+          <label for="code">One-time access code</label>
+          <input class="a-input" id="code" placeholder="e.g. 8K4Q-2P1X" autocomplete="off" autocapitalize="characters" spellcheck="false" required />
+        </div>
+        <div class="a-field">
+          <span class="lbl-row" id="factorLbl">Sign in with</span>
+          <div class="factor-switch" role="radiogroup" aria-labelledby="factorLbl">
+            <label><input type="radio" name="factor" value="dob" checked /> <span>Date of birth</span></label>
+            <label><input type="radio" name="factor" value="pin" /> <span>PIN</span></label>
+          </div>
+          <span class="hint">Your slip says which one to use.</span>
+        </div>
+        <div class="a-field" id="dobField">
+          <label for="dob">Date of birth</label>
+          <input class="a-input" id="dob" type="date" />
+        </div>
+        <div class="a-field" id="pinField" hidden>
+          <label for="pin">6-digit PIN</label>
+          <input class="a-input" id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="e.g. 482913" />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="loginBtn">Continue <i data-icon="arrow-right"></i></button>
+
+        <p class="cand-attempts"><i data-icon="info"></i><span>Your access code (and PIN, if you have one) are on the slip from your test proctor. Codes are one-time: they become invalid once your attempt is submitted or ended.</span></p>
+      </form>
+    </main>
   </div>
 
   <script src="../assets/js/api.js"></script>

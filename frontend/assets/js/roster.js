@@ -39,7 +39,7 @@ function selectTest() {
   try { sessionStorage.setItem('aa_roster_test', String(TEST.id)); } catch (e) { /* storage blocked: only the remembered test is lost */ }
   const sc = TEST.schedule;
   const mode = sc?.timing_mode === 'fixed' ? 'Fixed time' : 'Flexible window';
-  $('testMeta').innerHTML = sc ? `${mode}<br/><b style="color:#fff;">${esc(fmtWhen(sc.starts_at))}</b> – ${esc(fmtWhen(sc.ends_at))}` : '';
+  $('testMeta').innerHTML = sc ? `${mode}<br/><b style="color:var(--text);">${esc(fmtWhen(sc.starts_at))}</b> – ${esc(fmtWhen(sc.ends_at))}` : '';
   $('rosterArea').hidden = false; $('exportBtn').hidden = false; $('addBtn').hidden = false; $('slipsBtn').hidden = false;
   const slipsUrl = 'roster-slips.html?test_id=' + encodeURIComponent(TEST.id);
   $('slipsBtn').href = slipsUrl; $('slipsBtn2').href = slipsUrl;
@@ -78,10 +78,10 @@ async function loadRoster() {
         : `<td class="mono reveal" data-real="${esc(new Date(c.date_of_birth + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }))}">••-•••-••••</td>`}
       <td class="muted" style="font-size:12px;">${c.last_login_at ? esc(fmtWhen(c.last_login_at)) : '—'}${attemptCell(c.attempt)}</td>
       <td style="white-space:nowrap;">
-        ${c.attempt?.status === 'locked' ? `<button class="a-btn a-btn-amber a-btn-sm" onclick="unlockAttempt(${c.attempt.id})" title="${esc(c.attempt.reference)}">Unlock</button>` : ''}
+        ${c.attempt?.status === 'locked' ? `<button class="a-btn a-btn-primary a-btn-sm" onclick="unlockAttempt(${c.attempt.id})" title="${esc(c.attempt.reference)}">Unlock</button>` : ''}
         <button class="a-btn a-btn-ghost a-btn-sm" onclick="openCandModal(${c.id})">Correct</button>
         <button class="a-btn a-btn-ghost a-btn-sm" onclick="newCode(${c.id})" title="Issue a new access code (the old one stops working)">New code</button>
-        ${c.attempt ? '' : `<button class="a-btn a-btn-danger a-btn-sm" onclick="removeCand(${c.id})" title="Remove from roster">✕</button>`}
+        ${c.attempt ? '' : `<button class="a-btn a-btn-danger a-btn-sm" onclick="removeCand(${c.id})" title="Remove from roster" aria-label="Remove from roster"><i data-icon="trash"></i></button>`}
       </td>
     </tr>`).join('') ||
     `<tr><td colspan="8" class="a-empty">${s.total ? 'No candidate matches the search.' : 'No candidates yet — drop the roster CSV above or click “Add candidate”.'}</td></tr>`;
@@ -93,25 +93,25 @@ function pagerHtml(d) {
   if (d.pages <= 1) return '';
   const prevDis = d.page <= 1 ? 'disabled' : '', nextDis = d.page >= d.pages ? 'disabled' : '';
   return `<div class="pager">
-    <button class="a-btn a-btn-ghost a-btn-sm" ${prevDis} onclick="page--;loadRoster()">← Prev</button>
+    <button class="a-btn a-btn-ghost a-btn-sm" ${prevDis} onclick="page--;loadRoster()"><i data-icon="arrow-left"></i> Prev</button>
     <span>Page ${d.page} of ${d.pages} · ${plural(d.total, 'candidate')}</span>
-    <button class="a-btn a-btn-ghost a-btn-sm" ${nextDis} onclick="page++;loadRoster()">Next →</button></div>`;
+    <button class="a-btn a-btn-ghost a-btn-sm" ${nextDis} onclick="page++;loadRoster()">Next <i data-icon="arrow-right"></i></button></div>`;
 }
 
 // ---------------------------------------------------------------- Phase 6: test status + unlock (Phase 7 adds the live monitor)
 function attemptCell(a) {
   if (!a) return '';
   const score = a.score === null ? '' : ` · ${a.score}/${a.max_score}`;
-  const label = { in_progress: '<span style="color:var(--apt-light);">Taking the test</span>',
-                  locked: '<span style="color:#f87171;">🔒 Locked</span>',
-                  submitted: `<span style="color:#4ade80;">Submitted${score}</span>` }[a.status] || esc(a.status);
+  const label = { in_progress: '<span style="color:var(--accent-text);">Taking the test</span>',
+                  locked: '<span style="color:var(--danger-text);"><i data-icon="lock"></i> Locked</span>',
+                  submitted: `<span style="color:var(--success-text);">Submitted${score}</span>` }[a.status] || esc(a.status);
   return `<br/>${label}`;
 }
 
 async function unlockAttempt(id) {
   try {
     await api(`/attempts/${id}/unlock`, { method: 'POST' });
-    aToast('Unlocked. The candidate can continue after entering fullscreen again.', '🔓');
+    aToast('Unlocked. The candidate can continue after entering fullscreen again.', 'check');
   } catch (e) { handleApiError(e); }
   await loadRoster();
 }
@@ -166,13 +166,13 @@ function showResult(d, file) {
   }
   $('errCard').hidden = !d.error_count;
   $('errTitle').textContent = `Rows that need fixing (${d.error_count})`;
-  $('errRows').innerHTML = rowsHtml(d.errors, 'issues', '#f87171');
+  $('errRows').innerHTML = rowsHtml(d.errors, 'issues', 'var(--danger-text)');
   $('warnCard').hidden = !d.warning_count;
   $('warnTitle').textContent = `Warnings (${d.warning_count})`;
-  $('warnRows').innerHTML = rowsHtml(d.warnings, 'issues', 'var(--apt-primary)');
+  $('warnRows').innerHTML = rowsHtml(d.warnings, 'issues', 'var(--warn-text)');
   $('skipCard').hidden = !d.skipped_count;
   $('skipTitle').textContent = `Already on the roster (${d.skipped_count})`;
-  $('skipRows').innerHTML = rowsHtml(d.skipped, 'reason', 'var(--n-400)');
+  $('skipRows').innerHTML = rowsHtml(d.skipped, 'reason', 'var(--text-2)');
 }
 
 // errors.csv: the bad rows exactly as they were in the file, plus a "problem" column. Fix and upload it as it is:

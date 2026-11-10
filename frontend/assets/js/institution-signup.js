@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const none = q.length >= 2 && !items.length ? `<li class="combo-empty">No match for “${esc(q)}”.</li>` : '';
     $('instCount').textContent = q.length >= 2 ? `${items.length} institutions found. Use the arrow keys to choose.` : '';
     list.innerHTML = rows + none + `<li class="combo-item combo-manual" data-i="manual">
-        <div class="ci-name">➕ My institution isn't in the list</div><div class="ci-sub">Type its details yourself. It's added to the list once approved.</div></li>`;
+        <div class="ci-name">My institution isn't in the list</div><div class="ci-sub">Type its details yourself. It's added to the list once approved.</div></li>`;
     list.hidden = false;
   }
   async function search() {
@@ -203,10 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('otpCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); void verifyCode(); } });
 
   // ---------------- 3. password ----------------
-  document.querySelectorAll('.pw-toggle').forEach(b => b.addEventListener('click', () => {
-    const i = $(b.dataset.for), show = i.type === 'password';
-    i.type = show ? 'text' : 'password'; b.textContent = show ? 'Hide' : 'Show';
-  }));
+  // show / hide buttons (.pw-toggle) are wired by initPasswordToggles() in main.js
   $('pw1').addEventListener('input', e => {
     const x = e.target.value; let sc = 0;
     if (x.length >= 8) { sc++; }

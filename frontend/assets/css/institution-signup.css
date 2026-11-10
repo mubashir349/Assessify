@@ -1,186 +1,97 @@
 /* ============================================================
-   Institution Signup — "Register your Institution"
-   Wider form card than the plain auth-card, organised into
-   labelled sections with a responsive 2-column grid.
+   Institution registration — page-specific pieces only.
+   Inputs, buttons, alerts, checkboxes and password toggle come from theme.css; layout from auth.css.
    ============================================================ */
 
-.signup-wrap {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  padding: 48px 20px; position: relative; z-index: 1;
-}
-.signup-card { width: 100%; max-width: 660px; padding: 40px 44px 36px; border-radius: 26px; }
+.auth-card.signup { max-width: 680px; padding: 38px 40px 32px; }
+.auth-main.top { align-items: flex-start; }
+.signup .card-head { margin-bottom: 18px; }
+.signup p.lead { max-width: 520px; }
+.signup .approval-note { margin-bottom: 24px; }
 
-.signup-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
-.signup-brand .mark {
-  width: 34px; height: 34px; border-radius: 10px;
-  background: linear-gradient(135deg, var(--apt-primary), #ea580c);
-  display: flex; align-items: center; justify-content: center; color: #1c1206; font-weight: 800; flex-shrink: 0;
-}
-.signup-brand b { color: #fff; font-family: var(--font-display); font-size: 16px; }
-.signup-brand span { display: block; font-size: 10.5px; color: var(--apt-light); font-family: var(--font-mono); letter-spacing: .05em; }
-
-.signup-card h1 { color: #fff; font-size: 1.5rem; margin-bottom: 6px; }
-.signup-card p.lead { color: var(--n-400); font-size: 13px; margin-bottom: 30px; line-height: 1.6; max-width: 480px; }
-
-.form-section { margin-bottom: 26px; }
-.form-section:last-of-type { margin-bottom: 0; }
-.form-section-head {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
-  padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.form-section-head .n {
-  width: 20px; height: 20px; border-radius: 6px; background: rgba(245,158,11,0.14); color: var(--apt-light);
-  font-size: 11px; font-weight: 700; font-family: var(--font-mono);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.form-section-head h2 { font-size: 13px; font-weight: 600; color: #fff; }
-.form-section-head p { font-size: 11px; color: var(--n-600); margin-top: 1px; }
-
-.signup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.signup-grid .a-field { margin-bottom: 0; }
-.signup-card .a-field { margin-bottom: 14px; }
-.signup-card .a-field:last-child { margin-bottom: 0; }
-
-@media (max-width: 560px) {
-  .signup-card { padding: 30px 22px 28px; }
-  .signup-grid { grid-template-columns: 1fr; }
-}
-
-/* ---------- Form controls (self-contained — this page does not load admin-shell.css) ---------- */
-.signup-card { background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025)); border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 30px 80px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06); }
-.signup-card .a-field { display: flex; flex-direction: column; gap: 7px; }
-.signup-card .a-field label { font-size: 12.5px; font-weight: 600; color: var(--n-300); letter-spacing: .01em; }
-.signup-card .a-field label .req { color: var(--apt-primary); margin-left: 2px; }
-.signup-card .a-field .hint { font-size: 11px; font-weight: 400; color: var(--n-600); }
-
-.signup-card .a-input, .signup-card .a-select {
-  width: 100%; height: 46px; padding: 0 14px; border-radius: 12px;
-  background: rgba(8, 12, 24, 0.55); border: 1px solid rgba(255,255,255,0.12);
-  color: #f8fafc; font-size: 14px; font-family: var(--font-body);
-  outline: none; transition: border-color .15s, background .15s, box-shadow .15s;
-}
-.signup-card .a-input::placeholder { color: rgba(148,163,184,0.55); }
-.signup-card .a-input:hover, .signup-card .a-select:hover { border-color: rgba(255,255,255,0.22); }
-.signup-card .a-input:focus, .signup-card .a-select:focus {
-  border-color: rgba(245,158,11,0.65); background: rgba(245,158,11,0.05);
-  box-shadow: 0 0 0 4px rgba(245,158,11,0.13);
-}
-.signup-card .a-input.invalid, .signup-card .a-select.invalid { border-color: rgba(248,113,113,.7); box-shadow: 0 0 0 4px rgba(239,68,68,.10); }
-
-/* Chrome autofill would otherwise paint the field white/yellow */
-.signup-card .a-input:-webkit-autofill {
-  -webkit-text-fill-color: #f8fafc; caret-color: #fff;
-  -webkit-box-shadow: 0 0 0 100px #0b1220 inset; transition: background-color 9999s;
-}
-
-.signup-card .a-select {
-  appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer; color-scheme: dark;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5L6 6.5L11 1.5' fill='none' stroke='%23f59e0b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  background-repeat: no-repeat; background-position: right 15px center;
-}
-.signup-card .a-select:invalid { color: rgba(148,163,184,0.7); }
-.signup-card .a-select option { background: #0f172a; color: #f1f5f9; }
-
-/* Password field with show/hide + strength meter */
-.pw-wrap { position: relative; }
-.pw-wrap .a-input { padding-right: 62px; }
-.pw-toggle {
-  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); color: var(--n-400);
-  font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: 8px; cursor: pointer;
-}
-.pw-toggle:hover { color: #fff; background: rgba(255,255,255,0.12); }
-.pw-meter { display: flex; gap: 5px; margin-top: 2px; }
-.pw-meter i { flex: 1; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.09); transition: background .2s; }
-.pw-meter.s1 i:nth-child(-n+1) { background: #ef4444; }
-.pw-meter.s2 i:nth-child(-n+2) { background: #f59e0b; }
-.pw-meter.s3 i:nth-child(-n+3) { background: #84cc16; }
-.pw-meter.s4 i:nth-child(-n+4) { background: #22c55e; }
-.pw-label { font-size: 11px; color: var(--n-500); min-height: 14px; }
-
-/* Terms checkbox */
-.signup-card .chk-row { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); }
-.signup-card .chk-row input[type="checkbox"] { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: var(--apt-primary); cursor: pointer; }
-.signup-card .chk-row label { font-size: 12.5px; color: var(--n-400); line-height: 1.55; cursor: pointer; }
-.signup-card .chk-row a { color: var(--apt-light); text-decoration: underline; text-underline-offset: 2px; }
-
-/* Submit + approval note */
-.signup-card .btn-amber { height: 50px; font-size: 14.5px; border-radius: 13px; box-shadow: 0 10px 30px -10px rgba(245,158,11,.6); }
-.signup-card .btn-amber:disabled { opacity: .6; cursor: not-allowed; }
-.approval-note { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 26px; padding: 12px 14px; border-radius: 12px; font-size: 12px; line-height: 1.55; color: var(--n-300); background: rgba(6,182,212,.07); border: 1px solid rgba(6,182,212,.25); }
-.signup-card .auth-err, .signup-card .auth-ok { margin-bottom: 20px; }
-.signup-card .auth-ok { display: none; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); color: #4ade80; font-size: 12.5px; padding: 10px 12px; border-radius: 10px; }
-.form-section-head .n { width: 24px; height: 24px; border-radius: 8px; font-size: 12px; }
-.form-section-head h2 { font-size: 14px; }
-
-/* Even vertical rhythm */
 .form-section { display: flex; flex-direction: column; gap: 16px; margin-bottom: 30px; }
-.form-section-head { margin-bottom: 0; }
-.signup-card .signup-grid { margin-bottom: 0 !important; gap: 16px; }
-.signup-card .a-field, .signup-card .a-field:last-child { margin-bottom: 0; }
-.approval-note + .auth-err, .approval-note + .auth-err + .auth-ok { margin-top: -6px; }
+.form-section-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.form-section-head .n { width: 28px; height: 28px; border-radius: 9px; background: var(--grad-brand); color: var(--on-accent); font-size: 12.5px; font-weight: 700; font-family: var(--font-mono); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.form-section-head h2 { font-size: 15px; font-weight: 700; color: var(--text); }
+.form-section-head p { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+.signup .a-field { margin-bottom: 0; }
+.signup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.signup .a-field label .req, .req { color: var(--coral, var(--danger-text)); margin-left: 2px; }
+.signup .a-field .hint { font-size: 11px; font-weight: 400; color: var(--text-3); }
 
-/* Dark custom checkbox */
-.signup-card .chk-row input[type="checkbox"] {
-  appearance: none; -webkit-appearance: none; border-radius: 6px;
-  background: rgba(8,12,24,.6); border: 1.5px solid rgba(255,255,255,.25); display: grid; place-content: center;
-}
-.signup-card .chk-row input[type="checkbox"]:checked { background: var(--apt-primary); border-color: var(--apt-primary); }
-.signup-card .chk-row input[type="checkbox"]:checked::after { content: "✓"; color: #1c1206; font-size: 12px; font-weight: 800; line-height: 1; }
-.signup-card .chk-row input[type="checkbox"]:focus-visible { box-shadow: 0 0 0 4px rgba(245,158,11,.18); outline: none; }
+/* password strength */
+.pw-meter { display: flex; gap: 5px; margin-top: 8px; }
+.pw-meter i { flex: 1; height: 4px; border-radius: 4px; background: var(--ov-10); transition: background var(--t-fast); }
+.pw-meter.s1 i:nth-child(-n+1) { background: var(--rose); }
+.pw-meter.s2 i:nth-child(-n+2) { background: var(--amber); }
+.pw-meter.s3 i:nth-child(-n+3) { background: var(--teal); }
+.pw-meter.s4 i:nth-child(-n+4) { background: var(--emerald); }
+.pw-label { font-size: 11.5px; color: var(--text-3); min-height: 14px; margin-top: 4px; }
 
-/* ---------- Phase 10: institution search, email code, proof ---------- */
+/* terms */
+.signup .chk-row { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: var(--ov-4); border: 1px solid var(--border); }
+.signup .chk-row label { font-size: 12.5px; color: var(--text-2); line-height: 1.55; cursor: pointer; }
+.signup .chk-row a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
+.signup .btn-block { height: 50px; font-size: 14.5px; }
+.submit-note { text-align: center; font-size: 12px; color: var(--text-3); margin-top: 10px; }
+.approval-note { display: flex; gap: 10px; align-items: flex-start; }
+.approval-note .ico { margin-top: 1px; flex-shrink: 0; }
+
+/* institution search */
 .combo { position: relative; }
-.combo-list {
-  position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; margin: 0; padding: 6px; list-style: none;
-  max-height: 320px; overflow-y: auto; border-radius: 14px; background: #0d1424; border: 1px solid rgba(255,255,255,.14);
-  box-shadow: 0 24px 60px -12px rgba(0,0,0,.7);
-}
+.combo-list { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; margin: 0; padding: 6px; list-style: none; max-height: 320px; overflow-y: auto; border-radius: 14px; background: var(--elevated); border: 1px solid var(--border-strong); box-shadow: var(--shadow-lg); }
 .combo-item { padding: 10px 12px; border-radius: 10px; cursor: pointer; }
-.combo-item:hover, .combo-item.active { background: rgba(245,158,11,.10); }
+.combo-item:hover, .combo-item.active { background: rgba(var(--accent-rgb), .12); }
 .combo-item.taken { opacity: .55; cursor: not-allowed; }
-.combo-item.taken b { color: #f87171; font-weight: 600; }
-.ci-name { color: #f8fafc; font-size: 13.5px; font-weight: 600; }
-.ci-short { font-family: var(--font-mono); font-size: 10.5px; color: var(--apt-light); background: rgba(245,158,11,.12); padding: 1px 6px; border-radius: 6px; margin-left: 4px; }
-.ci-sub { color: var(--n-400); font-size: 12px; margin-top: 2px; }
-.combo-manual { border-top: 1px solid rgba(255,255,255,.08); margin-top: 4px; }
-.combo-manual .ci-name { color: var(--apt-light); }
-.combo-empty { padding: 10px 12px; color: var(--n-500); font-size: 12.5px; }
+.combo-item.taken b { color: var(--danger-text); font-weight: 600; }
+.ci-name { color: var(--text); font-size: 13.5px; font-weight: 600; }
+.ci-short { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent-text); background: rgba(var(--accent-rgb), .12); padding: 1px 6px; border-radius: 6px; margin-left: 4px; }
+.ci-sub { color: var(--text-2); font-size: 12px; margin-top: 2px; }
+.combo-manual { border-top: 1px solid var(--border); margin-top: 4px; }
+.combo-manual .ci-name { color: var(--accent-text); }
+.combo-empty { padding: 10px 12px; color: var(--text-3); font-size: 12.5px; }
 
-.inst-picked { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; padding: 16px 18px; border-radius: 14px; background: rgba(245,158,11,.06); border: 1px solid rgba(245,158,11,.30); }
-.ip-name { color: #fff; font-weight: 700; font-size: 15px; font-family: var(--font-display); }
-.ip-sub { color: var(--apt-light); font-size: 13px; margin-top: 3px; font-weight: 600; }
-.ip-meta { color: var(--n-400); font-size: 12px; margin-top: 4px; }
-.ip-meta a { color: var(--n-300); }
-.inst-alt { font-size: 12.5px; color: var(--n-500); margin-top: -6px; }
-.inst-alt a { color: var(--apt-light); font-weight: 600; }
-.manual-block { display: flex; flex-direction: column; gap: 16px; padding: 16px; border-radius: 14px; border: 1px dashed rgba(255,255,255,.16); }
-.manual-note { font-size: 12.5px; color: var(--n-300); line-height: 1.55; }
+.inst-picked { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; padding: 16px 18px; border-radius: 14px; background: rgba(var(--accent-rgb), .07); border: 1px solid rgba(var(--accent-rgb), .35); }
+.ip-name { color: var(--text); font-weight: 700; font-size: 15px; font-family: var(--font-display); }
+.ip-sub { color: var(--accent-text); font-size: 13px; margin-top: 3px; font-weight: 600; }
+.ip-meta { color: var(--text-2); font-size: 12px; margin-top: 4px; }
+.ip-meta a { color: var(--text-2); text-decoration: underline; }
+.inst-alt { font-size: 12.5px; color: var(--text-3); margin-top: -6px; }
+.inst-alt a { color: var(--accent-text); font-weight: 600; }
+.manual-block { display: flex; flex-direction: column; gap: 16px; padding: 16px; border-radius: 14px; border: 1px dashed var(--border-strong); }
+.manual-note { font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
 .manual-note:empty { display: none; }
-.a-btn-link { background: none; border: 0; padding: 0; color: var(--apt-light); font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: left; width: fit-content; }
-.a-btn-link:hover { color: #fff; }
-.a-btn-link:disabled { color: var(--n-600); cursor: default; }
+.a-btn-link { background: none; border: 0; padding: 0; color: var(--accent-text); font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: left; width: fit-content; display: inline-flex; align-items: center; gap: 6px; }
+.a-btn-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.a-btn-link:disabled { color: var(--text-3); cursor: default; text-decoration: none; }
 
+/* email verification */
 .email-row { display: flex; gap: 10px; }
 .email-row .a-input { flex: 1; min-width: 0; }
-.send-btn { flex-shrink: 0; height: 46px; padding: 0 16px; border-radius: 12px; font-size: 13px; white-space: nowrap; }
-.field-hint { font-size: 11.5px; color: var(--n-500); line-height: 1.5; }
-.field-hint b { color: var(--apt-light); font-weight: 600; }
-.signup-card .a-input.verified { border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.05); }
-.verified-tag { margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--success); background: var(--tint-green); border: 1px solid var(--success); padding: 1px 8px; border-radius: 999px; }
-.otp-box { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 12px; background: rgba(6,182,212,.06); border: 1px solid rgba(6,182,212,.25); }
-.otp-msg { font-size: 12.5px; color: var(--n-300); line-height: 1.55; }
-.otp-msg b { color: #fff; }
-.dev-note { color: var(--ai-light); font-size: 11.5px; }
-.signup-card .a-input.otp-input { letter-spacing: .35em; font-family: var(--font-mono); font-size: 16px; }
-.otp-foot { font-size: 12px; color: var(--n-500); }
-.proof-box { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 12px; background: rgba(239,68,68,.05); border: 1px solid rgba(239,68,68,.25); }
-.proof-box label { font-size: 12.5px; font-weight: 600; color: var(--n-300); }
-.proof-box input[type="file"] { color: var(--n-300); font-size: 12.5px; }
-.proof-box input[type="file"].invalid { outline: 1px solid rgba(248,113,113,.7); border-radius: 6px; }
-.proof-box p { font-size: 11.5px; color: var(--n-500); line-height: 1.5; }
-.submit-note { text-align: center; font-size: 12px; color: var(--n-500); margin-top: 10px; }
-/* the boxes above set display:flex; [hidden] must still hide them (more specific than any rule on this page) */
-.signup-card [hidden][hidden], .signup-wrap [hidden][hidden] { display: none; }
+.send-btn { flex-shrink: 0; height: 42px; padding: 0 16px; font-size: 13px; white-space: nowrap; }
+.field-hint { font-size: 11.5px; color: var(--text-3); line-height: 1.5; margin-top: 2px; }
+.field-hint b { color: var(--accent-text); font-weight: 600; }
+.signup .a-input.verified { border-color: rgba(var(--emerald-rgb), .6); background: rgba(var(--emerald-rgb), .06); }
+.verified-tag { margin-left: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: var(--success-text); background: rgba(var(--emerald-rgb), .12); border: 1px solid rgba(var(--emerald-rgb), .4); padding: 1px 8px; border-radius: 999px; }
+.otp-box { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 12px; background: rgba(var(--ai-rgb), .07); border: 1px solid rgba(var(--ai-rgb), .28); }
+.otp-msg { font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
+.otp-msg b { color: var(--text); }
+.dev-note { color: var(--ai-text); font-size: 11.5px; }
+.signup .a-input.otp-input { letter-spacing: .35em; font-family: var(--font-mono); font-size: 16px; }
+.otp-foot { font-size: 12px; color: var(--text-3); }
+.proof-box { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 12px; background: rgba(var(--warning-rgb), .07); border: 1px solid rgba(var(--warning-rgb), .3); }
+.proof-box label { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.proof-box input[type="file"] { color: var(--text-2); font-size: 12.5px; }
+.proof-box input[type="file"].invalid { outline: 1px solid var(--rose); border-radius: 6px; }
+.proof-box p { font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
+
+/* [hidden] must still win over the display:flex boxes above */
+.signup [hidden][hidden] { display: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-@media (max-width: 560px) { .email-row { flex-direction: column; } .send-btn { width: 100%; } }
+
+@media (max-width: 640px) {
+  .auth-card.signup { padding: 28px 20px 24px; }
+  .signup-grid { grid-template-columns: 1fr; }
+  .email-row { flex-direction: column; }
+  .send-btn { width: 100%; }
+}

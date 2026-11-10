@@ -80,7 +80,7 @@ function renderStep1() {
   $('fieldToggleList').innerHTML = list.map(d => {
     const checked = state.selected.includes(d.id), gen = d.mode === 'general';
     return `<label class="field-toggle ${checked ? 'checked' : ''}" onclick="toggleField(event,${d.id})">
-      <span><b style="color:#fff;">${esc(d.name)}</b>${gen ? '<span class="lvl-pill">General test — same paper subjects for everyone</span>' : ''}
+      <span><b style="color:var(--text);">${esc(d.name)}</b>${gen ? '<span class="lvl-pill">General test — same paper subjects for everyone</span>' : ''}
       <span class="muted">· ${d.subjects.length} subjects</span></span>
       <input type="checkbox" ${checked ? 'checked' : ''} /></label>`;
   }).join('') || `<div class="a-empty"><p>No ${esc(T(true).toLowerCase())} exist for ${esc(state.level)} yet. Create one under <a href="fields-subjects.html" style="text-decoration:underline;">Fields &amp; Departments</a> (or add a General Test).</p></div>`;
@@ -112,12 +112,12 @@ function renderStep2() {
   area.innerHTML = `
     <div class="comp-table-head"><span>Subject</span><span>Type</span><span>Difficulty</span><span>Per candidate</span><span>Pool needed</span><span>In bank</span><span>Status</span><span></span></div>
     ${rows.map(r => renderCompRow(id, d, r)).join('')}
-    <button class="a-btn a-btn-ghost a-btn-sm comp-add-row" onclick="addRow(${id})">+ Add row</button>
-    ${state.availError ? `<div class="rand-note" style="color:#f87171;">⚠ ${esc(state.availError)}</div>` : ''}
-    ${combined.map(s => `<div class="rand-note" style="color:#f87171;">⚠ ${esc(s.label)}: ${s.pool} in bank, ${s.needed} needed (short by ${s.short}).</div>`).join('')}
-    <div class="rand-note">🎲 <b>Randomization:</b> each candidate receives <b style="color:#fff;">${totalQ}</b> questions, drawn at random from a pool of at least <b style="color:#fff;">${totalPool}</b>
+    <button class="a-btn a-btn-ghost a-btn-sm comp-add-row" onclick="addRow(${id})"><i data-icon="plus"></i> Add row</button>
+    ${state.availError ? `<div class="rand-note" style="color:var(--danger-text);"><i data-icon="warn"></i> ${esc(state.availError)}</div>` : ''}
+    ${combined.map(s => `<div class="rand-note" style="color:var(--danger-text);"><i data-icon="warn"></i> ${esc(s.label)}: ${s.pool} in bank, ${s.needed} needed (short by ${s.short}).</div>`).join('')}
+    <div class="rand-note"><i data-icon="shuffle"></i> <b>Randomization:</b> each candidate receives <b style="color:var(--text);">${totalQ}</b> questions, drawn at random from a pool of at least <b style="color:var(--text);">${totalPool}</b>
       (${META.pool_factor}× per row). ${d.mode === 'general' ? 'This is a <b>general test</b> — every candidate is tested on the same subjects.' : `Papers are assembled only from this ${esc(T().toLowerCase())}'s approved questions.`}
-      ${rows.some(r => rowStatus(id, r).sufficient === false) || combined.length ? ' <a href="generate.html" style="color:var(--apt-light);text-decoration:underline;">Generate more questions →</a>' : ''}</div>`;
+      ${rows.some(r => rowStatus(id, r).sufficient === false) || combined.length ? ' <a href="generate.html" style="color:var(--accent-text);text-decoration:underline;">Generate more questions <i data-icon="arrow-right"></i></a>' : ''}</div>`;
 }
 function renderCompRow(id, d, row) {
   const st = rowStatus(id, row);
@@ -130,7 +130,7 @@ function renderCompRow(id, d, row) {
     <input class="a-input" type="number" min="1" max="${META.test_limits.max_per_row}" value="${row.count}" onchange="updateRow(${id},${row.id},'count',Math.max(1,parseInt(this.value)||1))" />
     <span class="num-cell">${st.needed}</span><span class="num-cell ${st.sufficient === false ? 'bad' : ''}">${st.pool ?? '…'}</span>
     <span class="status-cell">${badge}</span>
-    <button class="rm-btn" onclick="removeRow(${id},${row.id})" title="Remove row">✕</button></div>`;
+    <button class="rm-btn" onclick="removeRow(${id},${row.id})" title="Remove row" aria-label="Remove row"><i data-icon="x"></i></button></div>`;
 }
 function switchFieldTab(id) { state.activeTab = id; renderStep2(); }
 function updateRow(deptId, rowId, key, value) {
@@ -149,8 +149,8 @@ function updFixed() {
   const a = $('fixStart').value, b = $('fixEnd').value, d = toMin(b) - toMin(a);
   const late = toMin(a) + 30;
   $('fixedNote').innerHTML = d > 0
-    ? `⏰ Test runs <b style="color:#fff;">${fmt12(a)} → ${fmt12(b)}</b> (${Math.floor(d / 60)}h ${d % 60}m).<br/>• Candidates <b>cannot start before ${fmt12(a)}</b>.<br/>• The test <b>ends for everyone at ${fmt12(b)}</b> and is auto-submitted — a candidate who starts at ${fmt12(pad(Math.floor(late / 60) % 24) + ':' + pad(late % 60))} gets 30 minutes less, not a full timer.`
-    : '<span style="color:#f87171;">End time must be after the start time.</span>';
+    ? `<i data-icon="clock"></i> Test runs <b style="color:var(--text);">${fmt12(a)} – ${fmt12(b)}</b> (${Math.floor(d / 60)}h ${d % 60}m).<br/>• Candidates <b>cannot start before ${fmt12(a)}</b>.<br/>• The test <b>ends for everyone at ${fmt12(b)}</b> and is auto-submitted — a candidate who starts at ${fmt12(pad(Math.floor(late / 60) % 24) + ':' + pad(late % 60))} gets 30 minutes less, not a full timer.`
+    : '<span style="color:var(--danger-text);">End time must be after the start time.</span>';
 }
 function setTimeMode(m) {
   state.timeMode = m;
@@ -208,22 +208,22 @@ function renderStep4() {
 
   const sc = getSchedule();
   $('reviewSchedule').innerHTML = sc.mode === 'fixed' ? `
-    <div>Mode: <b style="color:#fff;">Fixed time</b></div>
-    <div>Date: <b style="color:#fff;">${esc(sc.date)}</b></div>
-    <div>Runs: <b style="color:#fff;">${fmt12(sc.start)} – ${fmt12(sc.end)}</b> (hard stop, auto-submit)</div>` : `
-    <div>Mode: <b style="color:#fff;">Flexible window</b></div>
-    <div>Time limit: <b style="color:#fff;">${sc.limit} minutes</b></div>
-    <div>Date: <b style="color:#fff;">${esc(sc.date)}</b></div>
-    <div>Window: <b style="color:#fff;">${fmt12(sc.start)} – ${fmt12(sc.end)}</b></div>`;
+    <div>Mode: <b style="color:var(--text);">Fixed time</b></div>
+    <div>Date: <b style="color:var(--text);">${esc(sc.date)}</b></div>
+    <div>Runs: <b style="color:var(--text);">${fmt12(sc.start)} – ${fmt12(sc.end)}</b> (hard stop, auto-submit)</div>` : `
+    <div>Mode: <b style="color:var(--text);">Flexible window</b></div>
+    <div>Time limit: <b style="color:var(--text);">${sc.limit} minutes</b></div>
+    <div>Date: <b style="color:var(--text);">${esc(sc.date)}</b></div>
+    <div>Window: <b style="color:var(--text);">${fmt12(sc.start)} – ${fmt12(sc.end)}</b></div>`;
   const releaseText = state.release.mode === 'immediate'
     ? 'Score shown immediately on submission'
-    : `Scheduled email on <b style="color:#fff;">${esc($('releaseDate').value)}</b>`;
+    : `Scheduled email on <b style="color:var(--text);">${esc($('releaseDate').value)}</b>`;
   $('reviewRelease').innerHTML = `<div>${releaseText}</div>`;
 
   const shortfalls = state.avail ? state.avail.shortfalls : [];
   const btn = $('publishBtn'), title = $('publishTitle'), sub = $('publishSub');
   $('shortfallBanner').style.display = shortfalls.length ? 'block' : 'none';
-  $('shortfallList').innerHTML = shortfalls.map(s => `<li>⚠ ${esc(s.label)} — ${s.pool} in bank, ${s.needed} needed (short by ${s.short})</li>`).join('');
+  $('shortfallList').innerHTML = shortfalls.map(s => `<li><i data-icon="warn"></i> ${esc(s.label)} — ${s.pool} in bank, ${s.needed} needed (short by ${s.short})</li>`).join('');
   if (!state.avail) {
     btn.setAttribute('disabled', 'true'); title.textContent = 'Checking the question bank…';
     sub.textContent = state.availError || 'Counting approved questions for every row.';
@@ -270,7 +270,7 @@ async function publishTest() {
 }
 
 // ---- Wizard navigation ----
-const STEP_LABELS = ['', 'Next: Paper Composition →', 'Next: Schedule &amp; Release →', 'Next: Review &amp; Publish →', ''];
+const STEP_LABELS = ['', 'Next: Paper Composition <i data-icon="arrow-right"></i>', 'Next: Schedule &amp; Release <i data-icon="arrow-right"></i>', 'Next: Review &amp; Publish <i data-icon="arrow-right"></i>', ''];
 function renderStep() {
   document.querySelectorAll('.wiz-step').forEach(s => {
     const n = parseInt(s.dataset.step);
@@ -289,23 +289,23 @@ function renderStep() {
 }
 function validateStep(step) {
   if (step === 1) {
-    if (!state.selected.length) { aToast(`Select at least one ${esc(T().toLowerCase())} to continue.`, '⚠'); return false; }
-    if ($('testName').value.trim().length < 3) { aToast('Give this test a name (at least 3 characters).', '⚠'); return false; }
+    if (!state.selected.length) { aToast(`Select at least one ${esc(T().toLowerCase())} to continue.`, 'warn'); return false; }
+    if ($('testName').value.trim().length < 3) { aToast('Give this test a name (at least 3 characters).', 'warn'); return false; }
     return true;
   }
   if (step === 2) {
     const empty = state.selected.find(id => !(state.compositions[id] || []).length);
-    if (empty) { aToast(`${esc(DEPT(empty).name)} needs at least one subject row.`, '⚠'); return false; }
+    if (empty) { aToast(`${esc(DEPT(empty).name)} needs at least one subject row.`, 'warn'); return false; }
     return true;
   }
   if (step === 3) {
-    if (!$('testDate').value) { aToast('Set the test date.', '⚠'); return false; }
+    if (!$('testDate').value) { aToast('Set the test date.', 'warn'); return false; }
     const sc = getSchedule();
-    if (toMin(sc.end) <= toMin(sc.start)) { aToast('End time must be after the start time.', '⚠'); return false; }
-    if (sc.mode === 'flex' && (!sc.limit || sc.limit <= 0)) { aToast('Set a time limit.', '⚠'); return false; }
-    if (sc.mode === 'flex' && sc.limit > toMin(sc.end) - toMin(sc.start)) { aToast('The time limit is longer than the window.', '⚠'); return false; }
-    if (new Date(`${sc.date}T${sc.start}`) <= new Date()) { aToast('The start time has already passed.', '⚠'); return false; }
-    if (state.release.mode === 'scheduled' && !$('releaseDate').value) { aToast('Set the result release date.', '⚠'); return false; }
+    if (toMin(sc.end) <= toMin(sc.start)) { aToast('End time must be after the start time.', 'warn'); return false; }
+    if (sc.mode === 'flex' && (!sc.limit || sc.limit <= 0)) { aToast('Set a time limit.', 'warn'); return false; }
+    if (sc.mode === 'flex' && sc.limit > toMin(sc.end) - toMin(sc.start)) { aToast('The time limit is longer than the window.', 'warn'); return false; }
+    if (new Date(`${sc.date}T${sc.start}`) <= new Date()) { aToast('The start time has already passed.', 'warn'); return false; }
+    if (state.release.mode === 'scheduled' && !$('releaseDate').value) { aToast('Set the result release date.', 'warn'); return false; }
     return true;
   }
   return true;
@@ -339,7 +339,7 @@ document.addEventListener('admin:ready', async () => {
     const id = new URLSearchParams(location.search).get('id');
     if (id) {
       const { test } = await api(`/tests/${encodeURIComponent(id)}`);
-      if (test.status !== 'draft') { aToast('This test is already published and can no longer be edited.', '⚠'); setTimeout(() => location.replace('monitor.html'), 1200); return; }
+      if (test.status !== 'draft') { aToast('This test is already published and can no longer be edited.', 'warn'); setTimeout(() => location.replace('monitor.html'), 1200); return; }
       loadTest(test);
     }
   } catch (e) { return handleApiError(e); }

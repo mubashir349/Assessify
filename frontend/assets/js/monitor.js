@@ -3,21 +3,21 @@
 const REFRESH_MS = 5000;
 const $ = id => document.getElementById(id);
 const STATUSES = [
-  { key: '', label: 'All candidates', color: '#fff', countKey: 'all' },
-  { key: 'not_started', label: 'Not Started', color: '#94a3b8' },
-  { key: 'in_progress', label: 'In Progress', color: '#22c55e' },
-  { key: 'locked', label: 'Locked', color: '#ef4444' },
-  { key: 'disconnected', label: 'Disconnected', color: '#f59e0b' },
-  { key: 'auto_submitted', label: 'Auto-Submitted', color: '#818cf8' },
-  { key: 'completed', label: 'Completed', color: '#22d3ee' },
+  { key: '', label: 'All candidates', color: 'var(--text)', countKey: 'all' },
+  { key: 'not_started', label: 'Not Started', color: 'var(--text-3)' },
+  { key: 'in_progress', label: 'In Progress', color: 'var(--success-text)' },
+  { key: 'locked', label: 'Locked', color: 'var(--danger-text)' },
+  { key: 'disconnected', label: 'Disconnected', color: 'var(--warn-text)' },
+  { key: 'auto_submitted', label: 'Auto-Submitted', color: 'var(--accent-text)' },
+  { key: 'completed', label: 'Completed', color: 'var(--ai-text)' },
 ];
 const BADGE = {
   not_started: ['badge-not-started', 'Not Started'],
-  in_progress: ['badge-in-progress', '● In Progress'],
-  locked: ['badge-locked', '🔒 Locked'],
-  disconnected: ['badge-disconnected', '⚠ Disconnected'],
+  in_progress: ['badge-in-progress', '<span class="live-dot"></span> In Progress'],
+  locked: ['badge-locked', '<i data-icon="lock"></i> Locked'],
+  disconnected: ['badge-disconnected', '<i data-icon="wifi-off"></i> Disconnected'],
   auto_submitted: ['badge-auto-submitted', 'Auto-Submitted'],
-  completed: ['badge-completed', '✓ Completed'],
+  completed: ['badge-completed', '<i data-icon="check"></i> Completed'],
 };
 const STATE_LABEL = { live: 'Live now', upcoming: 'Upcoming', ended: 'Ended' };
 let TESTS = [], MODE = 'fixed', statusFilter = '', timer = null, searchTimer = null, busy = false;
@@ -155,7 +155,7 @@ function actionsCell(r) {
   if (!a) return '<span class="muted" style="font-size:12px;">Awaiting start</span>';
   if (a.status === 'submitted') return `<span class="mono">${esc(a.reference)}</span>`;
   const unlock = a.status === 'locked'
-    ? `<button type="button" class="a-btn a-btn-amber a-btn-sm" data-act="unlock" data-id="${a.id}" data-name="${esc(r.full_name)}">Unlock</button>` : '';
+    ? `<button type="button" class="a-btn a-btn-primary a-btn-sm" data-act="unlock" data-id="${a.id}" data-name="${esc(r.full_name)}">Unlock</button>` : '';
   const end = `<button type="button" class="a-btn a-btn-danger a-btn-sm" data-act="end" data-id="${a.id}" data-name="${esc(r.full_name)}">End</button>`;
   return `<div class="mon-actions">${unlock}${end}</div>`;
 }

@@ -1,0 +1,25 @@
+/* dashboard.html — charts and quick actions (data comes from /dashboard/summary) */
+.stack-bar { display: flex; gap: 3px; height: 16px; border-radius: 999px; overflow: hidden; background: var(--ov-6); }
+.stack-bar span { min-width: 6px; transition: flex var(--t-slow, .4s) var(--ease); }
+.stack-bar .empty { background: var(--ov-8); }
+.viz-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin-top: 18px; }
+.viz-legend div { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+.viz-legend i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.viz-legend b { margin-left: auto; color: var(--text); font-family: var(--font-mono); font-size: 12.5px; }
+#testBars { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+#testBars .bar-row { display: grid; grid-template-columns: 84px 1fr 34px; gap: 12px; align-items: center; font-size: 12.5px; color: var(--text-2); }
+#testBars .bt { height: 10px; border-radius: 999px; background: var(--ov-6); overflow: hidden; }
+#testBars .bt span { display: block; height: 100%; border-radius: 999px; min-width: 3px; transition: width .6s var(--ease); }
+#testBars b { text-align: right; color: var(--text); font-family: var(--font-mono); }
+.quick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.quick { display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: 14px; background: var(--ov-4); border: 1px solid var(--border); transition: all var(--t-fast); }
+.quick:hover { border-color: rgba(var(--accent-rgb), .55); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.quick b { display: block; font-size: 13.5px; color: var(--text); }
+.quick small { display: block; font-size: 11.5px; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
+.q-ic { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 19px; }
+.c-indigo { background: rgba(var(--indigo-rgb), .14); color: var(--accent-text); }
+.c-violet { background: rgba(var(--violet-rgb), .14); color: var(--violet-text); }
+.c-cyan { background: rgba(var(--cyan-rgb), .14); color: var(--ai-text); }
+.c-amber { background: rgba(var(--amber-rgb), .16); color: var(--warn-text); }
+@media (max-width: 1100px) { .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .quick-grid { grid-template-columns: 1fr; } .viz-legend { grid-template-columns: 1fr; } }
