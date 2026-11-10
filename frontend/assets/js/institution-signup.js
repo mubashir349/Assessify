@@ -43,17 +43,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const input = $('instSearch'), list = $('instList');
   let items = [], active = -1, searchTimer = null, lastQ = '';
 
-  function closeList() { list.hidden = true; input.setAttribute('aria-expanded', 'false'); active = -1; }
+  function closeList() { list.hidden = true; active = -1; }
   function renderList(q) {
     const rows = items.map((it, i) => `
-      <li role="option" class="combo-item${it.registered ? ' taken' : ''}" data-i="${i}" aria-disabled="${it.registered}">
+      <li class="combo-item${it.registered ? ' taken' : ''}" data-i="${i}">
         <div class="ci-name">${esc(it.institution_name)}${it.short_name ? ` <span class="ci-short">${esc(it.short_name)}</span>` : ''}</div>
         <div class="ci-sub">${esc(it.campus_name)} · ${esc(it.city)} · ${esc(it.type)}${it.registered ? ' · <b>Already registered</b>' : ''}</div>
       </li>`).join('');
     const none = q.length >= 2 && !items.length ? `<li class="combo-empty">No match for “${esc(q)}”.</li>` : '';
-    list.innerHTML = rows + none + `<li role="option" class="combo-item combo-manual" data-i="manual">
+    $('instCount').textContent = q.length >= 2 ? `${items.length} institutions found. Use the arrow keys to choose.` : '';
+    list.innerHTML = rows + none + `<li class="combo-item combo-manual" data-i="manual">
         <div class="ci-name">➕ My institution isn't in the list</div><div class="ci-sub">Type its details yourself. It's added to the list once approved.</div></li>`;
-    list.hidden = false; input.setAttribute('aria-expanded', 'true');
+    list.hidden = false;
   }
   async function search() {
     const q = input.value.trim();
@@ -65,11 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (input.value.trim() === q) renderList(q);        // a slower old answer never replaces a newer one
   }
   input.addEventListener('input', () => { input.classList.remove('invalid'); clearTimeout(searchTimer); searchTimer = setTimeout(search, 220); });
-  input.addEventListener('focus', () => { lastQ = null; search(); });
+  input.addEventListener('focus', () => { lastQ = null; void search(); });
   input.addEventListener('keydown', e => {
     const opts = [...list.querySelectorAll('.combo-item')];
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault(); if (list.hidden) return search();
+      e.preventDefault(); if (list.hidden) { void search(); return; }
       active = (active + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length;
       opts.forEach((o, i) => o.classList.toggle('active', i === active)); opts[active]?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter' && !list.hidden && active >= 0) { e.preventDefault(); choose(opts[active].dataset.i); }
@@ -84,6 +85,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!it) return;
     if (it.registered) { showErr(`${it.label} is already registered on Assessify. Ask its admin to add you, or pick another campus.`); return; }
     hideErr(); picked = it; setMode('campus');
+  }
+
+  function manualNote(m) {
+    if (m === 'parent') return `Adding a new campus of <b>${esc(picked.institution_name)}</b>. Type the campus name and its city.`;
+    if (m === 'manual') return 'Type your institution\'s details. After the platform team approves it, it appears in the list for others.';
+    return '';
   }
 
   function setMode(m) {
@@ -102,9 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const parent = m === 'parent';
     $('nameField').hidden = parent; $('typeField').hidden = parent; $('siteField').hidden = parent;
     $('campusReq').hidden = !parent; $('campusHint').hidden = parent;
-    $('manualNote').innerHTML = parent
-      ? `Adding a new campus of <b>${esc(picked.institution_name)}</b>. Type the campus name and its city.`
-      : m === 'manual' ? 'Type your institution\'s details. After the platform team approves it, it appears in the list for others.' : '';
+    $('manualNote').innerHTML = manualNote(m);
     if (m === 'manual') { $('instName').value = $('instName').value || input.value.trim(); }
     if (m === '') { picked = null; input.value = ''; setTimeout(() => input.focus(), 0); }
     updateEmailRules();
@@ -114,13 +119,15 @@ document.addEventListener('DOMContentLoaded', () => {
   $('addCampusLink').addEventListener('click', e => { e.preventDefault(); $('instCampus').value = ''; $('instCity').value = ''; setMode('parent'); });
 
   // ---------------- 2. work email + code ----------------
+  function emailHint(known) {
+    if (known.length) return `Use your official ${known.map(d => '<b>@' + esc(d) + '</b>').join(' or ')} email address.`;
+    if ($('noOfficial').checked) return 'A personal email (Gmail, Yahoo, Outlook…) is allowed because you ticked “no official email”. Upload the proof below.';
+    return "Use your institution's official email. Gmail, Yahoo, Outlook and other personal emails are not accepted.";
+  }
+
   function updateEmailRules() {
     const known = (mode === 'campus' || mode === 'parent') ? domains(picked) : [];
-    $('emailHint').innerHTML = known.length
-      ? `Use your official ${known.map(d => '<b>@' + esc(d) + '</b>').join(' or ')} email address.`
-      : $('noOfficial').checked
-        ? 'A personal email (Gmail, Yahoo, Outlook…) is allowed because you ticked “no official email”. Upload the proof below.'
-        : "Use your institution's official email. Gmail, Yahoo, Outlook and other personal emails are not accepted.";
+    $('emailHint').innerHTML = emailHint(known);
     $('noOfficialRow').hidden = known.length > 0;              // a listed domain means they do have official email
     if (known.length && $('noOfficial').checked) { $('noOfficial').checked = false; }
     $('proofBox').hidden = !$('noOfficial').checked;
@@ -178,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   $('sendCode').addEventListener('click', sendCode);
   $('resendCode').addEventListener('click', sendCode);
-  $('adminEmail').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendCode(); } });
+  $('adminEmail').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); void sendCode(); } });
 
   async function verifyCode() {
     hideErr();
@@ -192,8 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
     finally { b.disabled = false; b.textContent = 'Verify'; }
   }
   $('verifyCode').addEventListener('click', verifyCode);
-  $('otpCode').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); if (e.target.value.length === 6) verifyCode(); });
-  $('otpCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); verifyCode(); } });
+  $('otpCode').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); if (e.target.value.length === 6) { void verifyCode(); } });
+  $('otpCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); void verifyCode(); } });
 
   // ---------------- 3. password ----------------
   document.querySelectorAll('.pw-toggle').forEach(b => b.addEventListener('click', () => {
@@ -219,42 +226,56 @@ document.addEventListener('DOMContentLoaded', () => {
              city: v('instCity'), website: v('instSite') };
   }
 
+  const REQUIRED_BY_MODE = { parent: ['instCampus', 'instCity'], manual: ['instName', 'instType', 'instCity'] };
+
+  /** First problem with the form as [message, ids to outline], or null when it can be sent. */
+  function formProblem() {
+    if (!mode) return ['Search for your institution and pick your campus, or choose “My institution isn\'t in the list”.', ['instSearch']];
+    const missing = (REQUIRED_BY_MODE[mode] || []).concat(['adminName']).filter(id => !v(id) && !$(id).value);
+    if (missing.length) return ['Please fill in every required field.', missing];
+    if (!emailToken || verifiedEmail !== v('adminEmail').toLowerCase()) return ['Verify your work email with the code first.', ['adminEmail']];
+    const proof = $('proofFile').files[0];
+    if ($('noOfficial').checked && !proof) return ['Upload a proof document (authorisation letter or registration certificate).', ['proofFile']];
+    if (proof && proof.size > LIMITS.proof_max_mb * 1024 * 1024) return [`The proof file must be at most ${LIMITS.proof_max_mb} MB.`, ['proofFile']];
+    if ($('pw1').value.length < 8) return ['Password should be at least 8 characters.', ['pw1']];
+    if ($('pw1').value !== $('pw2').value) return ['Passwords do not match.', ['pw2']];
+    if (!$('terms').checked) return ["Please confirm you're authorised and accept the Terms & Privacy Policy.", []];
+    return null;
+  }
+
+  /** JSON, or multipart form data when a proof file goes with it. */
+  function requestBody() {
+    const fields = { ...institutionFields(), admin_name: v('adminName'), admin_email: verifiedEmail, email_token: emailToken,
+                     password: $('pw1').value, no_official_email: $('noOfficial').checked };
+    if (!$('noOfficial').checked) return fields;
+    const body = new FormData();
+    Object.entries(fields).forEach(([k, val]) => { if (val !== undefined && val !== null) body.append(k, String(val)); });
+    body.append('proof', $('proofFile').files[0]);
+    return body;
+  }
+
+  function showServerError(ex) {
+    const details = ex.details || {};
+    const ids = { ...FIELD_IDS, institution_name: mode === 'manual' ? 'instName' : 'instSearch' };
+    mark(Object.keys(details).map(k => ids[k]).filter(Boolean));
+    if (ex.code === 'EMAIL_NOT_VERIFIED') { emailToken = null; setVerified(false); }
+    showErr(Object.values(details)[0] || ex.message);
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     hideErr();
     form.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
+    const problem = formProblem();
+    if (problem) { mark(problem[1]); showErr(problem[0]); return; }
 
-    if (!mode) { mark(['instSearch']); return showErr('Search for your institution and pick your campus, or choose “My institution isn\'t in the list”.'); }
-    const need = mode === 'parent' ? ['instCampus', 'instCity'] : mode === 'manual' ? ['instName', 'instType', 'instCity'] : [];
-    const missing = need.concat(['adminName']).filter(id => !v(id) && !$(id).value);
-    if (missing.length) { mark(missing); return showErr('Please fill in every required field.'); }
-    if (!emailToken || verifiedEmail !== v('adminEmail').toLowerCase()) { mark(['adminEmail']); return showErr('Verify your work email with the code first.'); }
-    const proof = $('proofFile').files[0];
-    if ($('noOfficial').checked && !proof) { mark(['proofFile']); return showErr('Upload a proof document (authorisation letter or registration certificate).'); }
-    if (proof && proof.size > LIMITS.proof_max_mb * 1024 * 1024) { mark(['proofFile']); return showErr(`The proof file must be at most ${LIMITS.proof_max_mb} MB.`); }
-    if ($('pw1').value.length < 8) { mark(['pw1']); return showErr('Password should be at least 8 characters.'); }
-    if ($('pw1').value !== $('pw2').value) { mark(['pw2']); return showErr('Passwords do not match.'); }
-    if (!$('terms').checked) return showErr("Please confirm you're authorised and accept the Terms & Privacy Policy.");
-
-    const fields = { ...institutionFields(), admin_name: v('adminName'), admin_email: verifiedEmail, email_token: emailToken,
-                     password: $('pw1').value, no_official_email: $('noOfficial').checked };
-    let body = fields;
-    if ($('noOfficial').checked) {                       // a file goes as multipart form data
-      body = new FormData();
-      Object.entries(fields).forEach(([k, val]) => { if (val !== undefined && val !== null) body.append(k, String(val)); });
-      body.append('proof', proof);
-    }
     btn.disabled = true; const label = btn.textContent; btn.textContent = 'Submitting…';
     try {
-      await api('/institutions/signup', { method: 'POST', body });
+      await api('/institutions/signup', { method: 'POST', body: requestBody() });
       ok.style.display = 'block';
       setTimeout(() => { window.location.href = 'institution-login.html?registered=1'; }, 2200);
     } catch (ex) {
-      const details = ex.details || {};
-      const ids = { ...FIELD_IDS, institution_name: mode === 'manual' ? 'instName' : 'instSearch' };
-      mark(Object.keys(details).map(k => ids[k]).filter(Boolean));
-      if (ex.code === 'EMAIL_NOT_VERIFIED') { emailToken = null; setVerified(false); }
-      showErr(Object.values(details)[0] || ex.message);
+      showServerError(ex);
       btn.disabled = !emailToken; btn.textContent = label;
     }
   });

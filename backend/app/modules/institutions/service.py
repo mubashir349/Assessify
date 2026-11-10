@@ -45,32 +45,41 @@ def _taken(message: str, field: str = "institution_name"):
     return ApiError("INSTITUTION_TAKEN", message, 409, {field: message})
 
 
-def _resolve_institution(data: dict, errors: dict) -> dict:
-    """-> {name, type, city, website, campus_name, campus, parent} from the directory or from the typed fields."""
-    campus_id = _int_or_none(data.get("directory_campus_id"), "institution_name", errors)
-    parent_id = _int_or_none(data.get("directory_institution_id"), "institution_name", errors)
+def _from_campus(campus_id: int, errors: dict) -> dict:
+    """Picked a campus from the list: everything comes from the directory."""
+    campus = db.session.get(DirectoryCampus, campus_id)
+    if campus is None:
+        errors["institution_name"] = "That campus is no longer in the list. Search again."
+        return {}
+    p = campus.institution
+    return {"name": p.name, "type": p.type, "city": campus.city, "website": p.website,
+            "campus_name": campus.campus_name, "campus": campus, "parent": p}
 
-    if campus_id is not None:
-        campus = db.session.get(DirectoryCampus, campus_id)
-        if campus is None:
-            errors["institution_name"] = "That campus is no longer in the list. Search again."
-            return {}
-        p = campus.institution
-        return {"name": p.name, "type": p.type, "city": campus.city, "website": p.website,
-                "campus_name": campus.campus_name, "campus": campus, "parent": p}
 
-    if parent_id is not None:
-        p = db.session.get(DirectoryInstitution, parent_id)
-        if p is None:
-            errors["institution_name"] = "That institution is no longer in the list. Search again."
-            return {}
-        campus_name = text(data, "campus_name", "Campus name", errors, min_len=2, max_len=120)
-        city = text(data, "city", "City / location", errors, max_len=120)
-        same = next((c for c in p.campuses if campus_name and c.campus_name.lower() == campus_name.lower()
-                     and c.city.lower() == city.lower()), None)
-        return {"name": p.name, "type": p.type, "city": same.city if same else city, "website": p.website,
-                "campus_name": same.campus_name if same else campus_name, "campus": same, "parent": p}
+def _same_campus(parent: DirectoryInstitution, campus_name: str, city: str):
+    if not campus_name:
+        return None
+    return next((c for c in parent.campuses
+                 if c.campus_name.lower() == campus_name.lower() and c.city.lower() == city.lower()), None)
 
+
+def _from_parent(data: dict, parent_id: int, errors: dict) -> dict:
+    """Institution is listed, campus is not: the admin types the campus name and city."""
+    p = db.session.get(DirectoryInstitution, parent_id)
+    if p is None:
+        errors["institution_name"] = "That institution is no longer in the list. Search again."
+        return {}
+    campus_name = text(data, "campus_name", "Campus name", errors, min_len=2, max_len=120)
+    city = text(data, "city", "City / location", errors, max_len=120)
+    same = _same_campus(p, campus_name, city)
+    if same is not None:                      # typed a campus that is in the list after all
+        return _from_campus(same.id, errors)
+    return {"name": p.name, "type": p.type, "city": city, "website": p.website,
+            "campus_name": campus_name, "campus": None, "parent": p}
+
+
+def _typed(data: dict, errors: dict) -> dict:
+    """Not in the list: everything is typed by hand."""
     name = text(data, "institution_name", "Institution name", errors, min_len=2, max_len=200)
     itype = text(data, "institution_type", "Institution type", errors, max_len=30)
     city = text(data, "city", "City / location", errors, max_len=120)
@@ -83,6 +92,17 @@ def _resolve_institution(data: dict, errors: dict) -> dict:
     parent = find_institution_by_name(name) if name else None       # typed a listed name by hand: link it
     return {"name": parent.name if parent else name, "type": itype, "city": city, "website": website or None,
             "campus_name": campus_name or None, "campus": None, "parent": parent}
+
+
+def _resolve_institution(data: dict, errors: dict) -> dict:
+    """-> {name, type, city, website, campus_name, campus, parent} from the directory or from the typed fields."""
+    campus_id = _int_or_none(data.get("directory_campus_id"), "institution_name", errors)
+    parent_id = _int_or_none(data.get("directory_institution_id"), "institution_name", errors)
+    if campus_id is not None:
+        return _from_campus(campus_id, errors)
+    if parent_id is not None:
+        return _from_parent(data, parent_id, errors)
+    return _typed(data, errors)
 
 
 def _check_not_registered(inst: dict) -> None:
@@ -140,6 +160,13 @@ def _read_proof(file, required: bool, errors: dict):
     return InstitutionProof(filename=name, content_type=kind, size_bytes=len(data), data=data)
 
 
+def _check_password(password: str, errors: dict) -> None:
+    if len(password) < 8:
+        errors["password"] = "Password must be at least 8 characters."
+    elif len(password) > 128:
+        errors["password"] = "Password is too long."
+
+
 def register_institution(data: dict, proof_file=None) -> Institution:
     errors: dict = {}
     inst = _resolve_institution(data, errors)
@@ -150,10 +177,7 @@ def register_institution(data: dict, proof_file=None) -> Institution:
 
     if email and not EMAIL_RE.match(email):
         errors["admin_email"] = "Enter a valid email address."
-    if len(password) < 8:
-        errors["password"] = "Password must be at least 8 characters."
-    elif len(password) > 128:
-        errors["password"] = "Password is too long."
+    _check_password(password, errors)
     domain_ok = False
     if inst and email and "admin_email" not in errors:
         domain_ok = _check_email(email, no_official, inst["parent"], inst["website"], errors)

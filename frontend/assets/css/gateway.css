@@ -17,9 +17,9 @@
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-mark {
   width: 32px; height: 32px; border-radius: 9px;
-  background: linear-gradient(135deg, var(--primary), var(--violet));
+  background: linear-gradient(135deg, var(--apt-primary), #ea580c);
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 800; font-size: 15px;
+  color: #1c1206; font-weight: 800; font-size: 15px;
 }
 .brand-name { font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 17px; }
 
@@ -31,7 +31,7 @@
   margin: 22px 0 20px;
 }
 .hero h1 .grad {
-  background: linear-gradient(135deg, #818cf8, #a78bfa, #67e8f9);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b, #fb923c);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .hero p.sub {
@@ -45,11 +45,9 @@
 .hero-foot { margin-top: 18px; font-size: .85rem; color: var(--n-500); }
 .hero-foot a { color: var(--apt-light); font-weight: 600; }
 .hero-foot a:hover { color: #fff; }
-.hero h1 .grad { background: linear-gradient(135deg, #fbbf24, #f59e0b, #fb923c); -webkit-background-clip: text; background-clip: text; }
 
 .nav-actions { display: flex; gap: 10px; align-items: center; }
 a.brand { text-decoration: none; }
-.brand-mark { background: linear-gradient(135deg, var(--apt-primary), #ea580c); color: #1c1206; }
 @media (max-width: 640px) {
   .nav-hide-sm { display: none; }
   .nav-actions .btn { padding: 9px 12px; font-size: 13px; }

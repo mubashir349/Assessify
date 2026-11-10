@@ -1,7 +1,7 @@
-"""Phase 10: loads the institution directory (the signup search list) from data/institution_directory.csv.
+"""Phase 10: loads the institution directory (the signup search list) from a CSV file in backend/data/.
 
     python seed_directory.py                 # backend/data/institution_directory.csv
-    python seed_directory.py my_list.csv     # another file with the same columns
+    python seed_directory.py my_list.csv     # another file with the same columns, also kept in backend/data/
 
 Columns: institution, short_name, type, website, email_domain, campus, city
   - one row per campus; rows with the same institution name belong together
@@ -21,51 +21,80 @@ from app.extensions import db
 from app.models.directory import SOURCE_SEED, DirectoryCampus, DirectoryInstitution
 from app.models.institution import INSTITUTION_TYPES
 
-DEFAULT_FILE = Path(__file__).parent / "data" / "institution_directory.csv"
+DATA_DIR = (Path(__file__).parent / "data").resolve()
+DEFAULT_FILE = DATA_DIR / "institution_directory.csv"
+
+
+def data_file(name: str | None) -> Path:
+    """Only a file name inside backend/data/ is accepted (no folders, no '..'), so the script never reads elsewhere."""
+    if not name:
+        return DEFAULT_FILE
+    safe = Path(name).name
+    if not safe.lower().endswith(".csv"):
+        raise SystemExit("Give the name of a .csv file inside backend/data/, e.g. my_list.csv")
+    return DATA_DIR / safe
+
+
+def _clean(row: dict, key: str) -> str:
+    return (row.get(key) or "").strip()
+
+
+def _parse(row: dict, line: int) -> dict | None:
+    """One CSV row -> the values to save, or None (with a message) when the row can't be used."""
+    name, city, itype = _clean(row, "institution"), _clean(row, "city"), _clean(row, "type")
+    if not name or not city:
+        print(f"  line {line}: skipped (institution and city are required)")
+        return None
+    if itype not in INSTITUTION_TYPES:
+        print(f"  line {line}: skipped ({name}: type must be one of {', '.join(INSTITUTION_TYPES)})")
+        return None
+    return {"name": name, "city": city, "campus": _clean(row, "campus") or "Main Campus",
+            "fields": {"short_name": _clean(row, "short_name") or None, "type": itype,
+                       "website": _clean(row, "website") or None,
+                       "email_domain": _clean(row, "email_domain").replace(" ", "").lower() or None}}
+
+
+def _upsert_institution(by_name: dict, name: str, fields: dict) -> tuple[DirectoryInstitution, str]:
+    """-> (institution, 'added' | 'updated' | '')"""
+    inst = by_name.get(name.lower())
+    if inst is None:
+        inst = DirectoryInstitution(name=name, source=SOURCE_SEED, **fields)
+        db.session.add(inst)
+        by_name[name.lower()] = inst
+        return inst, "added"
+    changed = any(getattr(inst, k) != v for k, v in fields.items())
+    for k, v in fields.items():
+        setattr(inst, k, v)
+    return inst, "updated" if changed else ""
+
+
+def _add_campus(inst: DirectoryInstitution, campus: str, city: str) -> bool:
+    if any(c.campus_name.lower() == campus.lower() and c.city.lower() == city.lower() for c in inst.campuses):
+        return False
+    inst.campuses.append(DirectoryCampus(campus_name=campus, city=city))
+    return True
 
 
 def load(path: Path) -> tuple[int, int, int]:
-    added_inst = added_campus = updated = 0
+    counts = {"added": 0, "updated": 0, "": 0}
+    campuses = 0
     by_name = {i.name.lower(): i for i in DirectoryInstitution.query.all()}
     with path.open(encoding="utf-8-sig", newline="") as f:
         for line, row in enumerate(csv.DictReader(f), start=2):
-            name = (row.get("institution") or "").strip()
-            campus = (row.get("campus") or "").strip() or "Main Campus"
-            city = (row.get("city") or "").strip()
-            itype = (row.get("type") or "").strip()
-            if not name or not city:
-                print(f"  line {line}: skipped (institution and city are required)")
+            item = _parse(row, line)
+            if item is None:
                 continue
-            if itype not in INSTITUTION_TYPES:
-                print(f"  line {line}: skipped ({name}: type must be one of {', '.join(INSTITUTION_TYPES)})")
-                continue
-            fields = {"short_name": (row.get("short_name") or "").strip() or None, "type": itype,
-                      "website": (row.get("website") or "").strip() or None,
-                      "email_domain": (row.get("email_domain") or "").replace(" ", "").lower() or None}
-            inst = by_name.get(name.lower())
-            if inst is None:
-                inst = DirectoryInstitution(name=name, source=SOURCE_SEED, **fields)
-                db.session.add(inst)
-                by_name[name.lower()] = inst
-                added_inst += 1
-            else:
-                changed = any(getattr(inst, k) != v for k, v in fields.items())
-                for k, v in fields.items():
-                    setattr(inst, k, v)
-                updated += changed
-            if not any(c.campus_name.lower() == campus.lower() and c.city.lower() == city.lower() for c in inst.campuses):
-                inst.campuses.append(DirectoryCampus(campus_name=campus, city=city))
-                added_campus += 1
+            inst, what = _upsert_institution(by_name, item["name"], item["fields"])
+            counts[what] += 1
+            campuses += _add_campus(inst, item["campus"], item["city"])
     db.session.commit()
-    return added_inst, added_campus, updated
+    return counts["added"], campuses, counts["updated"]
 
 
 if __name__ == "__main__":
-    file = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_FILE
+    file = data_file(sys.argv[1] if len(sys.argv) > 1 else None)
     app = create_app()
     with app.app_context():
         a, c, u = load(file)
-        total = DirectoryInstitution.query.count()
-        campuses = DirectoryCampus.query.count()
-        print(f"Directory: {a} institutions added, {u} updated, {c} campuses added. "
-              f"Now {total} institutions with {campuses} campuses.")
+        print(f"Directory: {a} institutions added, {u} updated, {c} campuses added. Now "
+              f"{DirectoryInstitution.query.count()} institutions with {DirectoryCampus.query.count()} campuses.")

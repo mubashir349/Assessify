@@ -42,8 +42,9 @@
           <label for="instSearch">Institution and campus <span class="req">*</span></label>
           <div class="combo">
             <input class="a-input" id="instSearch" placeholder="Type e.g. NED, FAST Lahore, Punjab College…" autocomplete="off"
-                   role="combobox" aria-expanded="false" aria-controls="instList" aria-autocomplete="list" />
-            <ul class="combo-list" id="instList" role="listbox" hidden></ul>
+                   aria-controls="instList" aria-describedby="instCount" />
+            <ul class="combo-list" id="instList" hidden></ul>
+            <span class="sr-only" id="instCount" aria-live="polite"></span>
           </div>
         </div>
 
@@ -113,7 +114,7 @@
         <div class="otp-box" id="otpBox" hidden>
           <div class="otp-msg" id="otpMsg"></div>
           <div class="email-row">
-            <input class="a-input otp-input" id="otpCode" inputmode="numeric" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code" />
+            <input class="a-input otp-input" id="otpCode" aria-label="6-digit verification code" inputmode="numeric" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code" />
             <button type="button" class="btn btn-amber send-btn" id="verifyCode">Verify</button>
           </div>
           <div class="otp-foot"><button type="button" class="a-btn-link" id="resendCode" disabled>Resend code</button> <span id="resendTimer"></span></div>

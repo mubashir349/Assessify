@@ -59,8 +59,7 @@ def _capture_mail_and_dns(monkeypatch):
         return "logged"
 
     monkeypatch.setattr(otp_service, "send_mail", fake_send)
-    monkeypatch.setattr(email_rules, "accepts_mail", lambda domain: True)
-    yield
+    monkeypatch.setattr(email_rules, "accepts_mail", lambda domain: True)   # monkeypatch undoes both after the test
 
 
 def last_code(email: str) -> str:
