@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const t = me.test, sc = t.schedule;
   document.getElementById('candInst').innerHTML = `${esc(me.institution.name)} · ${esc(t.name)} · <a href="#" id="signOut" style="color:var(--apt-primary);">Not ${esc(me.full_name.split(' ')[0])}? Sign out</a>`;
-  document.getElementById('welcome').textContent = `Welcome, ${me.full_name} · ${me.roll_number}`;
+  document.getElementById('welcome').textContent = `Welcome, ${me.full_name}${me.roll_number ? ' · ' + me.roll_number : ''}`;
   document.getElementById('candDept').textContent = me.department.name;
   document.getElementById('mSubj').textContent = t.subjects.join(', ') || '—';
   document.getElementById('mCount').textContent = t.question_count;

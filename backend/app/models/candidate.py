@@ -1,7 +1,13 @@
 """Phase 5 table: one candidate on the roster of one published test.
 
 A candidate has no account and no password. They sign in with the one-time access code printed on their test slip
-plus their date of birth. The code is unique across the whole platform, so the login needs nothing else.
+plus a second factor: their date of birth when the institution gave one, otherwise a 6-digit PIN that the system
+made and printed on the slip (Phase 9). Exactly one of date_of_birth / pin is set. The code is unique across the
+whole platform, so the login needs nothing else.
+
+Phase 9: universities send incomplete lists, so email, roll number and date of birth are optional. A candidate
+needs a name plus at least one way to tell them apart (email, phone or roll number). The roll number, when given,
+is unique inside one test (a filtered unique index, because SQL Server allows only one NULL in a plain unique one).
 
 The roster belongs to a test (not to the institution in general) because the test decides which fields /
 departments exist and which paper a candidate gets (Phase 6 builds it from the candidate's department).
@@ -10,7 +16,7 @@ Only PUBLISHED tests take a roster: a published test is locked, so a candidate's
 The access code is kept readable (not hashed) on purpose: the admin has to print or email it, and it only works
 together with the date of birth, for one test, until that test ends.
 """
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Index
 
 from app.common.utils import iso, utcnow
 from app.extensions import db
@@ -19,28 +25,37 @@ from app.extensions import db
 CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 CODE_GROUP, CODE_GROUPS = 4, 2
 CODE_MIN_LEN, CODE_MAX_LEN = 6, 20          # codes the institution supplies itself in the CSV
+PIN_LENGTH = 6                              # Phase 9: second factor for candidates without a date of birth
 
-# CSV import ----------------------------------------------------------------------------------------
+# CSV import ---------------------------------------------------------------------------------------
 # Column -> accepted header spellings (compared lower-case, without spaces, dots, dashes or underscores)
 CSV_COLUMNS = {
-    "full_name": ("name", "fullname", "candidatename", "studentname"),
-    "email": ("email", "emailaddress", "mail"),
-    "roll_number": ("rollnumber", "rollno", "roll", "rollnum"),
+    "full_name": ("name", "fullname", "candidatename", "studentname", "nameofstudent", "nameofcandidate",
+                  "applicantname", "student", "candidate"),
+    "email": ("email", "emailaddress", "mail", "gmail", "emailid", "mailid"),
+    "phone": ("phone", "phoneno", "phonenumber", "mobile", "mobileno", "mobilenumber", "cell", "cellno",
+              "cellnumber", "contact", "contactno", "contactnumber", "whatsapp", "whatsappno"),
+    "roll_number": ("rollnumber", "rollno", "roll", "rollnum", "regno", "regnumber", "registrationno",
+                    "registrationnumber", "seatno", "seatnumber", "studentid", "candidateid", "enrollmentno"),
     "access_code": ("accesscode", "code", "accesscodeoptional"),
-    "date_of_birth": ("dateofbirth", "dob", "birthdate"),
-    "department": ("field", "department", "fielddepartment", "fieldordepartment"),
+    "date_of_birth": ("dateofbirth", "dob", "birthdate", "birthday", "dateofbirthddmmyyyy", "dobddmmyyyy"),
+    "department": ("field", "department", "fielddepartment", "fieldordepartment", "program", "programme",
+                   "group", "discipline"),
 }
-CSV_REQUIRED = ("full_name", "email", "roll_number", "date_of_birth", "department")
-CSV_TEMPLATE_HEADER = ["name", "email", "roll number", "access code", "date of birth", "field"]
+# Phase 9: only the name column is required; at least one of these must be in the file (and filled in each row)
+CSV_IDENTIFIERS = ("email", "phone", "roll_number")
+CSV_TEMPLATE_HEADER = ["name", "email", "phone", "roll number", "date of birth", "field"]
 MAX_IMPORT_ROWS = 5000
 MAX_CSV_BYTES = 2 * 1024 * 1024              # 2 MB is about 20,000 rows; far above MAX_IMPORT_ROWS
-DOB_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%d-%b-%Y", "%d %b %Y", "%d-%B-%Y", "%d %B %Y")
+DOB_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%Y/%m/%d", "%d-%b-%Y", "%d %b %Y", "%d-%B-%Y",
+               "%d %B %Y", "%d/%b/%Y", "%b %d, %Y", "%B %d, %Y", "%b %d %Y", "%B %d %Y")
 
 
 class Candidate(db.Model):
     __tablename__ = "candidates"
     __table_args__ = (
-        UniqueConstraint("test_id", "roll_number", name="uq_candidates_test_roll"),
+        Index("uq_candidates_test_roll", "test_id", "roll_number", unique=True,
+              mssql_where=db.text("roll_number IS NOT NULL"), sqlite_where=db.text("roll_number IS NOT NULL")),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -48,9 +63,11 @@ class Candidate(db.Model):
     test_id = db.Column(db.Integer, db.ForeignKey("tests.id"), nullable=False, index=True)
     department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=False, index=True)
     full_name = db.Column(db.Unicode(150), nullable=False)
-    email = db.Column(db.String(255), nullable=False)
-    roll_number = db.Column(db.Unicode(50), nullable=False)
-    date_of_birth = db.Column(db.Date, nullable=False)
+    email = db.Column(db.String(255), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)                       # Phase 9, digits only (+ allowed first)
+    roll_number = db.Column(db.Unicode(50), nullable=True)
+    date_of_birth = db.Column(db.Date, nullable=True)
+    pin = db.Column(db.String(PIN_LENGTH), nullable=True)                 # Phase 9, only when there is no DOB
     access_code = db.Column(db.String(20), nullable=False, unique=True)   # stored upper-case
     code_generated = db.Column(db.Boolean, nullable=False, default=True)  # False = supplied in the CSV
     last_login_at = db.Column(db.DateTime, nullable=True)
@@ -64,15 +81,23 @@ class Candidate(db.Model):
     # Phase 6: the candidate's attempt (at most one), shown on the roster
     attempt = db.relationship("ExamAttempt", uselist=False, viewonly=True, lazy="selectin")
 
+    @property
+    def login_with(self) -> str:
+        """Which second factor this candidate signs in with: "dob" or "pin"."""
+        return "dob" if self.date_of_birth else "pin"
+
     def to_dict(self) -> dict:
-        """Admin view (roster page). The page masks the code and date of birth until clicked."""
+        """Admin view (roster page). The page masks the code, PIN and date of birth until clicked."""
         return {
             "id": self.id,
             "test_id": self.test_id,
             "full_name": self.full_name,
             "email": self.email,
+            "phone": self.phone,
             "roll_number": self.roll_number,
-            "date_of_birth": self.date_of_birth.isoformat(),
+            "date_of_birth": self.date_of_birth.isoformat() if self.date_of_birth else None,
+            "login_with": self.login_with,
+            "pin": self.pin,
             "access_code": self.access_code,
             "code_generated": self.code_generated,
             "department": {"id": self.department.id, "name": self.department.name},
@@ -83,7 +108,7 @@ class Candidate(db.Model):
         }
 
     def session_dict(self) -> dict:
-        """What the signed-in candidate sees about themselves. Never the access code or date of birth."""
+        """What the signed-in candidate sees about themselves. Never the access code, PIN or date of birth."""
         t = self.test
         return {
             "id": self.id,

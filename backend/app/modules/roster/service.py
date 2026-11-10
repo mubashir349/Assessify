@@ -5,12 +5,26 @@ institution's test or candidate id gives 404. A roster only exists for a PUBLISH
 
 CSV import is "import what is valid, report the rest": good rows are saved in one transaction, every bad row comes
 back with its row number and a reason, so nothing is dropped silently. dry_run=1 checks the file without saving.
+
+Phase 9 makes the import lenient, because university lists are incomplete:
+  * only a name column is required, plus at least one of email / phone / roll number (each row must fill one);
+  * headers are matched loosely ("Student Name", "Gmail", "Mobile", "Reg No" ...) and unknown columns are ignored;
+  * small mistakes are fixed (spaces, case, phone formats, Excel date numbers);
+  * a row without a date of birth gets a 6-digit PIN as its second factor;
+  * hard errors only where the result could be wrong: no name, no identifier, a blank roll number in a file that has
+    a roll number column, a duplicate roll number / email / code, an unknown or missing field, a date that is not
+    a date. Things worth a look (same name twice, a date that could be day/month or month/day) are warnings: the
+    row is still imported;
+  * a row that is already on the roster (same roll number, or same email / phone and same name) is skipped, so the
+    same file can be uploaded again after fixing a few rows.
 """
 import csv
 import difflib
 import io
+import re
 import secrets
-from datetime import date, datetime
+from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
@@ -21,14 +35,18 @@ from app.common.validation import EMAIL_RE, raise_if
 from app.extensions import db
 from app.models.aptitude_test import AptitudeTest
 from app.models.candidate import (CODE_ALPHABET, CODE_GROUP, CODE_GROUPS, CODE_MAX_LEN, CODE_MIN_LEN, CSV_COLUMNS,
-                                  CSV_REQUIRED, CSV_TEMPLATE_HEADER, DOB_FORMATS, MAX_CSV_BYTES, MAX_IMPORT_ROWS,
-                                  Candidate)
+                                  CSV_IDENTIFIERS, CSV_TEMPLATE_HEADER, DOB_FORMATS, MAX_CSV_BYTES, MAX_IMPORT_ROWS,
+                                  PIN_LENGTH, Candidate)
 from app.models.department import Department
+from app.models.institution import Institution
 from app.models.user import User
 
 PER_PAGE_DEFAULT, PER_PAGE_MAX = 50, 200
-_LABELS = {"full_name": "name", "email": "email", "roll_number": "roll number", "access_code": "access code",
-           "date_of_birth": "date of birth", "department": "field"}
+_LABELS = {"full_name": "name", "email": "email", "phone": "phone", "roll_number": "roll number",
+           "access_code": "access code", "date_of_birth": "date of birth", "department": "field"}
+# Cells people type when they have no value. Treated as empty.
+_PLACEHOLDERS = {"-", "--", "---", ".", "n/a", "na", "n.a", "n.a.", "none", "nil", "null", "not available", "#n/a", "?"}
+CSV_RISKY_START = ("=", "+", "-", "@", "\t", "\r")
 
 
 # ---------------------------------------------------------------- access codes
@@ -53,6 +71,11 @@ def new_code(reserved: set | None = None) -> str:
         code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_GROUP * CODE_GROUPS))
         if code not in reserved and not _code_taken(code):
             return code
+
+
+def new_pin() -> str:
+    """6 random digits, never starting with 0 (Excel drops a leading 0 when it opens the CSV)."""
+    return secrets.choice("123456789") + "".join(secrets.choice("0123456789") for _ in range(PIN_LENGTH - 1))
 
 
 # ---------------------------------------------------------------- reading
@@ -100,9 +123,9 @@ def list_roster(institution_id: int, args) -> dict:
     if search:
         like = f"%{search}%"
         q = q.filter(or_(Candidate.full_name.ilike(like), Candidate.roll_number.ilike(like),
-                         Candidate.email.ilike(like)))
+                         Candidate.email.ilike(like), Candidate.phone.ilike(like)))
     page, per_page = _page_args(args)
-    p = q.order_by(Candidate.roll_number, Candidate.id).paginate(page=page, per_page=per_page, error_out=False)
+    p = q.order_by(Candidate.roll_number, Candidate.full_name, Candidate.id).paginate(page=page, per_page=per_page, error_out=False)
 
     counts = dict(db.session.query(Candidate.department_id, func.count(Candidate.id))
                   .filter(Candidate.test_id == test.id).group_by(Candidate.department_id).all())
@@ -137,8 +160,39 @@ def counts_by_test(institution_id: int) -> dict:
 
 
 # ---------------------------------------------------------------- one candidate's fields
+def _blank(raw) -> bool:
+    return str(raw or "").strip().lower() in _PLACEHOLDERS or not str(raw or "").strip()
+
+
+def _text(raw) -> str:
+    """Trimmed cell text; placeholders such as "-" or "N/A" count as empty. A leading ' (added by our own export so
+    Excel does not run the cell as a formula) is removed."""
+    if _blank(raw):
+        return ""
+    value = " ".join(str(raw).split())
+    if value.startswith("'") and value[1:2] in CSV_RISKY_START:
+        value = value[1:]
+    if value.startswith('="') and value.endswith('"'):        # Excel's ="0300..." trick to keep a leading zero
+        value = value[2:-1]
+    return value
+
+
+def _excel_serial(value: str) -> date | None:
+    """Excel shows a date column as numbers (39156) when the cell format is lost."""
+    if value.isdigit() and 10000 <= int(value) <= 60000:
+        return date(1899, 12, 30) + timedelta(days=int(value))
+    return None
+
+
 def parse_dob(raw) -> date | None:
-    value = str(raw or "").strip()
+    value = _text(raw)
+    if not value:
+        return None
+    serial = _excel_serial(value)
+    if serial:
+        return serial
+    if " " in value and ":" in value:             # "2007-07-02 00:00:00" from a spreadsheet date cell
+        value = value.split(" ", 1)[0]
     for fmt in DOB_FORMATS:
         try:
             return datetime.strptime(value, fmt).date()
@@ -147,19 +201,28 @@ def parse_dob(raw) -> date | None:
     return None
 
 
+_NUMERIC_DATE = re.compile(r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$")
+
+
+def _dob_is_ambiguous(raw) -> bool:
+    """03/04/2007 could be 3 April or 4 March. We read day first (the Pakistani order) but say so."""
+    m = _NUMERIC_DATE.match(_text(raw))
+    return bool(m) and int(m.group(1)) <= 12 and int(m.group(2)) <= 12 and m.group(1) != m.group(2)
+
+
 def _norm(s: str) -> str:
     return " ".join(str(s or "").split()).lower()
 
 
 def _match_department(test: AptitudeTest, raw: str) -> tuple[Department | None, str | None]:
     depts = test.departments()
-    if not str(raw or "").strip():
+    if not _text(raw):
         if len(depts) == 1:                      # a one-field test (e.g. a general test) needs no field column
             return depts[0], None
-        return None, f"{_term(test)} is required."
+        return None, f"{_term(test)} is required (this test has: " + ", ".join(d.name for d in depts) + ")."
     by_name = {_norm(d.name): d for d in depts}
-    dept = by_name.get(_norm(raw))
-    if dept:
+    dept = by_name.get(_norm(raw)) or {_header_key(d.name): d for d in depts}.get(_header_key(raw))
+    if dept:                                     # "pre engineering" / "PreEngineering" = "Pre-Engineering"
         return dept, None
     guess = difflib.get_close_matches(_norm(raw), list(by_name), n=1, cutoff=0.6)
     hint = f' (did you mean "{by_name[guess[0]].name}"?)' if guess else \
@@ -171,31 +234,10 @@ def _term(test: AptitudeTest) -> str:
     return "Field" if test.level == "Undergraduate" else "Department"
 
 
-def clean_fields(test: AptitudeTest, raw: dict, *, department=None, candidate: Candidate | None = None) -> tuple[dict, dict]:
-    """Validates one candidate. `department` is an already-matched Department or None (then raw["department"] is a
-    name). Returns (clean, errors) with errors = {field: message}. Checks against the saved roster, not the file."""
-    errors, clean = {}, {}
-
-    def keep(field_name, value, error):
-        clean[field_name] = value
-        if error:
-            errors[field_name] = error
-
-    keep("full_name", *_clean_name(raw))
-    keep("email", *_clean_email(raw))
-    keep("roll_number", *_clean_roll(test, raw, candidate))
-    keep("date_of_birth", *_clean_dob(raw))
-    if department is None:
-        department, msg = _match_department(test, raw.get("department"))
-        if msg:
-            errors["department"] = msg
-    clean["department"] = department
-    keep("access_code", *_clean_code(raw.get("access_code")))
-    return clean, errors
-
-
-def _clean_name(raw: dict) -> tuple:
-    name = " ".join(str(raw.get("full_name") or "").split())
+def _clean_name(raw) -> tuple:
+    name = _text(raw)
+    if name and (name.isupper() or name.islower()):
+        name = " ".join(w[:1].upper() + w[1:].lower() for w in name.split())   # AHMED RAZA -> Ahmed Raza
     if not name:
         return name, "Name is required."
     if not 2 <= len(name) <= 150:
@@ -203,43 +245,69 @@ def _clean_name(raw: dict) -> tuple:
     return name, None
 
 
-def _clean_email(raw: dict) -> tuple:
-    email = str(raw.get("email") or "").strip().lower()
+def _clean_email(raw) -> tuple:
+    email = "".join(_text(raw).split()).lower()
+    if email.startswith("mailto:"):
+        email = email[7:]
     if not email:
-        return email, "Email is required."
+        return None, None
     if len(email) > 255 or not EMAIL_RE.match(email):
         return email, f'Email "{email}" is not valid.'
     return email, None
 
 
-def _clean_roll(test: AptitudeTest, raw: dict, candidate: Candidate | None) -> tuple:
-    roll = str(raw.get("roll_number") or "").strip()
+_PHONE_CHARS = set("0123456789 +-().")
+
+
+def normalize_phone(raw) -> tuple[str | None, str | None]:
+    """0300-1234567, +92 300 1234567, 923001234567 and 3001234567 (Excel dropped the 0) -> 03001234567.
+    Other countries keep their + and digits."""
+    value = _text(raw)
+    if not value:
+        return None, None
+    if value.endswith(".0") and value[:-2].isdigit():        # 3001234567.0 from a number cell
+        value = value[:-2]
+    if not set(value) <= _PHONE_CHARS:
+        return value, f'Phone "{value}" is not a phone number.'
+    plus = value.startswith("+") or value.startswith("00")
+    digits = "".join(ch for ch in value if ch.isdigit())
+    if value.startswith("00"):
+        digits = digits[2:]
+    if digits.startswith("92") and len(digits) == 12:          # Pakistan, written with the country code
+        digits, plus = "0" + digits[2:], False
+    elif not plus and len(digits) == 10 and digits.startswith("3"):
+        digits = "0" + digits
+    if not 7 <= len(digits) <= 15:
+        return value, f'Phone "{value}" must have 7-15 digits.'
+    return ("+" if plus else "") + digits, None
+
+
+def _clean_roll(raw, required: bool) -> tuple:
+    roll = _text(raw)
     if not roll:
-        return roll, "Roll number is required."
+        return None, ("Roll number is missing (the file has a roll number column)." if required else None)
     if len(roll) > 50:
         return roll, "Roll number must be at most 50 characters."
-    q = Candidate.query.filter(Candidate.test_id == test.id, func.lower(Candidate.roll_number) == roll.lower())
-    if candidate is not None:
-        q = q.filter(Candidate.id != candidate.id)
-    if q.first() is not None:
-        return roll, f"Roll number {roll} is already on this test's roster."
     return roll, None
 
 
-def _clean_dob(raw: dict) -> tuple:
-    dob_raw = str(raw.get("date_of_birth") or "").strip()
-    dob = parse_dob(dob_raw)
+def _clean_dob(raw) -> tuple:
+    """(date or None, error, warning). Empty is fine: the candidate gets a PIN instead."""
+    dob_raw = _text(raw)
     if not dob_raw:
-        return dob, "Date of birth is required."
+        return None, None, None
+    dob = parse_dob(dob_raw)
     if dob is None:
-        return dob, f'Date of birth "{dob_raw}" is not a date (use YYYY-MM-DD or DD/MM/YYYY).'
+        return None, f'Date of birth "{dob_raw}" is not a date (use DD/MM/YYYY or YYYY-MM-DD, or leave it empty).', None
     if dob.year < 1900 or dob >= date.today():
-        return dob, f'Date of birth "{dob_raw}" is not realistic.'
-    return dob, None
+        return None, f'Date of birth "{dob_raw}" is not realistic.', None
+    warning = f'Date of birth "{dob_raw}" was read as {dob.strftime("%d %B %Y")} (day first).' \
+        if _dob_is_ambiguous(dob_raw) else None
+    return dob, None, warning
 
 
 def _clean_code(code_raw) -> tuple:
-    if code_raw is None or not str(code_raw).strip():
+    if _blank(code_raw):
         return None, None
     code = canonical_code(code_raw)
     if not CODE_MIN_LEN <= len(code) <= CODE_MAX_LEN:
@@ -249,10 +317,41 @@ def _clean_code(code_raw) -> tuple:
     return code, None
 
 
-def _new_candidate(test: AptitudeTest, clean: dict, code: str, generated: bool) -> Candidate:
+def clean_fields(test: AptitudeTest, raw: dict, *, department=None, roll_required: bool = False) -> tuple[dict, dict, list]:
+    """Validates one candidate on its own (no roster or file checks). `department` is an already-matched Department
+    or None (then raw["department"] is a name). Returns (clean, errors {field: message}, warnings [message])."""
+    errors, clean, warnings = {}, {}, []
+
+    def keep(field_name, value, error):
+        clean[field_name] = value
+        if error:
+            errors[field_name] = error
+
+    keep("full_name", *_clean_name(raw.get("full_name")))
+    keep("email", *_clean_email(raw.get("email")))
+    keep("phone", *normalize_phone(raw.get("phone")))
+    keep("roll_number", *_clean_roll(raw.get("roll_number"), roll_required))
+    dob, dob_error, dob_warning = _clean_dob(raw.get("date_of_birth"))
+    keep("date_of_birth", dob, dob_error)
+    if dob_warning:
+        warnings.append(dob_warning)
+    if department is None:
+        department, msg = _match_department(test, raw.get("department"))
+        if msg:
+            errors["department"] = msg
+    clean["department"] = department
+    keep("access_code", *_clean_code(raw.get("access_code")))
+    has_id = any(clean.get(k) for k in CSV_IDENTIFIERS) or any(k in errors for k in CSV_IDENTIFIERS)
+    if not has_id:
+        errors["identifier"] = "Give at least one of email, phone or roll number, so this person can be told apart."
+    return clean, errors, warnings
+
+
+def _new_candidate(test: AptitudeTest, clean: dict, code: str, generated: bool, pin: str | None) -> Candidate:
     return Candidate(institution_id=test.institution_id, test_id=test.id, department_id=clean["department"].id,
-                     full_name=clean["full_name"], email=clean["email"], roll_number=clean["roll_number"],
-                     date_of_birth=clean["date_of_birth"], access_code=code, code_generated=generated)
+                     full_name=clean["full_name"], email=clean["email"], phone=clean["phone"],
+                     roll_number=clean["roll_number"], date_of_birth=clean["date_of_birth"], pin=pin,
+                     access_code=code, code_generated=generated)
 
 
 def _commit() -> None:
@@ -277,103 +376,251 @@ def _decode(data: bytes) -> str:
     return data.decode("latin-1")
 
 
-def read_csv(file_storage, test: AptitudeTest) -> list[tuple[int, dict]]:
-    """Uploaded CSV -> [(row number as Excel shows it, {column: value})]. Raises clear errors for a bad file."""
-    text = _read_csv_text(file_storage)
+@dataclass
+class ParsedCsv:
+    header: list[str]
+    columns: dict                                  # {column: index in the row}
+    rows: list = field(default_factory=list)       # [(row number as Excel shows it, cells, {column: value})]
+    file_warnings: list = field(default_factory=list)
+
+    @property
+    def roll_required(self) -> bool:
+        return "roll_number" in self.columns
+
+
+def read_csv(file_storage, test: AptitudeTest) -> ParsedCsv:
+    """Uploaded CSV or Excel (.xlsx) file -> ParsedCsv. Raises clear errors for a bad file."""
+    table = iter(_read_table(file_storage))
+    header = [str(h).strip() for h in next(table, [])]
+    parsed = ParsedCsv(header=header, columns={})
+    _map_columns(parsed, test)
+
+    for line_no, cells in enumerate(table, start=2):
+        if not any(str(c).strip() for c in cells):
+            continue                                   # blank line: skipped, not an error
+        parsed.rows.append((line_no, cells, {col: (cells[i].strip() if i < len(cells) else "")
+                                              for col, i in parsed.columns.items()}))
+        if len(parsed.rows) > MAX_IMPORT_ROWS:
+            raise ApiError("TOO_MANY_ROWS", f"A file can have at most {MAX_IMPORT_ROWS} candidates. Split the file.",
+                           422, {"file": f"At most {MAX_IMPORT_ROWS} rows."})
+    if not parsed.rows:
+        raise ApiError("EMPTY_FILE", "The file has headings but no candidates.", 422, {"file": "No candidate rows."})
+    _drop_empty_columns(parsed)
+    return parsed
+
+
+def _read_table(file_storage) -> list[list[str]]:
+    """Rows of text cells from a .csv / .txt or .xlsx upload."""
+    if file_storage is None or not file_storage.filename:
+        raise ApiError("VALIDATION_ERROR", "Choose a CSV or Excel file.", 422, {"file": "Choose a CSV or Excel file."})
+    name = file_storage.filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1].lower()
+    if not name.endswith((".csv", ".txt", ".xlsx")):
+        hint = " A PDF can't be read reliably: copy its table into Excel and save it as .xlsx or CSV." \
+            if name.endswith(".pdf") else ""
+        raise ApiError("UNSUPPORTED_FILE_TYPE", "Upload a .csv or .xlsx file." + hint, 415,
+                       {"file": "Upload a .csv or .xlsx file." + hint})
+    data = file_storage.read(MAX_CSV_BYTES + 1)
+    if len(data) > MAX_CSV_BYTES:
+        raise ApiError("FILE_TOO_LARGE", f"The file is larger than {MAX_CSV_BYTES // (1024 * 1024)} MB.", 413,
+                       {"file": "File is too large."})
+    if name.endswith(".xlsx"):
+        return _xlsx_rows(data)
+    text = _decode(data)
+    if not text.strip():
+        raise ApiError("EMPTY_FILE", "The CSV file is empty.", 422, {"file": "The file is empty."})
     try:
         dialect = csv.Sniffer().sniff(text.splitlines()[0], delimiters=",;\t")
     except csv.Error:
         dialect = csv.excel
-    reader = csv.reader(io.StringIO(text), dialect)
-    columns = _map_columns(next(reader, []), test)
+    return list(csv.reader(io.StringIO(text), dialect))
 
-    rows = []
-    for line_no, cells in enumerate(reader, start=2):
-        if not any(str(c).strip() for c in cells):
-            continue                                   # blank line: skipped, not an error
-        rows.append((line_no, {col: (cells[i].strip() if i < len(cells) else "") for col, i in columns.items()}))
-        if len(rows) > MAX_IMPORT_ROWS:
-            raise ApiError("TOO_MANY_ROWS", f"A CSV can have at most {MAX_IMPORT_ROWS} candidates. Split the file.", 422,
-                           {"file": f"At most {MAX_IMPORT_ROWS} rows."})
+
+def _xlsx_cell(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))                     # 3001234567.0 -> 3001234567
+    return str(value).strip()
+
+
+def _xlsx_rows(data: bytes) -> list[list[str]]:
+    """The first sheet of an Excel workbook. Dates come out as YYYY-MM-DD, whole numbers without .0."""
+    from openpyxl import load_workbook          # imported here: only the import route needs it
+    try:
+        book = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    except Exception:                            # openpyxl raises many kinds (zip, xml, key) for a broken file
+        raise ApiError("UNSUPPORTED_FILE_TYPE", "This Excel file can't be opened. Save it again as .xlsx or CSV.", 415,
+                       {"file": "The Excel file can't be opened."})
+    try:
+        sheet = book.worksheets[0]
+        rows = []
+        for values in sheet.iter_rows(values_only=True):
+            rows.append([_xlsx_cell(v) for v in values])
+            if len(rows) > MAX_IMPORT_ROWS + 2:
+                break
+    finally:
+        book.close()
+    while rows and not any(rows[-1]):
+        rows.pop()
     if not rows:
-        raise ApiError("EMPTY_FILE", "The CSV has headings but no candidates.", 422, {"file": "No candidate rows."})
+        raise ApiError("EMPTY_FILE", "The Excel file is empty.", 422, {"file": "The file is empty."})
     return rows
 
 
-def _read_csv_text(file_storage) -> str:
-    if file_storage is None or not file_storage.filename:
-        raise ApiError("VALIDATION_ERROR", "Choose a CSV file.", 422, {"file": "Choose a CSV file."})
-    name = file_storage.filename.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
-    if not name.lower().endswith((".csv", ".txt")):
-        raise ApiError("UNSUPPORTED_FILE_TYPE", "Upload a .csv file (in Excel: File → Save As → CSV UTF-8).", 415,
-                       {"file": "Upload a .csv file."})
-    data = file_storage.read(MAX_CSV_BYTES + 1)
-    if len(data) > MAX_CSV_BYTES:
-        raise ApiError("FILE_TOO_LARGE", f"The CSV is larger than {MAX_CSV_BYTES // (1024 * 1024)} MB.", 413,
-                       {"file": "File is too large."})
-    text = _decode(data)
-    if not text.strip():
-        raise ApiError("EMPTY_FILE", "The CSV file is empty.", 422, {"file": "The file is empty."})
-    return text
-
-
-def _map_columns(header: list, test: AptitudeTest) -> dict:
-    """{column: index in the row} from the heading row; raises when a required column is missing."""
-    columns, aliases = {}, {alias: col for col, names in CSV_COLUMNS.items() for alias in names}
-    for i, h in enumerate(header):
+def _map_columns(parsed: ParsedCsv, test: AptitudeTest) -> None:
+    """Fills parsed.columns from the heading row. Only a name column and one identifier column are required."""
+    aliases = {alias: col for col, names in CSV_COLUMNS.items() for alias in names}
+    ignored = []
+    for i, h in enumerate(parsed.header):
         col = aliases.get(_header_key(h))
-        if col and col not in columns:
-            columns[col] = i
-    required = [c for c in CSV_REQUIRED if not (c == "department" and len(test.departments()) == 1)]
-    missing = [c for c in required if c not in columns]
+        if col and col not in parsed.columns:
+            parsed.columns[col] = i
+        elif h:
+            ignored.append(h)
+    missing = []
+    if "full_name" not in parsed.columns:
+        missing.append("name")
+    if not any(c in parsed.columns for c in CSV_IDENTIFIERS):
+        missing.append("email, phone or roll number (at least one)")
+    if "department" not in parsed.columns and len(test.departments()) > 1:
+        missing.append(_LABELS["department"])
     if missing:
-        names = ", ".join(_LABELS[c] for c in missing)
+        names = "; ".join(missing)
         raise ApiError("CSV_MISSING_COLUMNS", f"The first row of the CSV must name the columns. Missing: {names}. "
                        "Download the template to see the expected headings.", 422,
-                       {"file": f"Missing columns: {names}.", "columns": [_LABELS[c] for c in missing]})
-    return columns
+                       {"file": f"Missing columns: {names}.", "columns": missing})
+    if ignored:
+        parsed.file_warnings.append("These columns were ignored: " + ", ".join(f'"{h}"' for h in ignored) + ".")
+
+
+def _drop_empty_columns(parsed: ParsedCsv) -> None:
+    """A roll number (or other optional) column that is empty in every row is treated as not there at all."""
+    for col in ("roll_number", "email", "phone", "date_of_birth", "access_code"):
+        if col in parsed.columns and all(_blank(values.get(col)) for _, _, values in parsed.rows):
+            del parsed.columns[col]
+            for _, _, values in parsed.rows:
+                values.pop(col, None)
+            if col == "roll_number":
+                parsed.file_warnings.append("The roll number column is empty in every row, so it was ignored.")
+    if not any(c in parsed.columns for c in CSV_IDENTIFIERS):
+        raise ApiError("CSV_MISSING_COLUMNS", "The email, phone and roll number columns are all empty. Fill at least "
+                       "one of them so candidates can be told apart.", 422,
+                       {"file": "No email, phone or roll number in any row.",
+                        "columns": ["email, phone or roll number (at least one)"]})
+
+
+class _RosterIndex:
+    """The test's saved roster, looked up by roll number, email, phone and name (one query, not one per row)."""
+
+    def __init__(self, test: AptitudeTest):
+        self.by_roll, self.by_email, self.by_phone, self.names = {}, {}, {}, set()
+        for c in Candidate.query.filter_by(test_id=test.id).all():
+            if c.roll_number:
+                self.by_roll[c.roll_number.lower()] = c
+            if c.email:
+                self.by_email[c.email] = c
+            if c.phone:
+                self.by_phone.setdefault(c.phone, c)
+            self.names.add(_norm(c.full_name))
+
+    def match(self, clean: dict) -> tuple[str, str | None]:
+        """("skip", reason) when the row is already on the roster, ("error", message) when it clashes with someone
+        else, ("new", None) otherwise."""
+        name = _norm(clean["full_name"])
+        roll = (clean["roll_number"] or "").lower()
+        if roll and roll in self.by_roll:
+            other = self.by_roll[roll]
+            if _norm(other.full_name) == name:
+                return "skip", f"Already on the roster (roll number {other.roll_number})."
+            return "error", f"Roll number {clean['roll_number']} already belongs to {other.full_name} on this roster."
+        email = clean["email"]
+        if email and email in self.by_email:
+            other = self.by_email[email]
+            if _norm(other.full_name) == name and not roll:
+                return "skip", f"Already on the roster (email {email})."
+            return "error", f"Email {email} is already used by {other.full_name} on this roster."
+        phone = clean["phone"]
+        if phone and not roll and not email and phone in self.by_phone and \
+                _norm(self.by_phone[phone].full_name) == name:
+            return "skip", f"Already on the roster (phone {phone})."
+        return "new", None
+
+
+def _file_duplicates(seen: dict, clean: dict, line_no: int) -> tuple[list, list]:
+    """Checks the row against earlier rows of the same file. Returns (errors, warnings).
+    The same roll number, email or code twice is an error; the same phone (siblings share one) or name is a warning."""
+    errors, warnings = [], []
+    checks = (("roll", (clean["roll_number"] or "").lower(), f"Duplicate roll number {clean['roll_number']}", True),
+              ("email", clean["email"], f"Duplicate email {clean['email']}", True),
+              ("code", clean["access_code"], "Duplicate access code", True),
+              ("phone", clean["phone"], f"Same phone {clean['phone']}", False),
+              ("name", _norm(clean["full_name"]), "Same name", False))
+    for kind, key, message, is_error in checks:
+        if not key:
+            continue
+        bucket = seen.setdefault(kind, {})
+        if key not in bucket:
+            bucket[key] = line_no
+        elif is_error:
+            errors.append(f"{message} (also row #{bucket[key]}).")
+        else:
+            warnings.append(f"{message} as row #{bucket[key]} (check it is a different person).")
+    return errors, warnings
+
+
+def _row_label(clean: dict, raw: dict) -> dict:
+    return {"full_name": clean.get("full_name") or raw.get("full_name", ""), "roll_number": clean.get("roll_number")}
 
 
 def import_csv(user: User, test_id, file_storage, dry_run: bool = False) -> dict:
     test = published_test(user.institution_id, test_id)
-    rows = read_csv(file_storage, test)
+    parsed = read_csv(file_storage, test)
+    index = _RosterIndex(test)
 
-    seen_rolls, seen_codes = {}, {}
-    to_add, problems = [], []
-    for line_no, raw in rows:
-        clean, errors = clean_fields(test, raw)
-        issues = list(errors.values())
-        if "roll_number" not in errors:
-            issues += _first_seen(seen_rolls, clean["roll_number"].lower(), line_no,
-                                  f"Duplicate roll number {clean['roll_number']}")
-        if "access_code" not in errors:
-            issues += _first_seen(seen_codes, clean["access_code"], line_no, "Duplicate access code")
+    seen = {}
+    to_add, problems, warned, skipped = [], [], [], []
+    for line_no, cells, raw in parsed.rows:
+        clean, errors, warnings = clean_fields(test, raw, roll_required=parsed.roll_required)
+        if not errors.get("full_name"):
+            verdict, message = index.match(clean)
+            if verdict == "skip":
+                skipped.append({"row": line_no, **_row_label(clean, raw), "reason": message})
+                continue
+            if verdict == "error":
+                errors["roster"] = message
+        dup_errors, dup_warnings = _file_duplicates(seen, clean, line_no)
+        issues = list(errors.values()) + dup_errors
+        if not issues and _norm(clean["full_name"]) in index.names:
+            dup_warnings.append("Someone with the same name is already on the roster (check it is a different person).")
         if issues:
-            problems.append({"row": line_no, "full_name": clean["full_name"] or raw.get("full_name", ""),
-                             "roll_number": clean["roll_number"], "issues": issues})
+            problems.append({"row": line_no, **_row_label(clean, raw), "issues": issues, "cells": cells})
             continue
+        if warnings or dup_warnings:
+            warned.append({"row": line_no, **_row_label(clean, raw), "issues": warnings + dup_warnings})
         to_add.append(clean)
 
-    generated = _add_candidates(test, to_add, set(seen_codes), dry_run)
-    return {"test_id": test.id, "dry_run": dry_run, "total_rows": len(rows),
+    generated, pins = _add_candidates(test, to_add, set(seen.get("code", {})), dry_run)
+    return {"test_id": test.id, "dry_run": dry_run, "total_rows": len(parsed.rows),
             ("would_import" if dry_run else "imported"): len(to_add), "codes_generated": generated,
-            "error_count": len(problems), "errors": problems,
+            "pins_generated": pins, "error_count": len(problems), "errors": problems,
+            "warning_count": len(warned), "warnings": warned, "skipped_count": len(skipped), "skipped": skipped,
+            "file_warnings": parsed.file_warnings, "header": parsed.header,
+            "columns": sorted(_LABELS[c] for c in parsed.columns),
+            "summary": {"login_with_dob": sum(1 for c in to_add if c["date_of_birth"]),
+                        "login_with_pin": sum(1 for c in to_add if not c["date_of_birth"]),
+                        "missing_email": sum(1 for c in to_add if not c["email"]),
+                        "missing_phone": sum(1 for c in to_add if not c["phone"]),
+                        "missing_roll": sum(1 for c in to_add if not c["roll_number"])},
             "roster_total": Candidate.query.filter_by(test_id=test.id).count()}
 
 
-def _first_seen(seen: dict, key, line_no: int, message: str) -> list[str]:
-    """Remembers the first row of each key (roll number / code); a later row with the same key gets an issue."""
-    if not key:
-        return []
-    if key in seen:
-        return [f"{message} (also row #{seen[key]})."]
-    seen[key] = line_no
-    return []
-
-
-def _add_candidates(test: AptitudeTest, to_add: list[dict], reserved: set, dry_run: bool) -> int:
-    """Adds the clean rows (unless dry_run), generating missing codes. Returns how many codes were generated."""
-    generated = 0
+def _add_candidates(test: AptitudeTest, to_add: list[dict], reserved: set, dry_run: bool) -> tuple[int, int]:
+    """Adds the clean rows (unless dry_run), generating missing codes and PINs. Returns (codes, PINs) generated."""
+    generated = pins = 0
     for clean in to_add:
         if clean["access_code"]:
             code, was_generated = clean["access_code"], False
@@ -381,33 +628,66 @@ def _add_candidates(test: AptitudeTest, to_add: list[dict], reserved: set, dry_r
             code, was_generated = new_code(reserved), True
             reserved.add(code)
             generated += 1
+        pin = None if clean["date_of_birth"] else new_pin()
+        pins += pin is not None
         if not dry_run:
-            db.session.add(_new_candidate(test, clean, code, was_generated))
+            db.session.add(_new_candidate(test, clean, code, was_generated, pin))
     if not dry_run:
         _commit()
-    return generated
+    return generated, pins
 
 
 def template_csv() -> str:
     out = io.StringIO()
     w = csv.writer(out)
     w.writerow(CSV_TEMPLATE_HEADER)
-    w.writerow(["Ahmed Raza", "ahmed.raza@example.com", "PE-2026-014", "", "2008-03-14", "Pre-Engineering"])
-    w.writerow(["Sana Fatima", "sana.fatima@example.com", "PM-2026-091", "NED7Q4K2", "02/07/2007", "Pre-Medical"])
+    w.writerow(["Ahmed Raza", "ahmed.raza@example.com", "0300-1234567", "PE-2026-014", "14/03/2008", "Pre-Engineering"])
+    w.writerow(["Sana Fatima", "", "0321-7654321", "PM-2026-091", "", "Pre-Medical"])
+    w.writerow(["Bilal Khan", "bilal.khan@example.com", "", "PE-2026-015", "2007-11-02", "Pre-Engineering"])
     return out.getvalue()
 
 
+def _cell(value) -> str:
+    """Spreadsheet-safe text: a cell starting with = + - @ would run as a formula in Excel."""
+    text = "" if value is None else str(value)
+    return "'" + text if text.startswith(CSV_RISKY_START) else text
+
+
+def _ordered(test: AptitudeTest) -> list[Candidate]:
+    return (Candidate.query.filter_by(test_id=test.id)
+            .order_by(Candidate.roll_number, Candidate.full_name, Candidate.id).all())
+
+
+EXPORT_HEADER = ["name", "roll number", "access code", "login with", "pin", "date of birth", "email", "phone"]
+
+
 def export_csv(institution_id: int, test_id) -> tuple[str, str]:
-    """The roster with access codes, for printing test slips. Returns (filename, csv text)."""
+    """The whole roster, filled in: access codes, PINs, dates of birth. For the admin and the university.
+    Uploading this file again changes nothing (every row is already on the roster)."""
     test = published_test(institution_id, test_id)
     out = io.StringIO()
     w = csv.writer(out)
-    w.writerow(["name", "email", "roll number", _term(test).lower(), "access code", "date of birth"])
-    for c in Candidate.query.filter_by(test_id=test.id).order_by(Candidate.roll_number).all():
-        w.writerow([c.full_name, c.email, c.roll_number, c.department.name, display_code(c.access_code),
-                    c.date_of_birth.isoformat()])
+    w.writerow(EXPORT_HEADER + [_term(test).lower()])
+    for c in _ordered(test):
+        w.writerow([_cell(v) for v in (
+            c.full_name, c.roll_number, display_code(c.access_code),
+            "date of birth" if c.login_with == "dob" else "PIN", c.pin,
+            c.date_of_birth.isoformat() if c.date_of_birth else "", c.email, c.phone, c.department.name)])
     safe = "".join(ch if ch.isalnum() else "-" for ch in test.name).strip("-")[:60] or "test"
     return f"roster-{safe}.csv", out.getvalue()
+
+
+def slips(institution_id: int, test_id) -> dict:
+    """GET /roster/slips - one printable slip per candidate. The date of birth is never printed: it is the part of
+    the login that only the candidate knows. A PIN is printed, because the candidate has no other way to learn it."""
+    test = published_test(institution_id, test_id)
+    sched, inst = test.schedule, db.session.get(Institution, test.institution_id)
+    return {"test": {"id": test.id, "name": test.name, "level": test.level, "term": _term(test),
+                     "institution": inst.name if inst else "",
+                     "schedule": sched.to_dict() if sched else None},
+            "slips": [{"id": c.id, "full_name": c.full_name, "roll_number": c.roll_number,
+                       "department": c.department.name, "access_code": display_code(c.access_code),
+                       "login_with": c.login_with, "pin": c.pin} for c in _ordered(test)]}
 
 
 # ---------------------------------------------------------------- add / correct / new code / remove
@@ -427,41 +707,76 @@ def _json_errors(errors: dict) -> dict:
     return {("department_id" if k == "department" else k): v for k, v in errors.items()}
 
 
+def _roster_clashes(test: AptitudeTest, clean: dict, errors: dict, candidate: Candidate | None) -> None:
+    """Roll number and email must not belong to someone else on this test's roster."""
+    def taken(column, value):
+        q = Candidate.query.filter(Candidate.test_id == test.id, func.lower(column) == value.lower())
+        if candidate is not None:
+            q = q.filter(Candidate.id != candidate.id)
+        return q.first()
+
+    if clean["roll_number"] and "roll_number" not in errors:
+        other = taken(Candidate.roll_number, clean["roll_number"])
+        if other:
+            errors["roll_number"] = f"Roll number {clean['roll_number']} is already on this test's roster ({other.full_name})."
+    if clean["email"] and "email" not in errors:
+        other = taken(Candidate.email, clean["email"])
+        if other:
+            errors["email"] = f"Email {clean['email']} is already used by {other.full_name} on this roster."
+
+
+def _form_errors(test: AptitudeTest, data: dict, dept, candidate: Candidate | None) -> tuple[dict, dict]:
+    clean, errors, _ = clean_fields(test, data, department=dept or test.departments()[0])
+    _roster_clashes(test, clean, errors, candidate)
+    if "identifier" in errors:
+        errors["email"] = errors.pop("identifier")      # the form shows it under the first identifier box
+    return clean, _json_errors(errors)
+
+
 def add_candidate(user: User, test_id, data: dict) -> Candidate:
     test = published_test(user.institution_id, test_id)
     pre = {}
     dept = _department_by_id(test, data.get("department_id"), pre)
-    clean, errors = clean_fields(test, data, department=dept or test.departments()[0])
+    clean, errors = _form_errors(test, data, dept, None)
     errors.update(pre)
-    raise_if(_json_errors(errors))
+    raise_if(errors)
     code = clean["access_code"] or new_code()
-    c = _new_candidate(test, clean, code, generated=not clean["access_code"])
+    c = _new_candidate(test, clean, code, generated=not clean["access_code"],
+                       pin=None if clean["date_of_birth"] else new_pin())
     db.session.add(c)
     _commit()
     return c
 
 
 def update_candidate(institution_id: int, candidate_id: int, data: dict) -> Candidate:
-    """Correct a candidate's details. The access code is changed only with new-code (so it can't be typed by mistake)."""
+    """Correct a candidate's details. The access code is changed only with new-code (so it can't be typed by mistake).
+    Adding a date of birth switches the login to it (the PIN is dropped); removing it gives the candidate a PIN."""
     c = get_candidate(institution_id, candidate_id)
     test = c.test
     pre = {}
     dept = _department_by_id(test, data.get("department_id", c.department_id), pre)
-    clean, errors = clean_fields(test, {**data, "access_code": None}, department=dept or c.department, candidate=c)
+    clean, errors = _form_errors(test, {**data, "access_code": None}, dept or c.department, c)
     errors.update(pre)
-    raise_if(_json_errors(errors))
+    raise_if(errors)
     if clean["department"].id != c.department_id:
         _refuse_if_started(c, "change their field / department (their paper is already built)")
-    c.full_name, c.email, c.roll_number = clean["full_name"], clean["email"], clean["roll_number"]
+    c.full_name, c.email, c.phone, c.roll_number = clean["full_name"], clean["email"], clean["phone"], clean["roll_number"]
     c.date_of_birth, c.department_id = clean["date_of_birth"], clean["department"].id
+    if c.date_of_birth:
+        c.pin = None
+    elif not c.pin:
+        c.pin = new_pin()
     _commit()
     return c
 
 
 def regenerate_code(institution_id: int, candidate_id: int) -> Candidate:
-    """A lost or leaked slip: the old code stops working immediately."""
+    """A lost or leaked slip: the old code stops working immediately. A PIN was on the same slip, so it is
+    replaced too."""
     c = get_candidate(institution_id, candidate_id)
     c.access_code, c.code_generated = new_code(), True
+    if c.pin:
+        c.pin = new_pin()
     _commit()
     return c
 

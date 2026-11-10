@@ -1,11 +1,14 @@
 """Phase 5 - candidate roster. Institution Admin only; everything is scoped to the signed-in admin's institution.
 
 GET    /roster?test_id=&department_id=&q=&page=&per_page=   one published test's roster (paged) + summary
-POST   /roster/import                multipart: file (CSV), test_id, dry_run? -> imported / errors per row
+POST   /roster/import                multipart: file (CSV or .xlsx), test_id, dry_run? -> imported / warnings / skipped /
+                                     errors per row (Phase 9: lenient, see service.py)
 GET    /roster/template.csv          empty CSV with the expected headings and two example rows
-GET    /roster/export.csv?test_id=   the roster with access codes, for printing test slips
+GET    /roster/export.csv?test_id=   the whole roster filled in: access codes, PINs, dates of birth (Phase 9)
+GET    /roster/slips?test_id=        one slip per candidate for printing (code + PIN, never the date of birth)
 GET    /roster/counts                {test_id: number of candidates} for every test of the institution
-POST   /roster                       add one candidate {test_id, full_name, email, roll_number, date_of_birth, department_id, access_code?}
+POST   /roster                       add one candidate {test_id, full_name, email?, phone?, roll_number?, date_of_birth?,
+                                     department_id, access_code?} - name + one of email / phone / roll number
 PUT    /roster/<id>                  correct a candidate (same fields, no test_id / access_code)
 POST   /roster/<id>/new-code         replace the access code (old one stops working at once)
 DELETE /roster/<id>                  remove from the roster
@@ -51,6 +54,12 @@ def template():
 @auth_required(ADMIN)
 def export():
     return _csv(*service.export_csv(g.current_user.institution_id, request.args.get("test_id")))
+
+
+@bp.get("/slips")
+@auth_required(ADMIN)
+def slips():
+    return ok(service.slips(g.current_user.institution_id, request.args.get("test_id")))
 
 
 @bp.get("/counts")

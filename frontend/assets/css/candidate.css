@@ -131,3 +131,22 @@
 .res-row { display:flex; justify-content:space-between; gap:12px; font-size:12.5px; color:var(--n-400); padding:7px 0; }
 .res-row + .res-row { border-top:1px solid rgba(255,255,255,.06); }
 .res-row span:last-child { color:#fff; text-align:right; }
+
+/* Phase 9: candidate login "Date of birth | PIN" switch */
+.lbl-row { display: block; font-size: 12.5px; font-weight: 600; color: var(--n-300); margin-bottom: 6px; }
+.factor-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 12px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.factor-switch label { position: relative; cursor: pointer; }
+.factor-switch input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.factor-switch span { display: block; text-align: center; padding: 8px 10px; border-radius: 9px; font-size: 13px; color: var(--n-400); }
+.factor-switch input:checked + span { background: var(--apt-primary); color: #1c1206; font-weight: 600; }
+.factor-switch input:focus-visible + span { outline: 2px solid var(--apt-primary); outline-offset: 2px; }
+.cand-auth-card [hidden] { display: none; }
+/* the login card's fields (same look as the admin pages; admin-shell.css is not loaded here) */
+.cand-auth-card .a-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; text-align: left; }
+.cand-auth-card .a-field label:not(.factor-switch label) { font-size: 12.5px; font-weight: 600; color: var(--n-300); }
+.cand-auth-card .a-input { background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.12); color: #fff;
+  padding: 10px 13px; border-radius: 10px; font-size: 14px; font-family: var(--font-body); width: 100%; color-scheme: dark; }
+.cand-auth-card .a-input::placeholder { color: var(--n-600); }
+.cand-auth-card #code, .cand-auth-card #pin { font-family: var(--font-mono); letter-spacing: .08em; }
+.cand-auth-card .a-field[hidden] { display: none; }

@@ -166,8 +166,8 @@ function renderRows(items) {
     return;
   }
   $('monBody').innerHTML = items.map(r => `<tr>
-      <td class="name">${esc(r.full_name)}<span class="mon-sub">${esc(r.email)}</span></td>
-      <td class="mono">${esc(r.roll_number)}</td><td>${esc(r.department.name)}</td>
+      <td class="name">${esc(r.full_name)}<span class="mon-sub">${esc(r.email || '')}</span></td>
+      <td class="mono">${esc(r.roll_number || '—')}</td><td>${esc(r.department.name)}</td>
       <td>${statusCell(r)}</td><td>${answeredCell(r.attempt)}</td><td>${remainingCell(r)}</td>
       <td class="muted">${seenCell(r)}</td><td>${actionsCell(r)}</td></tr>`).join('');
 }

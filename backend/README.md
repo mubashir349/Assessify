@@ -432,3 +432,48 @@ To run the tests on SQL Server instead of SQLite, set `TEST_DATABASE_URL` to an 
 delete everything in it), e.g.
 `mssql+pyodbc://sa:<password>@localhost/AssessifyTest?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes`.
 All Phase 1-8 tests also pass on SQL Server 2022.
+
+## Phase 9 — lenient roster import (incomplete university lists)
+
+Universities send incomplete lists, so the roster import no longer stops on missing data.
+**Needed:** a name plus at least one of email / phone / roll number (and the field, when the test has more than one).
+**Optional:** email, phone, roll number, date of birth. A candidate without a date of birth gets a random **6-digit PIN**
+and signs in with *access code + PIN*. The login page has a **Date of birth | PIN** switch; the server accepts only
+that candidate's factor and gives one error for everything, so it never tells which factor a code uses.
+**Files:** CSV or **Excel (.xlsx)**. PDF is refused with advice (copy the table into Excel). Headings are matched
+loosely ("Student Name", "Gmail", "Mobile", "Reg No", "D.O.B" ...); other columns are ignored.
+**Rows:** errors (not imported) only when the result could be wrong: no name, no identifier, a blank roll number in a
+file that has a roll column, duplicate roll number / email / code, unknown or missing field, a date that is not a date.
+Warnings (imported): same name or phone as another row, a date like 03/04/2007 read day first. Rows already on the
+roster (same roll number, or same email / phone and name) are **skipped**, so the same file can be uploaded again.
+**Roster page:** an upload guide, a preview (ready / need fixing / warnings / already on roster), then after import
+*Download updated list* (codes, PINs, dates of birth), *Download rows to fix* (errors.csv: the bad rows + a problem
+column, ready to fix and upload) and *Print slips* (code + PIN, never the date of birth).
+
+### One-time setup after pulling Phase 9 (PowerShell, inside `backend/`)
+```powershell
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt               # adds openpyxl (reads .xlsx)
+flask --app run db upgrade                     # email / roll number / date of birth optional, + phone, pin (nothing deleted)
+python seed_phase9.py <your institution admin email>
+python run.py
+```
+The roll number stays unique inside a test through a *filtered* unique index (`WHERE roll_number IS NOT NULL`), because
+SQL Server allows only one NULL in a normal unique constraint. In `sqlcmd` use `-I` (QUOTED_IDENTIFIER ON) when you
+change the `candidates` table by hand; SSMS and the app already have it on.
+
+### Done-when demo
+1. **Candidate Roster** → *Phase 5 Demo Test* → read the guide → drop `demo_roster_messy.csv`. Preview:
+   6 ready, 4 need fixing (rows 7, 8, 9, 11), 3 warnings, the "Sr No" / "Father Name" columns ignored.
+2. **Import 6 candidates** → *Download updated list* (Sana Fatima has a PIN, the others a date of birth) and
+   *Download rows to fix* (errors.csv with the 4 rows). Upload the same file again: 6 skipped, nothing doubled.
+3. **Print slips** → Sana's slip shows her PIN; the others say "Your date of birth".
+4. Candidate login → Sana's code → **PIN** → a wrong PIN is refused, her PIN signs her in.
+
+### Tests
+```powershell
+python -m pytest -q                       # 238 tests: Phase 1-9
+python -m pytest tests/test_phase9.py -v
+```
+Checked on SQL Server 2022: migration upgrade → downgrade → upgrade, `flask db check` clean, the Phase 5/6/7/9 tests,
+and `loadtest/mock_exam.py` PASS.

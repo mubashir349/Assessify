@@ -1,0 +1,26 @@
+/* roster-slips.html — printable test slips (Phase 9). Plain black on white so any printer works. */
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111; background: #f3f4f6; }
+.bar { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 20px; background: #111827; color: #fff; }
+.bar-actions { display: flex; gap: 8px; }
+.bar input { padding: 8px 10px; border-radius: 8px; border: 1px solid #374151; min-width: 240px; }
+.bar button { padding: 8px 18px; border-radius: 8px; border: 0; background: #f59e0b; color: #1c1206; font-weight: 600; cursor: pointer; }
+.note { max-width: 900px; margin: 14px auto; padding: 0 20px; font-size: 13px; color: #4b5563; }
+.slips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; max-width: 900px; margin: 0 auto 40px; background: #fff; }
+.slip { border: 1px dashed #9ca3af; padding: 14px 16px; break-inside: avoid; page-break-inside: avoid; display: flex; flex-direction: column; gap: 8px; }
+.slip-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+.who b { display: block; font-size: 16px; }
+.who span { font-size: 12px; color: #4b5563; }
+.factor { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.factor span { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; }
+.factor b { font-size: 14px; }
+.factor .code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 20px; letter-spacing: .08em; }
+.slip-foot { font-size: 10.5px; color: #6b7280; line-height: 1.5; }
+@media (max-width: 640px) { .slips { grid-template-columns: 1fr; } }
+@media print {
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  .slips { max-width: none; margin: 0; }
+}

@@ -1,6 +1,6 @@
 """Phase 5 - candidate sign-in (public) and the candidate's own session.
 
-POST /candidate/login    {access_code, date_of_birth: "YYYY-MM-DD"} -> {candidate} and sets the candidate cookie
+POST /candidate/login    {access_code, date_of_birth: "YYYY-MM-DD"} or {access_code, pin: "123456"} -> {candidate} and sets the candidate cookie
 POST /candidate/logout   clears it
 GET  /candidate/me       {candidate}: name, roll number, field, institution, test name, schedule, subjects
 
@@ -21,7 +21,8 @@ bp = Blueprint("candidate_auth", __name__)
 @bp.post("/login")
 def login():
     body = json_body()
-    candidate = service.authenticate(body.get("access_code"), body.get("date_of_birth"), request.remote_addr)
+    candidate = service.authenticate(body.get("access_code"), body.get("date_of_birth"), request.remote_addr,
+                                     pin=body.get("pin"))
     lifetime = service.session_lifetime(candidate)
     token = create_access_token(identity=f"candidate:{candidate.id}", expires_delta=lifetime,
                                 additional_claims={"kind": "candidate", "test_id": candidate.test_id,

@@ -17,7 +17,7 @@
     <form class="cand-auth-card glass fade-up" id="loginForm" novalidate>
       <div class="mark-lg">📝</div>
       <h1>Aptitude Candidate Login</h1>
-      <p class="lead">Enter the access code and date of birth printed on the test slip your institution gave you.</p>
+      <p class="lead">Enter the access code from the test slip your institution gave you, then your date of birth or the PIN on the slip.</p>
 
       <div class="auth-err" id="authErr"></div>
 
@@ -26,13 +26,25 @@
         <input class="a-input" id="code" placeholder="e.g. 8K4Q-2P1X" autocomplete="off" autocapitalize="characters" spellcheck="false" required />
       </div>
       <div class="a-field">
+        <span class="lbl-row" id="factorLbl">Sign in with</span>
+        <div class="factor-switch" role="radiogroup" aria-labelledby="factorLbl">
+          <label><input type="radio" name="factor" value="dob" checked /> <span>Date of birth</span></label>
+          <label><input type="radio" name="factor" value="pin" /> <span>PIN</span></label>
+        </div>
+        <span class="hint" style="font-size:11.5px;color:var(--n-400);">Your slip says which one to use.</span>
+      </div>
+      <div class="a-field" id="dobField">
         <label for="dob">Date of birth</label>
-        <input class="a-input" id="dob" type="date" required />
+        <input class="a-input" id="dob" type="date" />
+      </div>
+      <div class="a-field" id="pinField" hidden>
+        <label for="pin">6-digit PIN</label>
+        <input class="a-input" id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="e.g. 482913" />
       </div>
 
       <button type="submit" class="btn btn-amber" id="loginBtn" style="width:100%;margin-top:6px;">Continue →</button>
 
-      <p class="cand-attempts">Your access code and date of birth were supplied by your test proctor. Codes are one-time — they become invalid once your attempt is submitted or ended.</p>
+      <p class="cand-attempts">Your access code (and PIN, if you have one) are on the slip from your test proctor. Codes are one-time — they become invalid once your attempt is submitted or ended.</p>
     </form>
   </div>
 

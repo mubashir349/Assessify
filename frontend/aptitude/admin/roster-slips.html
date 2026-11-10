@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Slips — Institution Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../assets/css/roster-slips.css" />
+</head>
+<body>
+  <header class="bar no-print">
+    <div>
+      <b id="barTitle">Test slips</b>
+      <span id="barSub">Loading…</span>
+    </div>
+    <div class="bar-actions">
+      <input id="filter" type="search" placeholder="Only names / roll numbers containing…" aria-label="Filter slips" />
+      <button id="printBtn" type="button">Print</button>
+    </div>
+  </header>
+  <p class="note no-print">Cut along the dotted lines and give each candidate their own slip. The date of birth is never printed: candidates who have one type it themselves. A PIN is printed only for candidates without a date of birth.</p>
+  <main id="slips" class="slips"></main>
+  <script src="../../assets/js/api.js"></script>
+  <script src="../../assets/js/roster-slips.js"></script>
+</body>
+</html>

@@ -9,11 +9,12 @@
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/roster.css" />
 </head>
-<body data-page="roster" data-title="Candidate Roster" data-sub="Candidates sign in with a one-time access code + date of birth · no candidate holds a persistent account">
+<body data-page="roster" data-title="Candidate Roster" data-sub="Candidates sign in with a one-time access code + date of birth or PIN · no candidate holds a persistent account">
 
 <template id="a-actions-template">
   <a class="a-btn a-btn-ghost" id="templateBtn" href="#" download>Download template CSV</a>
-  <a class="a-btn a-btn-ghost" id="exportBtn" href="#" download hidden>Export codes (CSV)</a>
+  <a class="a-btn a-btn-ghost" id="exportBtn" href="#" download hidden title="The whole roster with access codes, PINs and dates of birth">Export updated list (CSV)</a>
+  <a class="a-btn a-btn-ghost" id="slipsBtn" href="#" target="_blank" rel="noopener" hidden>Print slips</a>
   <button class="a-btn a-btn-amber" id="addBtn" onclick="openCandModal()" hidden>+ Add candidate</button>
 </template>
 
@@ -34,19 +35,60 @@
   </div>
 
   <div id="rosterArea" hidden>
+    <details class="a-card guide" id="guide" open>
+      <summary><b>How to upload a roster</b><span class="muted"> · read once, then click to hide</span></summary>
+      <div class="guide-grid">
+        <div>
+          <h4>Needed</h4>
+          <ul>
+            <li><b>Name</b> of every candidate.</li>
+            <li>At least <b>one of email, phone or roll number</b>, so two people with the same name can be told apart.</li>
+            <li><b id="gTerm">Field</b>, when this test has more than one (it decides the paper). Use the names exactly as in the test: <span id="gDepts"></span>.</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Optional</h4>
+          <ul>
+            <li><b>Date of birth</b>: if given, the candidate signs in with it. If empty, the system makes a <b>6-digit PIN</b> and prints it on the slip.</li>
+            <li><b>Email</b>: needed only to email results.</li>
+            <li><b>Roll number</b>: if your file has this column, fill it in every row. If you have no roll numbers, leave the column out.</li>
+            <li><b>Access code</b>: leave it out; the system makes one for everyone.</li>
+          </ul>
+        </div>
+        <div>
+          <h4>File</h4>
+          <ul>
+            <li><b>Excel (.xlsx)</b> or <b>CSV</b>. First row = column names; any common names work (“Student Name”, “Gmail”, “Mobile”, “Reg No”, “DOB”…). Other columns are ignored.</li>
+            <li>Dates as DD/MM/YYYY or YYYY-MM-DD. Phones like 0300-1234567 or +92 300 1234567.</li>
+            <li><b>PDF can't be read</b> reliably: copy its table into Excel and save as .xlsx.</li>
+            <li>You'll see a preview first. Nothing is saved until you click Import.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
     <label class="drop" id="drop">
-      <input type="file" id="csvFile" accept=".csv,text/csv" hidden />
+      <input type="file" id="csvFile" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
       <div class="ic">🧾</div>
-      <b style="color:#fff;">Drag a roster CSV here, or click to browse</b>
-      <p style="margin-top:6px;">Columns: name, email, roll number, access code (optional — generated if empty), date of birth, field</p>
-      <p class="muted" style="margin-top:4px;font-size:11.5px;">Dates as YYYY-MM-DD or DD/MM/YYYY · in Excel use File → Save As → CSV UTF-8</p>
+      <b style="color:#fff;">Drag the roster here (Excel .xlsx or CSV), or click to browse</b>
+      <p style="margin-top:6px;">Name + email, phone or roll number · date of birth optional (a PIN is made if empty)</p>
+      <p class="muted" style="margin-top:4px;font-size:11.5px;">Not sure? <a href="#" id="templateLink" style="color:var(--apt-primary);">Download the template</a> and fill it in.</p>
     </label>
 
     <div id="importBox" hidden>
-      <div class="a-grid a-grid-3" style="margin-bottom:20px;">
-        <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl" id="okLbl">Imported successfully</div><div class="num" style="font-size:1.5rem;color:var(--success);" id="okNum">0</div></div>
-        <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Rows with errors</div><div class="num" style="font-size:1.5rem;color:#f87171;" id="errNum">0</div></div>
-        <div class="a-card a-stat" style="padding:16px 18px;"><div class="lbl">Access codes auto-generated</div><div class="num" style="font-size:1.5rem;" id="genNum">0</div></div>
+      <div class="a-grid a-grid-4 import-stats">
+        <div class="a-card a-stat"><div class="lbl" id="okLbl">Imported successfully</div><div class="num" style="color:var(--success);" id="okNum">0</div></div>
+        <div class="a-card a-stat"><div class="lbl">Need fixing (not imported)</div><div class="num" style="color:#f87171;" id="errNum">0</div></div>
+        <div class="a-card a-stat"><div class="lbl">Warnings (imported, check them)</div><div class="num" style="color:var(--apt-primary);" id="warnNum">0</div></div>
+        <div class="a-card a-stat"><div class="lbl">Already on the roster (skipped)</div><div class="num" id="skipNum">0</div></div>
+      </div>
+      <div class="a-card import-summary" id="importSummary">
+        <ul id="summaryList"></ul>
+        <div class="import-actions" id="afterActions" hidden>
+          <button class="a-btn a-btn-amber a-btn-sm" onclick="downloadUpdated()">Download updated list (CSV)</button>
+          <button class="a-btn a-btn-ghost a-btn-sm" id="errCsvBtn" onclick="downloadErrors()">Download rows to fix (errors.csv)</button>
+          <a class="a-btn a-btn-ghost a-btn-sm" id="slipsBtn2" href="#" target="_blank" rel="noopener">Print slips</a>
+        </div>
       </div>
       <div class="a-card preview-bar" id="previewBar" hidden>
         <div><b style="color:#fff;" id="previewFile"></b><p class="muted" style="font-size:12px;" id="previewText"></p></div>
@@ -56,7 +98,7 @@
         </div>
       </div>
       <div class="a-card" id="errCard" style="margin-bottom:20px;border-color:rgba(239,68,68,.3);" hidden>
-        <div class="section-head"><div><h2 id="errTitle">Rows that need fixing</h2><p>Reported individually so nothing silently drops. Fix them in the file and import it again — rows already on the roster are not added twice.</p></div></div>
+        <div class="section-head"><div><h2 id="errTitle">Rows that need fixing</h2><p>These rows were not imported. Fix them in your file (or in errors.csv) and upload again. Rows already on the roster are skipped, never added twice.</p></div></div>
         <div class="a-table-wrap">
           <table class="a-table">
             <thead><tr><th>Row</th><th>Name</th><th>Roll No.</th><th>Issue</th></tr></thead>
@@ -64,19 +106,37 @@
           </table>
         </div>
       </div>
+      <div class="a-card" id="warnCard" style="margin-bottom:20px;border-color:rgba(245,158,11,.3);" hidden>
+        <div class="section-head"><div><h2 id="warnTitle">Warnings</h2><p>These rows are imported. Just check that the system understood them right; correct a candidate later with “Correct”.</p></div></div>
+        <div class="a-table-wrap">
+          <table class="a-table">
+            <thead><tr><th>Row</th><th>Name</th><th>Roll No.</th><th>Check</th></tr></thead>
+            <tbody id="warnRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <details class="a-card" id="skipCard" style="margin-bottom:20px;" hidden>
+        <summary><b id="skipTitle">Already on the roster</b> <span class="muted">· click to see the rows</span></summary>
+        <div class="a-table-wrap" style="margin-top:12px;">
+          <table class="a-table">
+            <thead><tr><th>Row</th><th>Name</th><th>Roll No.</th><th>Why skipped</th></tr></thead>
+            <tbody id="skipRows"></tbody>
+          </table>
+        </div>
+      </details>
     </div>
 
     <div class="section-head">
-      <div><h2 id="rosterTitle">Roster</h2><p>Access codes and dates of birth are masked — click one to reveal it. They are never shown on the monitor, in emails or in reports.</p></div>
+      <div><h2 id="rosterTitle">Roster</h2><p>Access codes, dates of birth and PINs are masked — click one to reveal it. They are never shown on the monitor, in emails or in reports.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <select class="a-select" id="deptFilter" aria-label="Filter by field / department" style="width:auto;min-width:170px;"><option value="">All fields</option></select>
-        <input class="a-input" id="search" aria-label="Search the roster" style="width:220px;" placeholder="Search name, roll no or email…" />
+        <input class="a-input" id="search" aria-label="Search the roster" style="width:220px;" placeholder="Search name, roll no, email or phone…" />
       </div>
     </div>
     <div class="dept-chips" id="deptChips"></div>
     <div class="a-table-wrap">
       <table class="a-table">
-        <thead><tr><th>Name</th><th>Roll No.</th><th>Email</th><th id="deptHead">Field</th><th>Access code</th><th>Date of birth</th><th>Signed in / test</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Roll No.</th><th>Email / phone</th><th id="deptHead">Field</th><th>Access code</th><th>DOB / PIN</th><th>Signed in / test</th><th></th></tr></thead>
         <tbody id="rosterRows"><tr><td colspan="8" class="a-empty">Loading…</td></tr></tbody>
       </table>
     </div>
@@ -89,14 +149,16 @@
 <div class="a-modal-bg" id="candModal">
   <div class="a-modal">
     <div class="a-modal-head">
-      <div><h3 id="cTitle">Add candidate</h3><p class="muted" style="font-size:12px;" id="cSub">An access code is generated automatically if you leave it empty.</p></div>
+      <div><h3 id="cTitle">Add candidate</h3><p class="muted" style="font-size:12px;" id="cSub">Name + at least one of email, phone or roll number. An access code is generated automatically.</p></div>
       <button class="a-modal-x" onclick="closeModal('candModal')">✕</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div class="a-field"><label for="cName">Full name</label><input class="a-input" id="cName" /></div>
-      <div class="a-field"><label for="cEmail">Email</label><input class="a-input" id="cEmail" type="email" /></div>
-      <div class="a-field"><label for="cRoll">Roll number</label><input class="a-input" id="cRoll" /></div>
-      <div class="a-field"><label for="cDob">Date of birth</label><input class="a-input" id="cDob" type="date" /></div>
+      <div class="a-field"><label for="cEmail">Email <span class="muted">(optional)</span></label><input class="a-input" id="cEmail" type="email" /></div>
+      <div class="a-field"><label for="cPhone">Phone <span class="muted">(optional)</span></label><input class="a-input" id="cPhone" inputmode="tel" placeholder="0300-1234567" /></div>
+      <div class="a-field"><label for="cRoll">Roll number <span class="muted">(optional)</span></label><input class="a-input" id="cRoll" /></div>
+      <div class="a-field"><label for="cDob">Date of birth <span class="muted">(optional)</span></label><input class="a-input" id="cDob" type="date" />
+        <span class="hint">Empty = the candidate signs in with a 6-digit PIN printed on their slip.</span></div>
       <div class="a-field"><label for="cDept" id="cDeptLbl">Field</label><select class="a-select" id="cDept"></select></div>
       <div class="a-field" id="cCodeField"><label for="cCode">Access code (optional)</label><input class="a-input" id="cCode" placeholder="leave empty to generate" />
         <span class="hint">6–20 letters or digits; must not be used by anyone else.</span></div>

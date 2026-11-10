@@ -1,6 +1,7 @@
 // roster.html — candidate roster of one published test, stored in the database through the API (Phase 5).
-// Flow: pick a test → drop a CSV → the server checks it (dry run) → "Import N" saves the good rows → roster table.
-let TESTS = [], TEST = null, page = 1, searchTimer, pendingFile = null, editId = null;
+// Flow: pick a test → drop a CSV / Excel file → the server checks it (dry run) → "Import N" saves the good rows → roster table.
+// Phase 9: lenient import (name + email / phone / roll number), warnings, skipped rows, errors.csv, updated list, slips.
+let TESTS = [], TEST = null, page = 1, searchTimer, pendingFile = null, editId = null, lastResult = null;
 const PER_PAGE = 50;
 const $ = id => document.getElementById(id);
 const term = () => TEST?.term || 'Field';
@@ -39,7 +40,11 @@ function selectTest() {
   const sc = TEST.schedule;
   const mode = sc?.timing_mode === 'fixed' ? 'Fixed time' : 'Flexible window';
   $('testMeta').innerHTML = sc ? `${mode}<br/><b style="color:#fff;">${esc(fmtWhen(sc.starts_at))}</b> – ${esc(fmtWhen(sc.ends_at))}` : '';
-  $('rosterArea').hidden = false; $('exportBtn').hidden = false; $('addBtn').hidden = false;
+  $('rosterArea').hidden = false; $('exportBtn').hidden = false; $('addBtn').hidden = false; $('slipsBtn').hidden = false;
+  const slipsUrl = 'roster-slips.html?test_id=' + encodeURIComponent(TEST.id);
+  $('slipsBtn').href = slipsUrl; $('slipsBtn2').href = slipsUrl;
+  $('gTerm').textContent = term();
+  $('gDepts').innerHTML = TEST.departments.map(d => `<b>${esc(d.name)}</b>`).join(', ');
   $('deptHead').textContent = term(); $('cDeptLbl').textContent = term();
   $('deptFilter').innerHTML = `<option value="">All ${term() === 'Field' ? 'fields' : 'departments'}</option>` +
     TEST.departments.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
@@ -64,10 +69,13 @@ async function loadRoster() {
     `<span class="a-chip">Signed in · ${s.logged_in}</span>` : '';
   $('rosterRows').innerHTML = d.items.map(c => `
     <tr>
-      <td class="name">${esc(c.full_name)}</td><td class="mono">${esc(c.roll_number)}</td><td>${esc(c.email)}</td>
+      <td class="name">${esc(c.full_name)}</td><td class="mono">${esc(c.roll_number || '—')}</td>
+      <td>${esc(c.email || '')}${c.phone ? `<span class="mon-sub mono">${esc(c.phone)}</span>` : ''}${!c.email && !c.phone ? '<span class="muted">—</span>' : ''}</td>
       <td><span class="a-chip">${esc(c.department.name)}</span></td>
       <td class="mono reveal" data-real="${esc(c.access_code)}">••••-••••</td>
-      <td class="mono reveal" data-real="${esc(new Date(c.date_of_birth + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }))}">••-•••-••••</td>
+      ${c.login_with === 'pin'
+        ? `<td class="mono reveal" data-real="PIN ${esc(c.pin)}" title="No date of birth: signs in with this PIN">PIN ••••••</td>`
+        : `<td class="mono reveal" data-real="${esc(new Date(c.date_of_birth + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }))}">••-•••-••••</td>`}
       <td class="muted" style="font-size:12px;">${c.last_login_at ? esc(fmtWhen(c.last_login_at)) : '—'}${attemptCell(c.attempt)}</td>
       <td style="white-space:nowrap;">
         ${c.attempt?.status === 'locked' ? `<button class="a-btn a-btn-amber a-btn-sm" onclick="unlockAttempt(${c.attempt.id})" title="${esc(c.attempt.reference)}">Unlock</button>` : ''}
@@ -108,7 +116,7 @@ async function unlockAttempt(id) {
   await loadRoster();
 }
 
-// ---------------------------------------------------------------- CSV import (check first, then save)
+// ---------------------------------------------------------------- import (check first, then save)
 async function sendCsv(file, dryRun) {
   const fd = new FormData();
   fd.append('test_id', TEST.id); fd.append('file', file);
@@ -116,23 +124,78 @@ async function sendCsv(file, dryRun) {
   return api('/roster/import', { method: 'POST', body: fd });
 }
 
+function rowsHtml(list, key, color) {
+  return list.map(e => `
+    <tr><td class="mono">#${e.row}</td><td class="name">${esc(e.full_name || '—')}</td><td class="mono">${esc(e.roll_number || '—')}</td>
+    <td style="color:${color};">${(key === 'reason' ? [e.reason] : e.issues).map(esc).join('<br/>')}</td></tr>`).join('');
+}
+
+function summaryLines(d) {
+  const s = d.summary, n = d.dry_run ? d.would_import : d.imported, will = d.dry_run ? 'will get' : 'got';
+  const lines = [];
+  if (n) {
+    lines.push(`${plural(n, 'candidate')} ${will} an access code (${d.codes_generated} made by the system).`);
+    lines.push(`${s.login_with_dob} sign in with their date of birth · ${s.login_with_pin} with a new 6-digit PIN (printed on the slip).`);
+    const missing = [s.missing_email && `${s.missing_email} without email (no result email)`,
+                     s.missing_phone && `${s.missing_phone} without phone`,
+                     s.missing_roll && `${s.missing_roll} without roll number`].filter(Boolean);
+    if (missing.length) lines.push('Missing: ' + missing.join(' · ') + '.');
+  }
+  if (d.skipped_count) lines.push(`${plural(d.skipped_count, 'row')} already on the roster: skipped, nothing changed for them.`);
+  (d.file_warnings || []).forEach(w => lines.push(w));
+  if (!n && !d.skipped_count && d.error_count) lines.push('No row can be imported yet. Fix the rows below and upload again.');
+  return lines;
+}
+
 function showResult(d, file) {
+  lastResult = d;
   $('importBox').hidden = false;
   const n = d.dry_run ? d.would_import : d.imported;
   $('okLbl').textContent = d.dry_run ? 'Ready to import' : 'Imported successfully';
-  $('okNum').textContent = n; $('errNum').textContent = d.error_count; $('genNum').textContent = d.codes_generated;
+  $('okNum').textContent = n; $('errNum').textContent = d.error_count;
+  $('warnNum').textContent = d.warning_count; $('skipNum').textContent = d.skipped_count;
+  $('summaryList').innerHTML = summaryLines(d).map(l => `<li>${esc(l)}</li>`).join('');
+  $('afterActions').hidden = d.dry_run;
+  $('errCsvBtn').hidden = !d.error_count;
   $('previewBar').hidden = !d.dry_run;
   if (d.dry_run) {
     $('previewFile').textContent = file.name;
-    $('previewText').textContent = `${plural(d.total_rows, 'row')} checked · ${n} ready · ${d.error_count} need fixing. Nothing is saved until you click Import.`;
+    $('previewText').textContent = `${plural(d.total_rows, 'row')} checked · ${n} ready · ${d.error_count} need fixing · ${d.warning_count} with warnings · ${d.skipped_count} already on the roster. Nothing is saved until you click Import.`;
     $('confirmBtn').textContent = n ? `Import ${plural(n, 'candidate')}` : 'Nothing to import';
     $('confirmBtn').disabled = !n;
   }
   $('errCard').hidden = !d.error_count;
   $('errTitle').textContent = `Rows that need fixing (${d.error_count})`;
-  $('errRows').innerHTML = d.errors.map(e => `
-    <tr><td class="mono">#${e.row}</td><td class="name">${esc(e.full_name || '—')}</td><td class="mono">${esc(e.roll_number || '—')}</td>
-    <td style="color:#f87171;">${e.issues.map(esc).join('<br/>')}</td></tr>`).join('');
+  $('errRows').innerHTML = rowsHtml(d.errors, 'issues', '#f87171');
+  $('warnCard').hidden = !d.warning_count;
+  $('warnTitle').textContent = `Warnings (${d.warning_count})`;
+  $('warnRows').innerHTML = rowsHtml(d.warnings, 'issues', 'var(--apt-primary)');
+  $('skipCard').hidden = !d.skipped_count;
+  $('skipTitle').textContent = `Already on the roster (${d.skipped_count})`;
+  $('skipRows').innerHTML = rowsHtml(d.skipped, 'reason', 'var(--n-400)');
+}
+
+// errors.csv: the bad rows exactly as they were in the file, plus a "problem" column. Fix and upload it as it is:
+// the "problem" column is ignored and rows already imported are skipped.
+function csvCell(v) {
+  const t = String(v ?? '');
+  return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
+function downloadErrors() {
+  const d = lastResult;
+  if (!d || !d.error_count) return;
+  const lines = [[...d.header, 'problem'], ...d.errors.map(e => {
+    const cells = d.header.map((_, i) => e.cells[i] ?? '');
+    return [...cells, e.issues.join(' ')];
+  })].map(r => r.map(csvCell).join(','));
+  const blob = new Blob(['\ufeff' + lines.join('\r\n') + '\r\n'], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'errors.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function downloadUpdated() {
+  if (TEST) void downloadFile('/roster/export.csv?test_id=' + TEST.id, 'roster.csv');
 }
 
 async function pickFile(file) {
@@ -163,9 +226,10 @@ function openCandModal(id) {
   editId = id || null;
   const c = id ? window.ROWS.find(x => x.id === id) : null;
   $('cTitle').textContent = c ? 'Correct candidate' : 'Add candidate';
-  $('cSub').textContent = c ? 'To change the access code use “New code”.' : 'An access code is generated automatically if you leave it empty.';
-  $('cName').value = c ? c.full_name : ''; $('cEmail').value = c ? c.email : '';
-  $('cRoll').value = c ? c.roll_number : ''; $('cDob').value = c ? c.date_of_birth : '';
+  $('cSub').textContent = c ? 'To change the access code use “New code”. Removing the date of birth gives a PIN.'
+                            : 'Name + at least one of email, phone or roll number. An access code is generated automatically.';
+  $('cName').value = c ? c.full_name : ''; $('cEmail').value = c?.email || ''; $('cPhone').value = c?.phone || '';
+  $('cRoll').value = c?.roll_number || ''; $('cDob').value = c?.date_of_birth || '';
   $('cDept').value = c ? c.department.id : TEST.departments[0]?.id;
   $('cCode').value = ''; $('cCodeField').hidden = !!c;
   $('cErr').style.display = 'none';
@@ -173,7 +237,7 @@ function openCandModal(id) {
 }
 
 async function saveCand() {
-  const body = { full_name: $('cName').value, email: $('cEmail').value, roll_number: $('cRoll').value,
+  const body = { full_name: $('cName').value, email: $('cEmail').value, phone: $('cPhone').value, roll_number: $('cRoll').value,
                  date_of_birth: $('cDob').value, department_id: Number($('cDept').value) };
   if (!editId) { body.test_id = TEST.id; if ($('cCode').value.trim()) body.access_code = $('cCode').value.trim(); }
   const btn = $('cSave'); btn.disabled = true;
@@ -181,7 +245,8 @@ async function saveCand() {
     const { candidate } = editId ? await api('/roster/' + editId, { method: 'PUT', body })
                                  : await api('/roster', { method: 'POST', body });
     closeModal('candModal');
-    aToast(editId ? 'Candidate corrected.' : `Added · access code ${esc(candidate.access_code)}`);
+    const pin = candidate.login_with === 'pin' ? ` · PIN ${esc(candidate.pin)}` : '';
+    aToast(editId ? 'Candidate corrected.' : `Added · access code ${esc(candidate.access_code)}${pin}`);
     await loadRoster();
   } catch (e) {
     if (e.status === 401) return handleApiError(e);
@@ -194,14 +259,19 @@ async function saveCand() {
 
 async function newCode(id) {
   const c = window.ROWS.find(x => x.id === id);
-  if (!confirm(`Issue a new access code for ${c.full_name}? The old code stops working immediately (use this for a lost slip).`)) return;
-  try { const { candidate } = await api(`/roster/${id}/new-code`, { method: 'POST' }); aToast(`New code for ${esc(candidate.full_name)}: ${esc(candidate.access_code)}`); await loadRoster(); }
+  const pinNote = c.login_with === 'pin' ? ' Their PIN is replaced too.' : '';
+  if (!confirm(`Issue a new access code for ${c.full_name}? The old code stops working immediately (use this for a lost slip).${pinNote}`)) return;
+  try {
+    const { candidate } = await api(`/roster/${id}/new-code`, { method: 'POST' });
+    const pin = candidate.login_with === 'pin' ? ` · PIN ${esc(candidate.pin)}` : '';
+    aToast(`New code for ${esc(candidate.full_name)}: ${esc(candidate.access_code)}${pin}`); await loadRoster();
+  }
   catch (e) { handleApiError(e); }
 }
 
 async function removeCand(id) {
   const c = window.ROWS.find(x => x.id === id);
-  if (!confirm(`Remove ${c.full_name} (${c.roll_number}) from this roster? Their access code stops working.`)) return;
+  if (!confirm(`Remove ${c.full_name}${c.roll_number ? ` (${c.roll_number})` : ''} from this roster? Their access code stops working.`)) return;
   try { await api('/roster/' + id, { method: 'DELETE' }); aToast('Removed.'); await loadRoster(); }
   catch (e) { handleApiError(e); }
 }
@@ -210,7 +280,8 @@ async function removeCand(id) {
 // download / pickFile / loadRoster / loadTests never reject (each shows its own error), so their promises are not awaited.
 document.addEventListener('admin:ready', () => {
   $('templateBtn').addEventListener('click', e => { e.preventDefault(); void downloadFile('/roster/template.csv', 'roster-template.csv'); });
-  $('exportBtn').addEventListener('click', e => { e.preventDefault(); if (TEST) void downloadFile('/roster/export.csv?test_id=' + TEST.id, 'roster.csv'); });
+  $('templateLink').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); void downloadFile('/roster/template.csv', 'roster-template.csv'); });
+  $('exportBtn').addEventListener('click', e => { e.preventDefault(); downloadUpdated(); });
   $('csvFile').addEventListener('change', e => { void pickFile(e.target.files[0]); });
   const drop = $('drop');
   ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));

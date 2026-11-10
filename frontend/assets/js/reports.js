@@ -114,7 +114,7 @@ function renderMail(mail, test) {
   const c = mail.counts;
   $('mailNote').textContent = mail.message;
   $('mailBadge').className = 'badge ' + (c.failed ? 'badge-locked' : 'badge-approved');
-  $('mailBadge').textContent = `${c.sent + c.logged} sent · ${c.failed} failed · ${c.not_sent} not sent`;
+  $('mailBadge').textContent = `${c.sent + c.logged} sent · ${c.failed} failed · ${c.not_sent} not sent${c.no_email ? ` · ${c.no_email} no email` : ''}`;
   $('sendBtn').disabled = !mail.ready;
   $('sendBtn').title = mail.ready ? `Email each submitted candidate of ${test.name} their score` : mail.message;
 }
@@ -122,7 +122,7 @@ function renderMail(mail, test) {
 function mailCell(r) {
   if (r.status !== 'submitted') return '—';
   const m = r.result_email;
-  if (!m) return '<span class="muted">Not sent</span>';
+  if (!m) return r.email ? '<span class="muted">Not sent</span>' : '<span class="muted" title="The roster has no email for this candidate">No email</span>';
   const [cls, label] = MAIL[m.status];
   const errHtml = m.error ? '<span class="mail-err">' + esc(m.error) + '</span>' : '';
   return `<span class="badge ${cls}">${label}</span>${errHtml}`;
@@ -137,8 +137,8 @@ function renderCandidates(rows) {
   $('candBody').innerHTML = rows.map(r => {
     const [cls, label] = CAND_STATUS[r.status];
     const reason = r.submit_reason === 'time_up' ? ' · time up' : '';
-    return `<tr><td class="mono">${r.rank ?? '—'}</td><td class="name">${esc(r.full_name)}<span class="mon-sub">${esc(r.email)}</span></td>
-      <td class="mono">${esc(r.roll_number)}</td><td>${esc(r.department.name)}</td>
+    return `<tr><td class="mono">${r.rank ?? '—'}</td><td class="name">${esc(r.full_name)}<span class="mon-sub">${esc(r.email || '')}</span></td>
+      <td class="mono">${esc(r.roll_number || '—')}</td><td>${esc(r.department.name)}</td>
       <td><span class="badge ${cls}">${label}</span><span class="muted">${reason}</span></td>
       <td>${scoreCell(r)}</td><td class="mono">${r.lock_count}</td><td>${mailCell(r)}</td></tr>`;
   }).join('') || '<tr><td colspan="8" class="muted">No candidates match.</td></tr>';
