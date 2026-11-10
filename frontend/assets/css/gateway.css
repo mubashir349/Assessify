@@ -17,9 +17,9 @@
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-mark {
   width: 32px; height: 32px; border-radius: 9px;
-  background: linear-gradient(135deg, var(--primary), var(--violet));
+  background: linear-gradient(135deg, var(--apt-primary), #ea580c);
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 800; font-size: 15px;
+  color: #1c1206; font-weight: 800; font-size: 15px;
 }
 .brand-name { font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 17px; }
 
@@ -31,7 +31,7 @@
   margin: 22px 0 20px;
 }
 .hero h1 .grad {
-  background: linear-gradient(135deg, #818cf8, #a78bfa, #67e8f9);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b, #fb923c);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .hero p.sub {
@@ -39,60 +39,32 @@
   max-width: 620px; margin: 0 auto; line-height: 1.65;
 }
 
-/* Doors */
-.doors {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 22px;
-  margin: 56px 0 8px;
-}
-@media (max-width: 860px) { .doors { grid-template-columns: 1fr; } }
+/* Hero actions */
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 34px; }
+.hero-actions .btn-lg { padding: 14px 26px; font-size: 15px; border-radius: 13px; }
+.hero-foot { margin-top: 18px; font-size: .85rem; color: var(--n-500); }
+.hero-foot a { color: var(--apt-light); font-weight: 600; }
+.hero-foot a:hover { color: #fff; }
 
-.door {
-  position: relative; border-radius: 24px; padding: 36px 32px;
-  display: flex; flex-direction: column; gap: 20px; overflow: hidden;
-  text-align: left;
-}
-.door-course { border: 1px solid rgba(99,102,241,0.28); }
-.door-course::before {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(circle at 85% -10%, rgba(99,102,241,0.22), transparent 55%);
-  pointer-events: none;
-}
-.door-apt { border: 1px solid rgba(245,158,11,0.28); }
-.door-apt::before {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(circle at 85% -10%, rgba(245,158,11,0.20), transparent 55%);
-  pointer-events: none;
+.nav-actions { display: flex; gap: 10px; align-items: center; }
+a.brand { text-decoration: none; }
+@media (max-width: 640px) {
+  .nav-hide-sm { display: none; }
+  .nav-actions .btn { padding: 9px 12px; font-size: 13px; }
+  .hero { padding-top: 130px; }
 }
 
-.door-icon {
-  width: 52px; height: 52px; border-radius: 15px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; position: relative; z-index: 1;
+/* Features */
+.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 40px 0 8px; }
+@media (max-width: 960px) { .features { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .features { grid-template-columns: 1fr; } }
+.feature { border-radius: 20px; padding: 26px 24px; border: 1px solid rgba(245,158,11,0.18); display: flex; flex-direction: column; gap: 12px; }
+.feature .f-icon {
+  width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+  font-size: 19px; background: rgba(245,158,11,.14); color: var(--apt-light); border: 1px solid rgba(245,158,11,.25);
 }
-.door-course .door-icon { background: linear-gradient(135deg, var(--primary), var(--violet)); }
-.door-apt .door-icon { background: linear-gradient(135deg, var(--apt-primary), #ea580c); }
-
-.door-badge {
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .05em;
-  padding: 4px 10px; border-radius: 999px; width: fit-content; position: relative; z-index: 1;
-}
-.door-course .door-badge { color: var(--primary-light); background: rgba(99,102,241,.14); border: 1px solid rgba(99,102,241,.25); }
-.door-apt .door-badge { color: var(--apt-light); background: rgba(245,158,11,.14); border: 1px solid rgba(245,158,11,.25); }
-
-.door h2 { color: #fff; font-size: 1.55rem; font-weight: 700; position: relative; z-index: 1; }
-.door p.desc { color: var(--n-400); font-size: .92rem; line-height: 1.6; position: relative; z-index: 1; }
-
-.door-points { display: flex; flex-direction: column; gap: 9px; position: relative; z-index: 1; }
-.door-points li { display: flex; align-items: flex-start; gap: 9px; font-size: .85rem; color: var(--n-300); }
-.door-points li .tick { flex-shrink: 0; margin-top: 2px; font-size: .78rem; }
-.door-course .tick { color: var(--primary-light); }
-.door-apt .tick { color: var(--apt-light); }
-
-.door-actions { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 10px; position: relative; z-index: 1; }
-.door-actions .btn { flex: 1 1 auto; }
-.door-foot { margin-top: 2px; font-size: .8rem; color: var(--n-500); position: relative; z-index: 1; }
-.door-foot a { color: var(--n-300); font-weight: 600; }
-.door-foot a:hover { color: #fff; }
+.feature h2 { color: #fff; font-size: 1.05rem; font-weight: 700; }
+.feature p { color: var(--n-400); font-size: .88rem; line-height: 1.6; }
 
 /* Engine strip */
 .engine { padding: 78px 0 84px; }

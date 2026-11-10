@@ -195,3 +195,11 @@ table.a-table { width: 100%; border-collapse: collapse; font-size: 13px; min-wid
 .ai-more .a-btn { margin-bottom:6px; }
 .ai-by { font-size:11px; margin-top:6px; }
 @media (max-width: 720px) { .ai-more { grid-template-columns: 1fr; } }
+
+/* Phase 10: Super Admin signup tags (tints are theme tokens) */
+.tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; align-items: center; }
+.tag { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid; }
+.tag-ok { color: var(--success); background: var(--tint-green); border-color: var(--success); }
+.tag-new { color: var(--ai-light); background: var(--tint-cyan); border-color: var(--ai); }
+.tag-warn { color: var(--apt-light); background: var(--tint-amber); border-color: var(--apt-primary); }
+.tag-bad { color: var(--danger); background: var(--tint-red); border-color: var(--danger); }

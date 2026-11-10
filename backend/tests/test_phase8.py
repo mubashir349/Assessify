@@ -17,6 +17,8 @@ PUBLIC = {
     ("POST", "/api/v1/auth/login"), ("POST", "/api/v1/auth/logout"), ("POST", "/api/v1/candidate/login"),
     ("POST", "/api/v1/candidate/logout"), ("GET", "/api/v1/health"), ("GET", "/api/v1/health/db"),
     ("POST", "/api/v1/institutions/signup"), ("GET", "/api/v1/meta"),
+    # Phase 10: signup email code + directory search
+    ("POST", "/api/v1/auth/otp/send"), ("POST", "/api/v1/auth/otp/verify"), ("GET", "/api/v1/directory/search"),
 }
 
 
@@ -150,10 +152,10 @@ def test_production_check_refuses_a_default_or_short_secret():
 
 
 def test_production_check_refuses_the_key_from_env_example():
+    from app.common.security import EXAMPLE_SECRET
     with open(os.path.join(os.path.dirname(__file__), "..", ".env.example"), encoding="utf-8") as f:
-        line = next(x for x in f.read().splitlines() if x.startswith("SECRET_KEY="))
-    example_key = line.split("=", 1)[1].strip()
-    errors, _ = production_problems({"SECRET_KEY": example_key, "SQLALCHEMY_DATABASE_URI": "mssql+pyodbc://"})
+        assert f"SECRET_KEY={EXAMPLE_SECRET}" in f.read()
+    errors, _ = production_problems({"SECRET_KEY": EXAMPLE_SECRET, "SQLALCHEMY_DATABASE_URI": "mssql+pyodbc://"})
     assert errors
 
 

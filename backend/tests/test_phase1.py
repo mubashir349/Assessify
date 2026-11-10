@@ -1,14 +1,14 @@
 from app.extensions import db
 from app.models.institution import Institution
-from tests.conftest import SIGNUP, login
+from tests.conftest import SIGNUP, do_signup, login
 
 
 def signup(client, **over):
-    return client.post("/api/v1/institutions/signup", json={**SIGNUP, **over})
+    return do_signup(client, **over)
 
 
 def super_login(client):
-    assert login(client, "root@assessai.com", "SuperSecret123").status_code == 200
+    assert login(client, "root@assessify.com", "SuperSecret123").status_code == 200
 
 
 # ---------- signup ----------
@@ -89,7 +89,7 @@ def test_full_flow_signup_approve_login_me_logout(client, app):
 
 
 def test_login_cookie_is_httponly(client):
-    r = login(client, "root@assessai.com", "SuperSecret123")
+    r = login(client, "root@assessify.com", "SuperSecret123")
     cookie = [h for h in r.headers.getlist("Set-Cookie") if h.startswith("access_token_cookie")][0]
     assert "HttpOnly" in cookie
     assert "SameSite=Lax" in cookie

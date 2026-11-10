@@ -5,6 +5,7 @@ from app.common.utils import utcnow
 from app.extensions import db
 from app.models.institution import STATUSES, Institution
 from app.models.user import User
+from app.modules.directory.service import add_from_approved
 
 # current status -> statuses the Super Admin may move it to
 TRANSITIONS = {
@@ -24,7 +25,8 @@ def list_institutions(status: str | None, q: str | None):
     if q:
         like = f"%{q.strip()}%"
         admin_ids = db.session.query(User.institution_id).filter(User.email.ilike(like))
-        query = query.filter(or_(Institution.name.ilike(like), Institution.city.ilike(like), Institution.id.in_(admin_ids)))
+        query = query.filter(or_(Institution.name.ilike(like), Institution.city.ilike(like),
+                                 Institution.campus_name.ilike(like), Institution.id.in_(admin_ids)))
     items = query.order_by(Institution.created_at.desc(), Institution.id.desc()).limit(500).all()
 
     counts = dict.fromkeys(STATUSES, 0)
@@ -43,9 +45,20 @@ def change_status(institution_id: int, new_status: str, note: str | None, review
     if new_status not in TRANSITIONS.get(inst.status, set()):
         raise ApiError("INVALID_TRANSITION", f"Cannot change an institution from {inst.status} to {new_status}.", 409)
 
+    if new_status == "approved":
+        add_from_approved(inst)          # Phase 10: a hand-typed institution / campus joins the directory
     inst.status = new_status
     inst.reviewed_at = utcnow()
     inst.reviewed_by_email = reviewer_email
     inst.review_note = (note or "").strip()[:500] or None
     db.session.commit()
     return inst
+
+
+def proof_of(institution_id: int):
+    inst = db.session.get(Institution, institution_id)
+    if inst is None:
+        raise ApiError("NOT_FOUND", "Institution not found.", 404)
+    if inst.proof is None:
+        raise ApiError("NOT_FOUND", "This institution did not upload a proof document.", 404)
+    return inst.proof

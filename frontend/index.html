@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AssessAI — AI-Powered Assessment &amp; Learning Platform</title>
+<title>Assessify — AI-Powered Aptitude Testing for Institutions</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="assets/css/theme.css" />
 <link rel="stylesheet" href="assets/css/gateway.css" />
@@ -15,92 +15,81 @@
   <!-- Nav -->
   <nav class="nav">
     <div class="wrap nav-inner">
-      <div class="brand">
+      <a class="brand" href="index.html">
         <div class="brand-mark">Σ</div>
-        <span class="brand-name">AssessAI</span>
+        <span class="brand-name">Assessify</span>
+      </a>
+      <div class="nav-actions">
+        <a class="btn btn-ghost nav-hide-sm" href="aptitude/candidate-login.html">Candidate login</a>
+        <a class="btn btn-ghost" href="aptitude/institution-login.html">Log in</a>
+        <a class="btn btn-amber" href="aptitude/institution-signup.html">Register institution</a>
       </div>
-      <div style="display:flex;gap:10px;"><a class="btn btn-ghost" href="aptitude/institution-login.html">Log in</a><a class="btn btn-amber" href="aptitude/institution-signup.html">Register institution</a></div>
     </div>
   </nav>
 
   <!-- Hero -->
   <header class="hero wrap">
-    <span class="eyebrow"><span class="dot"></span>AI-Powered Assessment &amp; Learning Platform</span>
-    <h1>One platform.<br /><span class="grad">Two ways in.</span></h1>
+    <span class="eyebrow"><span class="dot"></span>AI-Powered Aptitude Testing</span>
+    <h1>Run your entrance and aptitude tests<br /><span class="grad">from PDF to results.</span></h1>
     <p class="sub">
-      The same AI question-generation and review engine powers two experiences:
-      everyday classroom assessment for teachers and students, and large-scale,
-      field-specific aptitude testing for partner institutions. Choose where you're headed.
+      Assessify turns your syllabus PDFs into reviewed question banks, builds a different paper for every candidate,
+      locks the test in fullscreen and scores it on the server. Built for universities, colleges and schools.
     </p>
+    <div class="hero-actions">
+      <a class="btn btn-amber btn-lg" href="aptitude/institution-signup.html">Register your institution →</a>
+      <a class="btn btn-ghost btn-lg" href="aptitude/candidate-login.html">I'm a candidate</a>
+    </div>
+    <p class="hero-foot">Already registered? <a href="aptitude/institution-login.html">Institution admin login</a> · Super Admins sign in through the same page</p>
   </header>
 
-  <!-- Doors -->
+  <!-- Features -->
   <main class="wrap">
-    <section class="doors" aria-label="Choose your portal">
-
-      <!-- Door 1: Course Platform -->
-      <article class="door door-course glass hover-lift fade-up" style="animation-delay:.05s">
-        <div class="door-icon">🎓</div>
-        <span class="door-badge">TEACHERS &amp; STUDENTS</span>
-        <h2>Course Platform</h2>
-        <p class="desc">
-          Generate, review, and publish tests for your own classes. AI drafts —
-          you approve every word before it ever reaches a student.
-        </p>
-        <ul class="door-points">
-          <li><span class="tick">✦</span> AI-drafted question banks, reviewed by you before use</li>
-          <li><span class="tick">✦</span> Weak-topic detection &amp; AI Recommendations for students</li>
-          <li><span class="tick">✦</span> Real-time tab-switch pause, resolved by the teacher</li>
-          <li><span class="tick">✦</span> Private practice directories &amp; performance analytics</li>
-        </ul>
-        <div class="door-actions">
-          <a class="btn btn-primary" href="course-login.html">Continue to Course Platform →</a>
-        </div>
-        <p class="door-foot">New here? <a href="course-signup.html">Create a teacher or student account</a></p>
+    <section class="features" aria-label="What Assessify does">
+      <article class="feature glass fade-up">
+        <div class="f-icon">✦</div>
+        <h2>AI questions from your PDFs</h2>
+        <p>Upload notes or past papers. The AI drafts MCQ and true/false questions; nothing reaches the bank until you approve it.</p>
       </article>
-
-      <!-- Door 2: Aptitude Test Portal -->
-      <article class="door door-apt glass hover-lift-amber fade-up" style="animation-delay:.15s">
-        <div class="door-icon">📝</div>
-        <span class="door-badge">INSTITUTIONS &amp; CANDIDATES</span>
-        <h2>Aptitude Test Portal</h2>
-        <p class="desc">
-          Large-scale, field-specific aptitude testing for a partner university
-          or institute — roster-based access, fullscreen integrity lock, and
-          aggregate-only reporting.
-        </p>
-        <ul class="door-points">
-          <li><span class="tick">✦</span> Institution-defined fields, subjects &amp; shared subjects</li>
-          <li><span class="tick">✦</span> Roster-based, no-signup candidate access</li>
-          <li><span class="tick">✦</span> Fullscreen lock-on-exit, unlocked only by an Admin</li>
-          <li><span class="tick">✦</span> Live status dashboard &amp; aggregate PDF reporting</li>
-        </ul>
-        <div class="door-actions">
-          <a class="btn btn-amber" href="aptitude/candidate-login.html">Candidate Login</a>
-          <a class="btn btn-ghost" href="aptitude/institution-login.html">Institution Admin</a>
-        </div>
-        <p class="door-foot">Representing a new institution? <a href="aptitude/institution-signup.html">Register here</a> · Super Admins sign in through the same login</p>
+      <article class="feature glass fade-up" style="animation-delay:.05s">
+        <div class="f-icon">▦</div>
+        <h2>Your fields and departments</h2>
+        <p>Set up your own fields, departments and subjects, for Undergraduate, Masters and PhD admissions.</p>
       </article>
-
+      <article class="feature glass fade-up" style="animation-delay:.1s">
+        <div class="f-icon">⏱</div>
+        <h2>Fixed or flexible timing</h2>
+        <p>Everyone starts together, or candidates start any time in a window. A late starter's timer still ends on time.</p>
+      </article>
+      <article class="feature glass fade-up" style="animation-delay:.15s">
+        <div class="f-icon">🎲</div>
+        <h2>A different paper for each candidate</h2>
+        <p>Every candidate gets a random paper from the approved pool. Correct answers never leave the server.</p>
+      </article>
+      <article class="feature glass fade-up" style="animation-delay:.2s">
+        <div class="f-icon">🔒</div>
+        <h2>Fullscreen lock and live monitor</h2>
+        <p>Leaving fullscreen locks the test. Admins watch every candidate live and unlock them when needed.</p>
+      </article>
+      <article class="feature glass fade-up" style="animation-delay:.25s">
+        <div class="f-icon">📊</div>
+        <h2>Reports and result emails</h2>
+        <p>Search and filter results, export CSV, email results to candidates and get AI insights on weak topics.</p>
+      </article>
     </section>
   </main>
 
-  <!-- One engine, two modes -->
+  <!-- How a test runs -->
   <section class="engine">
     <div class="wrap">
       <div class="engine-head">
         <span class="eyebrow" style="justify-content:center;margin-bottom:14px;"><span class="dot"></span>How it works</span>
-        <h2>One engine, two modes</h2>
-        <p>Course mode and Aptitude mode share the same generation, review, and sufficiency
-          pipeline underneath — they differ only in who gets in, and how integrity is enforced.</p>
+        <h2>How an aptitude test runs</h2>
+        <p>From your first PDF to the final report, in six steps.</p>
       </div>
-
       <div class="pipeline" id="pipeline"></div>
-
       <p class="split-note">
-        <b>Course mode</b> pauses an attempt on tab-switch and lets the teacher resume or end it.
-        <b>Aptitude mode</b> locks an attempt on fullscreen exit and only an Institution Admin can unlock it —
-        the same underlying engine, tuned to each setting.
+        Candidates need no account: they sign in with the <b>access code</b> on their slip and their
+        <b>date of birth or PIN</b>.
       </p>
     </div>
   </section>
@@ -110,9 +99,9 @@
     <div class="wrap gw-footer-inner">
       <div class="brand">
         <div class="brand-mark">Σ</div>
-        <span class="brand-name">AssessAI</span>
+        <span class="brand-name">Assessify</span>
       </div>
-      <p>AI-Powered Online Assessment &amp; Personalized Learning Platform — Course Mode &amp; Institution/Aptitude Mode</p>
+      <p>AI-powered aptitude testing for universities, colleges and schools</p>
     </div>
   </footer>
 

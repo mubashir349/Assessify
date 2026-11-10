@@ -1,8 +1,11 @@
 """Super Admin only.
 GET   /super/institutions?status=&q=     list + counts
 PATCH /super/institutions/<id>           {"status": "approved|rejected|suspended", "note": "..."}
+GET   /super/institutions/<id>/proof     the proof document (Phase 10: institutions without official email)
 """
-from flask import Blueprint, g, request
+import io
+
+from flask import Blueprint, g, request, send_file
 
 from app.common.decorators import auth_required
 from app.common.responses import ok
@@ -26,3 +29,12 @@ def update_institution(institution_id: int):
     body = json_body()
     inst = service.change_status(institution_id, body.get("status"), body.get("note"), g.current_user.email)
     return ok({"institution": inst.to_dict()})
+
+
+@bp.get("/institutions/<int:institution_id>/proof")
+@auth_required(ROLE_SUPER_ADMIN)
+def institution_proof(institution_id: int):
+    proof = service.proof_of(institution_id)
+    # attachment: the browser saves it instead of running it (PDF / image only, checked on upload)
+    return send_file(io.BytesIO(proof.data), mimetype=proof.content_type, as_attachment=True,
+                     download_name=proof.filename)

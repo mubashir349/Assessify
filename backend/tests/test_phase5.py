@@ -61,7 +61,7 @@ def cand_login(app, code, dob):
 # ---------------------------------------------------------------- access + roster belongs to a published test
 def test_roster_requires_institution_admin(client, app):
     assert client.get("/api/v1/roster?test_id=1").status_code == 401
-    client.post("/api/v1/auth/login", json={"email": "root@assessai.com", "password": "SuperSecret123"})
+    client.post("/api/v1/auth/login", json={"email": "root@assessify.com", "password": "SuperSecret123"})
     assert client.get("/api/v1/roster?test_id=1").status_code == 403
 
 

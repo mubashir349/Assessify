@@ -31,24 +31,33 @@ Success → `{ "data": ... }`  ·  Error → `{ "error": { "code": "...", "messa
 | Method | Path | Who | Body → Result |
 |---|---|---|---|
 | POST | `/institutions/signup` | public | see below → `201 {institution, message}`; institution starts as `pending` |
+| GET | `/directory/search?q=ned` | public | `{items: [{campus_id, institution_id, institution_name, short_name, campus_name, city, type, website, email_domain, label, registered}]}` (Phase 10, max 25) |
+| POST | `/auth/otp/send` | public | `{email}` → `{sent_to, expires_in, resend_after, delivery}` — 429 `OTP_TOO_SOON` / `TOO_MANY_ATTEMPTS`, 409 `EMAIL_TAKEN`, 422 `EMAIL_DOMAIN_INVALID` |
+| POST | `/auth/otp/verify` | public | `{email, code}` → `{email, email_token, valid_minutes}` — `OTP_WRONG` / `OTP_EXPIRED` / `OTP_LOCKED` |
 
+Signup body (JSON, or multipart/form-data when a `proof` file is attached). One of three ways to name the institution:
 ```json
-{ "institution_name": "NED University", "institution_type": "University|College|Institute|Training Center",
-  "city": "Karachi", "website": "https://… (optional)", "admin_name": "Dr Ayesha",
-  "admin_email": "a@ned.edu", "admin_phone": "0300 1234567", "admin_designation": "Registrar (optional)",
-  "password": "min 8 chars" }
+{ "directory_campus_id": 12 }                                                    // picked from the list
+{ "directory_institution_id": 4, "campus_name": "Gulshan Campus", "city": "Karachi" }  // listed, new campus
+{ "institution_name": "Bright Future College", "institution_type": "University|College|School|Institute|Training Center",
+  "city": "Hyderabad", "campus_name": "optional", "website": "https://… (optional)" }   // not in the list
 ```
+plus always `"admin_name", "admin_email", "email_token" (from /auth/otp/verify), "password" (min 8),
+"no_official_email": false`. With `no_official_email: true` the `proof` file (PDF/JPG/PNG, max 5 MB) is required.
+Errors: `EMAIL_NOT_VERIFIED`, `INSTITUTION_TAKEN` (409, campus already registered), field errors on `admin_email`
+(personal email, wrong domain), `proof`.
 
 ## Super Admin (role `super_admin` only)
 | Method | Path | Body → Result |
 |---|---|---|
 | GET | `/super/institutions?status=&q=` | `{items: [institution…], counts: {pending, approved, rejected, suspended, total}}` — `q` searches name, city, admin email |
-| PATCH | `/super/institutions/<id>` | `{status: "approved"|"rejected"|"suspended", note?}` → `{institution}` |
+| PATCH | `/super/institutions/<id>` | `{status: "approved"|"rejected"|"suspended", note?}` → `{institution}`; approving a hand-typed institution adds it to the directory |
+| GET | `/super/institutions/<id>/proof` | the proof document as a download (Phase 10) |
 
 Allowed status changes: `pending → approved | rejected` · `approved → suspended` · `suspended → approved` · `rejected → approved`.
 Suspending takes effect on the next request of every signed-in admin of that institution.
 
-`institution` = `{id, name, type, city, website, status, created_at, reviewed_at, review_note, admin: {full_name, email, phone, designation}}`
+`institution` = `{id, name, campus_name, display_name, type, city, website, status, created_at, reviewed_at, review_note, from_directory, email_domain_verified, no_official_email, has_proof, admin: {full_name, email}}`
 
 ## Health
 `GET /health` · `GET /health/db`
