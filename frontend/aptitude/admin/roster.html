@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Candidate Roster — Institution Admin</title>
 <link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../../assets/js/theme.js"></script>
+<script src="../../assets/js/icons.js"></script>
 <link rel="stylesheet" href="../../assets/css/theme.css" />
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/roster.css" />
@@ -15,7 +18,7 @@
   <a class="a-btn a-btn-ghost" id="templateBtn" href="#" download>Download template CSV</a>
   <a class="a-btn a-btn-ghost" id="exportBtn" href="#" download hidden title="The whole roster with access codes, PINs and dates of birth">Export updated list (CSV)</a>
   <a class="a-btn a-btn-ghost" id="slipsBtn" href="#" target="_blank" rel="noopener" hidden>Print slips</a>
-  <button class="a-btn a-btn-amber" id="addBtn" onclick="openCandModal()" hidden>+ Add candidate</button>
+  <button class="a-btn a-btn-primary" id="addBtn" onclick="openCandModal()" hidden><i data-icon="plus"></i> Add candidate</button>
 </template>
 
 <template id="a-content-template">
@@ -30,8 +33,8 @@
   </div>
 
   <div id="noTests" class="a-card a-empty" hidden>
-    <div class="ic">📝</div><h4>No published test yet</h4>
-    <p>Publish a test in <a href="create-test.html" style="color:var(--apt-primary);">Aptitude Tests</a> first, then import its candidates here.</p>
+    <div class="ic"><i data-icon="tests"></i></div><h4>No published test yet</h4>
+    <p>Publish a test in <a href="create-test.html" style="color:var(--accent-text);">Aptitude Tests</a> first, then import its candidates here.</p>
   </div>
 
   <div id="rosterArea" hidden>
@@ -69,35 +72,35 @@
 
     <label class="drop" id="drop">
       <input type="file" id="csvFile" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
-      <div class="ic">🧾</div>
-      <b style="color:#fff;">Drag the roster here (Excel .xlsx or CSV), or click to browse</b>
+      <div class="ic"><i data-icon="ticket"></i></div>
+      <b style="color:var(--text);">Drag the roster here (Excel .xlsx or CSV), or click to browse</b>
       <p style="margin-top:6px;">Name + email, phone or roll number · date of birth optional (a PIN is made if empty)</p>
-      <p class="muted" style="margin-top:4px;font-size:11.5px;">Not sure? <a href="#" id="templateLink" style="color:var(--apt-primary);">Download the template</a> and fill it in.</p>
+      <p class="muted" style="margin-top:4px;font-size:11.5px;">Not sure? <a href="#" id="templateLink" style="color:var(--accent-text);">Download the template</a> and fill it in.</p>
     </label>
 
     <div id="importBox" hidden>
       <div class="a-grid a-grid-4 import-stats">
         <div class="a-card a-stat"><div class="lbl" id="okLbl">Imported successfully</div><div class="num" style="color:var(--success);" id="okNum">0</div></div>
-        <div class="a-card a-stat"><div class="lbl">Need fixing (not imported)</div><div class="num" style="color:#f87171;" id="errNum">0</div></div>
-        <div class="a-card a-stat"><div class="lbl">Warnings (imported, check them)</div><div class="num" style="color:var(--apt-primary);" id="warnNum">0</div></div>
+        <div class="a-card a-stat"><div class="lbl">Need fixing (not imported)</div><div class="num" style="color:var(--danger-text);" id="errNum">0</div></div>
+        <div class="a-card a-stat"><div class="lbl">Warnings (imported, check them)</div><div class="num" style="color:var(--warn-text);" id="warnNum">0</div></div>
         <div class="a-card a-stat"><div class="lbl">Already on the roster (skipped)</div><div class="num" id="skipNum">0</div></div>
       </div>
       <div class="a-card import-summary" id="importSummary">
         <ul id="summaryList"></ul>
         <div class="import-actions" id="afterActions" hidden>
-          <button class="a-btn a-btn-amber a-btn-sm" onclick="downloadUpdated()">Download updated list (CSV)</button>
+          <button class="a-btn a-btn-primary a-btn-sm" onclick="downloadUpdated()">Download updated list (CSV)</button>
           <button class="a-btn a-btn-ghost a-btn-sm" id="errCsvBtn" onclick="downloadErrors()">Download rows to fix (errors.csv)</button>
           <a class="a-btn a-btn-ghost a-btn-sm" id="slipsBtn2" href="#" target="_blank" rel="noopener">Print slips</a>
         </div>
       </div>
       <div class="a-card preview-bar" id="previewBar" hidden>
-        <div><b style="color:#fff;" id="previewFile"></b><p class="muted" style="font-size:12px;" id="previewText"></p></div>
+        <div><b style="color:var(--text);" id="previewFile"></b><p class="muted" style="font-size:12px;" id="previewText"></p></div>
         <div style="display:flex;gap:8px;">
           <button class="a-btn a-btn-ghost" onclick="cancelPreview()">Cancel</button>
-          <button class="a-btn a-btn-amber" id="confirmBtn" onclick="confirmImport()">Import</button>
+          <button class="a-btn a-btn-primary" id="confirmBtn" onclick="confirmImport()">Import</button>
         </div>
       </div>
-      <div class="a-card" id="errCard" style="margin-bottom:20px;border-color:rgba(239,68,68,.3);" hidden>
+      <div class="a-card" id="errCard" style="margin-bottom:20px;border-color:rgba(var(--danger-rgb),.3);" hidden>
         <div class="section-head"><div><h2 id="errTitle">Rows that need fixing</h2><p>These rows were not imported. Fix them in your file (or in errors.csv) and upload again. Rows already on the roster are skipped, never added twice.</p></div></div>
         <div class="a-table-wrap">
           <table class="a-table">
@@ -106,7 +109,7 @@
           </table>
         </div>
       </div>
-      <div class="a-card" id="warnCard" style="margin-bottom:20px;border-color:rgba(245,158,11,.3);" hidden>
+      <div class="a-card" id="warnCard" style="margin-bottom:20px;border-color:rgba(var(--warning-rgb),.3);" hidden>
         <div class="section-head"><div><h2 id="warnTitle">Warnings</h2><p>These rows are imported. Just check that the system understood them right; correct a candidate later with “Correct”.</p></div></div>
         <div class="a-table-wrap">
           <table class="a-table">
@@ -150,7 +153,7 @@
   <div class="a-modal">
     <div class="a-modal-head">
       <div><h3 id="cTitle">Add candidate</h3><p class="muted" style="font-size:12px;" id="cSub">Name + at least one of email, phone or roll number. An access code is generated automatically.</p></div>
-      <button class="a-modal-x" onclick="closeModal('candModal')">✕</button>
+      <button class="a-modal-x" onclick="closeModal('candModal')" aria-label="Close"><i data-icon="x"></i></button>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div class="a-field"><label for="cName">Full name</label><input class="a-input" id="cName" /></div>
@@ -162,8 +165,8 @@
       <div class="a-field"><label for="cDept" id="cDeptLbl">Field</label><select class="a-select" id="cDept"></select></div>
       <div class="a-field" id="cCodeField"><label for="cCode">Access code (optional)</label><input class="a-input" id="cCode" placeholder="leave empty to generate" />
         <span class="hint">6–20 letters or digits; must not be used by anyone else.</span></div>
-      <div class="auth-err" id="cErr" style="display:none;color:#f87171;font-size:12.5px;"></div>
-      <button class="btn btn-amber" id="cSave" style="width:100%;" onclick="saveCand()">Save</button>
+      <div class="auth-err" id="cErr" style="display:none;color:var(--danger-text);font-size:12.5px;"></div>
+      <button class="btn btn-primary" id="cSave" style="width:100%;" onclick="saveCand()">Save</button>
     </div>
   </div>
 </div>

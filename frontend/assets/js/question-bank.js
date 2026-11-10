@@ -18,20 +18,20 @@ function insights(s) {
   const l = {}; META.levels.forEach(x => l[x.value] = s.by_level[x.value] || 0);
   bars('diffBars', d, t); bars('lvlBars', l, t);
   const tips = [];
-  if (!t) tips.push(['🎯', 'The bank is empty — generate drafts from a PDF and approve them in Draft Review.']);
-  if (t && (d.Hard || 0) / t < 0.2) tips.push(['⚠', 'Only ' + Math.round((d.Hard || 0) / t * 100) + '% hard questions — add more to separate top candidates.']);
-  if (t && (d.Easy || 0) / t > 0.5) tips.push(['⚠', 'Bank skews easy — consider generating Medium/Hard drafts.']);
+  if (!t) tips.push(['target', 'The bank is empty — generate drafts from a PDF and approve them in Draft Review.']);
+  if (t && (d.Hard || 0) / t < 0.2) tips.push(['warn', 'Only ' + Math.round((d.Hard || 0) / t * 100) + '% hard questions — add more to separate top candidates.']);
+  if (t && (d.Easy || 0) / t > 0.5) tips.push(['warn', 'Bank skews easy — consider generating Medium/Hard drafts.']);
   const thin = META.levels.map(x => x.value).filter(x => !l[x]);
-  if (t && thin.length) tips.push(['🎯', 'No questions yet for ' + thin.join(', ') + '.']);
-  if (t) tips.push(['✦', t + ' approved questions across ' + Object.keys(s.by_subject).length + ' subjects.']);
-  $('aiTips').innerHTML = tips.slice(0, 4).map(x => `<div class="ai-item"><span class="ic">${x[0]}</span><span>${esc(x[1])}</span></div>`).join('');
+  if (t && thin.length) tips.push(['target', 'No questions yet for ' + thin.join(', ') + '.']);
+  if (t) tips.push(['sparkles', t + ' approved questions across ' + Object.keys(s.by_subject).length + ' subjects.']);
+  $('aiTips').innerHTML = tips.slice(0, 4).map(x => `<div class="ai-item"><span class="ic">${AIcon(x[0])}</span><span>${esc(x[1])}</span></div>`).join('');
 }
 
 function card(x) {
   return `<div class="a-card qrow"><div class="qbody"><p class="qtext">${esc(x.text)}</p>
     <details><summary>Show options &amp; answer</summary>
-      <div class="opt-view">${x.options.map((o, j) => `<span class="${j === x.correct_index ? 'ok' : ''}">${LETTER[j]}. ${esc(o)}${j === x.correct_index ? ' ✓' : ''}</span>`).join('')}</div>
-      ${x.explanation ? `<div class="q-expl">💡 ${esc(x.explanation)}</div>` : ''}</details>
+      <div class="opt-view">${x.options.map((o, j) => `<span class="${j === x.correct_index ? 'ok' : ''}">${LETTER[j]}. ${esc(o)}${j === x.correct_index ? ' <i data-icon="check"></i>' : ''}</span>`).join('')}</div>
+      ${x.explanation ? `<div class="q-expl"><i data-icon="bulb"></i> ${esc(x.explanation)}</div>` : ''}</details>
     <div class="qmeta"><span class="badge badge-approved">Approved</span>
       <span class="a-chip">${esc(x.department_name)}</span><span class="a-chip">${esc(x.level)}</span><span class="a-chip">${esc(x.subject)}</span>
       ${x.topic ? `<span class="a-chip">${esc(x.topic)}</span>` : ''}
@@ -56,9 +56,9 @@ function pagerHtml(d) {
   if (d.pages > 1) {
     const prevDis = d.page <= 1 ? 'disabled' : '', nextDis = d.page >= d.pages ? 'disabled' : '';
     return `<div class="pager">
-    <button class="a-btn a-btn-ghost a-btn-sm" ${prevDis} onclick="page--;renderBank()">← Prev</button>
+    <button class="a-btn a-btn-ghost a-btn-sm" ${prevDis} onclick="page--;renderBank()"><i data-icon="arrow-left"></i> Prev</button>
     <span>Page ${d.page} of ${d.pages} · ${d.total} questions</span>
-    <button class="a-btn a-btn-ghost a-btn-sm" ${nextDis} onclick="page++;renderBank()">Next →</button></div>`;
+    <button class="a-btn a-btn-ghost a-btn-sm" ${nextDis} onclick="page++;renderBank()">Next <i data-icon="arrow-right"></i></button></div>`;
   }
   if (!d.total) return '';
   return `<div class="pager"><span>${d.total} question${d.total === 1 ? '' : 's'}</span></div>`;
@@ -99,6 +99,6 @@ document.addEventListener('admin:ready', async () => {
 async function loadBankTips() {
   try {
     const d = await api('/reports/bank-insights');
-    $('bankTips').innerHTML = d.tips.map(t => `<div class="ai-item"><span class="ic">🎯</span><span>${esc(t)}</span></div>`).join('');
+    $('bankTips').innerHTML = d.tips.map(t => `<div class="ai-item"><span class="ic"><i data-icon="target"></i></span><span>${esc(t)}</span></div>`).join('');
   } catch (e) { $('bankTips').textContent = e.message; }
 }

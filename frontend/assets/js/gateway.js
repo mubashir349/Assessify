@@ -2,14 +2,14 @@
 // Gateway (index.html) — page script
 // ============================================================
 
-// Pipeline strip: how one aptitude test runs, from PDF to report
+// Pipeline: how one aptitude test runs, from PDF to report (descriptions summarise what the product already does)
 const GATEWAY_STEPS = [
-  { icon: '✦', label: 'Generate',  grad: ['#f59e0b', '#ea580c'] },
-  { icon: '◎', label: 'Review',    grad: ['#ea580c', '#dc2626'] },
-  { icon: '▦', label: 'Build test', grad: ['#6366f1', '#7c3aed'] },
-  { icon: '👥', label: 'Roster',    grad: ['#7c3aed', '#9333ea'] },
-  { icon: '📝', label: 'Take test', grad: ['#06b6d4', '#0891b2'] },
-  { icon: '📊', label: 'Report',    grad: ['#22c55e', '#0d9488'] },
+  { icon: 'sparkles', label: 'Generate',   text: 'Upload PDFs and the AI drafts questions.',         tone: 'c-cyan' },
+  { icon: 'drafts',   label: 'Review',     text: 'Approve, edit or reject every draft.',             tone: 'c-amber' },
+  { icon: 'tests',    label: 'Build test', text: 'Compose the paper and set the schedule.',          tone: 'c-indigo' },
+  { icon: 'roster',   label: 'Roster',     text: 'Import candidates and print their slips.',         tone: 'c-violet' },
+  { icon: 'play',     label: 'Take test',  text: 'Fullscreen exam with live monitoring.',            tone: 'c-teal' },
+  { icon: 'reports',  label: 'Report',     text: 'Scores, analytics, CSV and result emails.',        tone: 'c-emerald' },
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,10 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
   el.innerHTML = GATEWAY_STEPS.map((s, i) => `
     <div class="pipe-step">
       <div class="pipe-node">
-        <div class="ic" style="background:linear-gradient(135deg, ${s.grad[0]}, ${s.grad[1]});">${s.icon}</div>
+        <span class="pipe-num">${i + 1}</span>
+        <div class="ic ${s.tone}">${AIcon(s.icon)}</div>
         <span class="lb">${s.label}</span>
+        <span class="tx">${s.text}</span>
       </div>
-      ${i < GATEWAY_STEPS.length - 1 ? '<div class="pipe-link"></div>' : ''}
     </div>
   `).join('');
 });

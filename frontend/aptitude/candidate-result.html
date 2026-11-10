@@ -5,48 +5,54 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Submitted — Aptitude Test</title>
 <link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../assets/js/theme.js"></script>
+<script src="../assets/js/icons.js"></script>
 <link rel="stylesheet" href="../assets/css/theme.css" />
 <link rel="stylesheet" href="../assets/css/candidate.css" />
 </head>
-<body class="mesh-bg">
+<body class="mesh-bg" data-portal="candidate">
   <div class="blob-field"></div>
 
   <div class="cand-topbar">
     <div class="cand-brand"><div class="mark">Σ</div><span>Aptitude Test Portal</span></div>
-    <div class="cand-inst" id="candInst"></div>
+    <div class="cand-top-right">
+      <div class="cand-inst" id="candInst"></div>
+      <button type="button" class="icon-btn" data-theme-toggle data-tip="Toggle theme" data-tip-pos="bottom"></button>
+    </div>
   </div>
 
   <div class="result-wrap">
-    <div class="result-card glass fade-up" id="loadingCard"><p style="color:var(--n-400);">Loading your result…</p></div>
+    <div class="result-card glass fade-up" id="loadingCard"><p style="color:var(--text-2);">Loading your result…</p></div>
 
     <div class="result-card glass fade-up" id="immediateCard" style="display:none;">
       <div class="score-ring">
         <svg width="150" height="150" viewBox="0 0 150 150">
-          <circle cx="75" cy="75" r="66" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="10"/>
+          <circle cx="75" cy="75" r="66" fill="none" stroke="var(--ov-8)" stroke-width="10"/>
           <circle id="ring" cx="75" cy="75" r="66" fill="none" stroke="url(#g)" stroke-width="10" stroke-linecap="round"
             stroke-dasharray="414.7" stroke-dashoffset="414.7" transform="rotate(-90 75 75)"/>
-          <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#fbbf24"/></linearGradient></defs>
+          <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--violet-text, #8B5CF6)"/></linearGradient></defs>
         </svg>
         <div class="val"><b id="pct">–</b><span id="marks"></span></div>
       </div>
-      <h1 style="color:#fff;font-size:1.4rem;margin-bottom:8px;" class="res-title">Test submitted</h1>
-      <p style="color:var(--n-400);font-size:13.5px;line-height:1.6;margin-bottom:24px;" class="res-note">
+      <h1 class="res-title">Test submitted</h1>
+      <p class="res-note">
         Your attempt has been recorded and scored. This is a one-time score screen — no further login or dashboard access follows.
       </p>
-      <div class="a-card" style="padding:16px 18px;text-align:left;" id="immediateRows"></div>
+      <div class="a-card res-rows" id="immediateRows"></div>
     </div>
 
     <div class="result-card glass fade-up" id="scheduledCard" style="display:none;">
-      <div class="lock-ic" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);margin:0 auto 20px;">📧</div>
-      <h1 style="color:#fff;font-size:1.4rem;margin-bottom:8px;" class="res-title">Test submitted</h1>
-      <p style="color:var(--n-400);font-size:13.5px;line-height:1.6;margin-bottom:24px;" class="res-note">
+      <div class="res-ico"><i data-icon="mail-check"></i></div>
+      <h1 class="res-title">Test submitted</h1>
+      <p class="res-note">
         Your answers have been recorded. This institution has chosen to release results later —
         your score will be emailed to you on the date below. No further login or dashboard access follows.
       </p>
-      <div class="a-card" style="padding:16px 18px;text-align:left;" id="scheduledRows"></div>
+      <div class="a-card res-rows" id="scheduledRows"></div>
     </div>
 
-    <button class="a-btn a-btn-ghost" style="margin-top:18px;" id="signOut">Sign out</button>
+    <button class="btn btn-ghost" id="signOut"><i data-icon="logout"></i> Sign out</button>
   </div>
 
   <script src="../assets/js/api.js"></script>

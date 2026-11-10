@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Live Monitor — Institution Admin</title>
 <link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../../assets/js/theme.js"></script>
+<script src="../../assets/js/icons.js"></script>
 <link rel="stylesheet" href="../../assets/css/theme.css" />
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/monitor.css" />
@@ -18,9 +21,9 @@
 <template id="a-content-template">
 
   <div class="a-empty" id="noTests" hidden>
-    <div class="ic">🖥️</div><h4>No published tests yet</h4>
+    <div class="ic"><i data-icon="monitor"></i></div><h4>No published tests yet</h4>
     <p>Publish a test and add its roster; its candidates appear here while they take it.</p>
-    <p style="margin-top:12px;"><a href="create-test.html" class="a-btn a-btn-amber a-btn-sm">Create a test</a></p>
+    <p style="margin-top:12px;"><a href="create-test.html" class="a-btn a-btn-primary a-btn-sm">Create a test</a></p>
   </div>
 
   <div id="monitorArea" hidden>

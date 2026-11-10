@@ -80,7 +80,7 @@ async function loadReport(firstLoad = false) {
   }
   renderHead(d);
   renderCharts(d);
-  $('ruleTips').innerHTML = d.insights.map(t => `<div class="ai-item"><span class="ic">📊</span><span>${esc(t)}</span></div>`).join('');
+  $('ruleTips').innerHTML = d.insights.map(t => `<div class="ai-item"><span class="ic"><i data-icon="trending"></i></span><span>${esc(t)}</span></div>`).join('');
   renderMail(d.email, d.test);
   renderCandidates(d.candidates);
 }
@@ -152,12 +152,12 @@ async function sendResults() {
   btn.textContent = 'Sending…';
   try {
     const r = await api(`/reports/tests/${TEST_ID}/send-results`, { method: 'POST', body: {} });
-    const icon = r.failed ? '⚠' : '✓';
+    const icon = r.failed ? 'warn' : 'check';
     const logged = r.logged ? `${r.logged} written to the server log (test mode), ` : '';
     const nothing = r.tried ? '' : ' — nothing new to send';
     aToast(`${r.sent} sent, ${logged}${r.failed} failed${nothing}.`, icon);
   } catch (e) { handleApiError(e); }
-  btn.textContent = '✉ Send results';
+  btn.innerHTML = '<i data-icon="mail"></i> Send results';
   await loadReport();
 }
 

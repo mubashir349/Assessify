@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Generate Questions — Institution Admin</title><link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../../assets/js/theme.js"></script>
+<script src="../../assets/js/icons.js"></script>
 <link rel="stylesheet" href="../../assets/css/theme.css" /><link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/question-bank.css" />
 </head>
 <body data-page="generate" data-title="Generate Questions" data-sub="Upload PDFs (or describe the topic) — the AI writes draft questions from them">
 <template id="a-content-template">
   <div class="gen-banner" id="aiBanner" hidden></div>
-  <div class="a-card" style="max-width:920px;border-color:rgba(245,158,11,.35);">
+  <div class="a-card" style="max-width:920px;border-color:rgba(var(--warning-rgb),.35);">
     <div class="a-grid a-grid-3" style="margin-bottom:14px;">
       <div class="a-field"><label id="deptLbl" for="gDept">Field / Department</label><select class="a-select" id="gDept" onchange="fillSubjects()"></select></div>
       <div class="a-field"><label for="gLevel">Degree level (set by selection)</label><input class="a-input" id="gLevel" readonly tabindex="-1" style="opacity:.75;cursor:not-allowed;" /></div>
@@ -20,7 +23,8 @@
     <div class="a-field" style="margin-bottom:14px;">
       <label id="srcLbl" for="gFile">Source PDFs</label>
       <div class="a-dropzone" id="drop" onclick="document.getElementById('gFile').click()">
-        <b>📄 Upload book chapters or notes (PDF) — you can add several</b>
+        <div class="dz-ico"><i data-icon="file-up"></i></div>
+        <b>Upload book chapters or notes (PDF) — you can add several</b>
         <span class="muted" id="dropHint">Drag &amp; drop or click — PDFs of typed text, or photos / scans of pages.</span>
       </div>
       <input type="file" id="gFile" accept=".pdf,application/pdf" multiple style="display:none" onchange="addFiles(this.files); this.value=''" />
@@ -32,7 +36,7 @@
       <div class="desc-hint" id="descHint"></div>
       <div class="chips" id="chips"></div>
     </div>
-    <button class="btn btn-amber" id="genBtn" onclick="doGenerate()" disabled>✦ Generate drafts →</button>
+    <button class="btn btn-primary" id="genBtn" onclick="doGenerate()" disabled><i data-icon="sparkles"></i> Generate drafts <i data-icon="arrow-right"></i></button>
     <span class="hint" style="margin-left:10px;">Drafts go to <b>Draft Review</b> — nothing reaches the question bank until you approve it.</span>
     <div class="gen-progress" id="genProgress" hidden><span class="spin"></span><span>Reading the PDF and asking the AI… this can take up to a minute. Please keep this page open.</span></div>
   </div>
@@ -52,7 +56,7 @@ const wordCount = t => (t.match(/\p{L}{2,}/gu) || []).length;      // same rule 
 // ---------------- files: each one is checked by the server as soon as it is added (no AI call, no quota)
 function addFiles(list) {
   for (const f of Array.from(list || [])) {
-    if (FILES.length >= MAX_FILES) { aToast(`You can add at most ${MAX_FILES} PDFs.`, '⚠'); break; }
+    if (FILES.length >= MAX_FILES) { aToast(`You can add at most ${MAX_FILES} PDFs.`, 'warn'); break; }
     const item = { id: nextId++, f, status: 'checking', info: null, msg: 'Checking…' };
     FILES.push(item);
     if (!/\.pdf$/i.test(f.name)) bad(item, 'Only PDF files are supported.');
@@ -65,7 +69,7 @@ function addFiles(list) {
 const totalSize = () => FILES.filter(x => x.status !== 'bad').reduce((s, x) => s + x.f.size, 0);
 function bad(item, msg) {
   item.status = 'bad'; item.msg = msg;
-  aToast(esc(`"${item.f.name}": ${msg} Please choose another PDF.`), '⚠');
+  aToast(esc(`"${item.f.name}": ${msg} Please choose another PDF.`), 'warn');
 }
 async function checkFile(item) {
   const fd = new FormData(); fd.append('file', item.f);
@@ -86,15 +90,15 @@ function checkedMessage(r) {
   else msg += ` · ${r.characters.toLocaleString()} characters of readable text`;
   if (r.skipped_photo_pages) {
     const why = r.needs_ocr ? ' (page limit)' : ' (needs AI_PROVIDER=gemini)';
-    msg += ` · ⚠ ${pl(r.skipped_photo_pages)} of photos skipped${why}`;
+    msg += ` · ${pl(r.skipped_photo_pages)} of photos skipped${why}`;
   }
   return msg;
 }
 function removeFile(id) { FILES = FILES.filter(x => x.id !== id); render(); }
 function fileIcon(x) {
-  if (x.status === 'bad') return '✕';
+  if (x.status === 'bad') return '<i data-icon="x"></i>';
   if (x.status !== 'ok') return '…';
-  return x.info.needs_ocr ? '📷' : '✓';
+  return x.info.needs_ocr ? '<i data-icon="camera"></i>' : '<i data-icon="check"></i>';
 }
 function fileMessage(x) {
   if (x.status !== 'bad') return esc(x.msg);
@@ -105,7 +109,7 @@ function render() {
       <span class="fl-name">${fileIcon(x)} ${esc(x.f.name)}
         <span class="muted">· ${Math.max(1, Math.round(x.f.size / 1024)).toLocaleString()} KB</span></span>
       <span class="fl-msg">${fileMessage(x)}</span>
-      <button class="a-modal-x" title="Remove" onclick="removeFile(${x.id})">✕</button></li>`).join('');
+      <button class="a-modal-x" title="Remove" aria-label="Remove" onclick="removeFile(${x.id})"><i data-icon="x"></i></button></li>`).join('');
   $('drop').classList.toggle('bad', FILES.some(x => x.status === 'bad'));
   refreshDesc();
 }
@@ -129,7 +133,7 @@ function refreshDesc() {
     let state = '';
     if (text.trim()) state = okNow ? 'good' : 'bad';
     hint.className = 'desc-hint ' + state;
-    hint.textContent = okNow ? `✓ ${words} words — enough to describe the scope. Questions will come from the AI's general knowledge, so check them carefully.`
+    hint.innerHTML = okNow ? `<i data-icon="check"></i> ${words} words — enough to describe the scope. Questions will come from the AI's general knowledge, so check them carefully.`
       : `No PDF? Describe the scope in at least ${MIN_WORDS} words — topics or chapters, and what to focus on (${words}/${MIN_WORDS} words).`;
     $('chips').innerHTML = ['Topics: … ; Chapters: … ; Focus on: …',
       'Photosynthesis: light reactions, Calvin cycle and factors affecting the rate, first-year biology']
@@ -230,7 +234,7 @@ async function doGenerate() {
   const d = DEPTS.find(x => String(x.id) === $('gDept').value);
   const use = okFiles(), n = +$('gCount').value;
   const problem = generateProblem(d, use, n);
-  if (problem) return aToast(problem, '⚠');
+  if (problem) return aToast(problem, 'warn');
 
   const fd = new FormData();
   use.forEach(x => fd.append('files', x.f));
@@ -261,7 +265,7 @@ async function doGenerate() {
 function setBusy(on, text) {
   busy = on;
   $('genBtn').disabled = on || !canGenerate();
-  $('genBtn').textContent = on ? 'Generating…' : '✦ Generate drafts →';
+  $('genBtn').innerHTML = on ? 'Generating…' : '<i data-icon="sparkles"></i> Generate drafts <i data-icon="arrow-right"></i>';
   $('genProgress').hidden = !on;
   if (text) $('genProgress').lastElementChild.textContent = text;
 }

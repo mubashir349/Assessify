@@ -1,17 +1,16 @@
 /* monitor.html — page-specific styles */
-
-.live-dot { width:7px; height:7px; border-radius:50%; background:var(--success); display:inline-block; box-shadow:0 0 6px var(--success); animation: pulse 1.6s infinite; }
-@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
-.status-strip { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
-.status-pill { flex:1; min-width:130px; padding:14px 16px; border-radius:14px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03); cursor:pointer; }
-.status-pill.active { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.07); }
-.status-pill .n { font-family:var(--font-display); font-size:1.4rem; font-weight:700; color:#fff; }
-.status-pill .l { font-size:11px; color:var(--n-500); }
-.status-pill { font: inherit; text-align: left; }
-.status-pill:focus-visible { outline: 2px solid var(--amber, #f59e0b); outline-offset: 2px; }
-.live-note { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--n-400); }
-.live-dot.paused { background: var(--n-500); box-shadow:none; animation:none; }
-.mon-actions { display:flex; gap:6px; flex-wrap:wrap; }
-.mon-sub { display:block; font-size:11px; color:var(--n-500); margin-top:2px; }
-.progress-mini { display:inline-block; width:60px; height:5px; border-radius:4px; background:rgba(255,255,255,.08); vertical-align:middle; margin-left:6px; overflow:hidden; }
-.progress-mini span { display:block; height:100%; background:var(--success); }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--emerald); display: inline-block; box-shadow: 0 0 0 0 rgba(var(--emerald-rgb), .6); animation: livePulse 1.8s infinite; vertical-align: 1px; }
+@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(var(--emerald-rgb), .55); } 70% { box-shadow: 0 0 0 8px rgba(var(--emerald-rgb), 0); } 100% { box-shadow: 0 0 0 0 rgba(var(--emerald-rgb), 0); } }
+.live-dot.paused { background: var(--text-3); box-shadow: none; animation: none; }
+.status-strip { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.status-pill { flex: 1; min-width: 130px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow-sm); cursor: pointer; font: inherit; text-align: left; color: var(--text); transition: all var(--t-fast); }
+.status-pill:hover { border-color: rgba(var(--accent-rgb), .45); transform: translateY(-1px); }
+.status-pill.active { border-color: var(--accent); background: rgba(var(--accent-rgb), .09); }
+.status-pill .n { display: block; font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--text); }
+.status-pill .l { font-size: 11.5px; color: var(--text-3); }
+.status-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.live-note { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+.mon-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.mon-sub { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.progress-mini { display: inline-block; width: 60px; height: 5px; border-radius: 4px; background: var(--ov-8); vertical-align: middle; margin-left: 6px; overflow: hidden; }
+.progress-mini span { display: block; height: 100%; background: var(--grad-ok); }

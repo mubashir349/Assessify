@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Question Bank — Institution Admin</title>
 <link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../../assets/js/theme.js"></script>
+<script src="../../assets/js/icons.js"></script>
 <link rel="stylesheet" href="../../assets/css/theme.css" />
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/question-bank.css" />
@@ -12,12 +15,12 @@
 <body data-page="bank" data-title="Question Bank" data-sub="Approved questions only — one bank, filterable by field / department, level and subject">
 
 <template id="a-actions-template">
-  <a class="a-btn a-btn-amber" href="generate.html">✦ Generate Questions</a>
+  <a class="a-btn a-btn-primary" href="generate.html"><i data-icon="sparkles"></i> Generate Questions</a>
 </template>
 
 <template id="a-content-template">
   <div class="a-card ai-card" style="margin-bottom:18px;">
-    <div class="ai-tag">✦ INSIGHTS · QUESTION BANK</div>
+    <div class="ai-tag"><i data-icon="sparkles"></i> INSIGHTS · QUESTION BANK</div>
     <div class="a-grid a-grid-3">
       <div><div class="muted" style="margin-bottom:6px;">Difficulty balance</div><div id="diffBars"></div></div>
       <div><div class="muted" style="margin-bottom:6px;">Coverage by level</div><div id="lvlBars"></div></div>
@@ -26,7 +29,7 @@
     <div class="ai-more">
       <div><div class="muted" style="margin-bottom:2px;">For your tests</div><div id="bankTips"></div></div>
       <div>
-        <button type="button" class="a-btn a-btn-ghost a-btn-sm" id="bankAiBtn">✦ Ask AI about the bank</button>
+        <button type="button" class="a-btn a-btn-ghost a-btn-sm" id="bankAiBtn"><i data-icon="sparkles"></i> Ask AI about the bank</button>
         <div id="bankAi"></div>
       </div>
     </div>
