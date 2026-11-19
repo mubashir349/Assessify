@@ -462,3 +462,40 @@ right password. A successful login clears that email's count. Settings: `ADMIN_L
 **Production start check.** With `FLASK_ENV=production` the server refuses to start when `SECRET_KEY` is the default,
 the `.env.example` value or shorter than 32 characters, and logs warnings for SQLite, `JWT_COOKIE_SECURE=false`,
 `JWT_COOKIE_CSRF=false` and `MAIL_BACKEND=console`.
+
+## Payments, admit cards, Excel — Phase 11
+
+### Payments (public, opened with the signed `token` from signup / sign-in / emails)
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| GET | `/payments/plans` | | `{plans:[{id,label,months,amount,currency,saving,note}], gateway}` |
+| GET | `/payments/session?token=` | | `{institution, purpose: registration\|renewal\|null, plans, gateway, payments}` |
+| POST | `/payments/checkout` | `{token, plan, return_url}` | `{payment, checkout_url}` (Safepay hosted page) |
+| POST | `/payments/confirm` | `{token, payment}` | `{payment}`; asks Safepay; `paid` only on `TRACKER_ENDED` with the right amount |
+| POST | `/payments/cancel` | `{token, payment}` | `{payment}` (`cancelled`, unless Safepay says it was paid) |
+| POST | `/payments/webhook` | Safepay body, header `X-SFPY-SIGNATURE` | `{ok:true}`; HMAC-SHA512 checked with `SAFEPAY_WEBHOOK_SECRET` |
+
+Signup (`POST /institutions/signup`) now returns `next: "payment"` and `payment_token` while `PAYMENTS_ENABLED`.
+Sign-in errors: `402 INSTITUTION_PAYMENT_REQUIRED` (not paid yet) and `402 INSTITUTION_SUBSCRIPTION_EXPIRED`
+(both with `details.payment_token`). Any admin API call after `paid_until` returns `402 INSTITUTION_SUBSCRIPTION_EXPIRED`.
+
+### Super Admin
+| Method | Path | Notes |
+|---|---|---|
+| PATCH | `/super-admin/institutions/<id>` | `approved` needs a paid registration (`409 NOT_PAID`, `409 PAYMENT_REFUNDED`); `rejected` refunds automatically, response has `refund` |
+| GET | `/super-admin/institutions/<id>/payments` | every payment of the institution |
+| POST | `/super-admin/institutions/<id>/refund/retry` | try the Safepay refund again |
+| POST | `/super-admin/institutions/<id>/refund/manual` | `{note?}` mark as refunded in the Safepay dashboard |
+
+### Admit cards (institution admin)
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| GET | `/admit-cards?test_id=` | | `{test, counts, can_send, blocked_reason, can_resend, no_email, problems, changed, bounce_check, mail_note}` |
+| POST | `/admit-cards/send` | `{test_id, resend?, login_url?}` | `{sent, failed:[{full_name,email,error}], no_email, stopped, status}` |
+| GET | `/admit-cards/<candidate_id>.pdf` | `?login_url=` | the admit card PDF |
+| POST | `/admit-cards/check-bounces` | `{test_id}` | `{bounced:[...], status}` (reads the sending mailbox over IMAP) |
+
+`409 ADMIT_CARDS_BLOCKED` with the reason when sending is not possible (test ended, empty roster, no emails, mail not set up).
+
+### Reports
+`GET /reports/tests/<id>/export.xlsx` — same filters as `export.csv`; sheets Summary, Results, By field, By subject.

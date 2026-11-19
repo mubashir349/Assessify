@@ -268,9 +268,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btn.disabled = true; const label = btn.textContent; btn.textContent = 'Submitting…';
     try {
-      await api('/institutions/signup', { method: 'POST', body: requestBody() });
-      ok.style.display = 'block';
-      setTimeout(() => { window.location.href = 'institution-login.html?registered=1'; }, 2200);
+      const r = await api('/institutions/signup', { method: 'POST', body: requestBody() });
+      if (r.next === 'payment' && r.payment_token) {        // Phase 11: pay the subscription fee next
+        ok.textContent = 'Registration saved. Taking you to the payment step…';
+        ok.style.display = 'block';
+        setTimeout(() => { window.location.href = 'institution-payment.html?token=' + encodeURIComponent(r.payment_token); }, 1200);
+      } else {
+        ok.style.display = 'block';
+        setTimeout(() => { window.location.href = 'institution-login.html?registered=1'; }, 2200);
+      }
     } catch (ex) {
       showServerError(ex);
       btn.disabled = !emailToken; btn.textContent = label;

@@ -1,0 +1,23 @@
+/* institution-payment.html (Phase 11) */
+.plans { display: grid; gap: 10px; margin: 4px 0 16px; }
+.plan { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 14px 16px; border-radius: 14px;
+  border: 1.5px solid var(--border-strong); cursor: pointer; background: var(--glass-bg); transition: border-color .15s, box-shadow .15s; }
+.plan:hover { border-color: rgba(var(--indigo-rgb, 99,102,241), .55); }
+.plan.on { border-color: var(--accent, #6366F1); box-shadow: 0 0 0 3px rgba(99,102,241,.18); }
+.plan input { position: absolute; opacity: 0; pointer-events: none; }
+.plan-name { font-weight: 700; font-size: 15px; color: var(--text); }
+.plan-price { grid-row: span 2; align-self: center; font-weight: 800; font-size: 19px; color: var(--text); text-align: right; }
+.plan-price small { font-size: 12px; font-weight: 600; color: var(--text-2); margin-left: 2px; }
+.plan-note { font-size: 12px; color: var(--text-2); }
+.plan-save { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  color: var(--success-text); background: rgba(var(--emerald-rgb), .14); }
+.pay-small { font-size: 12px; color: var(--text-2); margin-top: 10px; line-height: 1.5; }
+.pay-test { margin-bottom: 14px; padding: 9px 12px; border-radius: 10px; font-size: 12.5px; color: var(--warn-text);
+  background: rgba(var(--amber-rgb), .10); border: 1px solid rgba(var(--amber-rgb), .32); }
+.pay-result p { font-size: 13.5px; line-height: 1.6; margin: 10px 0 14px; color: var(--text-2); }
+.pay-result .pay-why { color: var(--danger-text); font-weight: 600; }
+.pay-big { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; font-size: 26px; font-weight: 800;
+  color: var(--success-text); background: rgba(var(--emerald-rgb), .14); margin-bottom: 12px; }
+.pay-receipt { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; margin: 6px 0; }
+.pay-receipt dt { color: var(--text-2); }
+.pay-receipt dd { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }

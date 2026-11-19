@@ -8,3 +8,5 @@ from app.models.candidate import Candidate  # noqa: F401
 from app.models.exam import ExamAttempt, LockEvent, PaperItem  # noqa: F401
 from app.models.report import ResultEmail  # noqa: F401
 from app.models.directory import DirectoryCampus, DirectoryInstitution, EmailOtp, InstitutionProof  # noqa: F401
+from app.models.admit_card import AdmitCardEmail  # noqa: F401
+from app.models.payment import Payment  # noqa: F401

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Subscription Payment — Assessify Aptitude</title>
+<link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<meta name="referrer" content="no-referrer">
+<script src="../assets/js/theme.js"></script>
+<script src="../assets/js/icons.js"></script>
+<link rel="stylesheet" href="../assets/css/theme.css" />
+<link rel="stylesheet" href="../assets/css/auth.css" />
+<link rel="stylesheet" href="../assets/css/payment.css" />
+</head>
+<body class="mesh-bg">
+  <div class="blob-field"></div>
+
+  <div class="auth-shell">
+    <div class="auth-top">
+      <a class="brand" href="../index.html"><div class="brand-mark">Σ</div><span class="brand-name">Assessify</span></a>
+      <div class="right">
+        <a href="institution-login.html" class="back-link"><i data-icon="arrow-left"></i><span>Sign in</span></a>
+        <button type="button" class="icon-btn" data-theme-toggle data-tip="Toggle theme" data-tip-pos="bottom"></button>
+      </div>
+    </div>
+
+    <aside class="auth-aside">
+      <span class="deco deco-circle"></span><span class="deco deco-square"></span>
+      <span class="eyebrow"><span class="dot"></span>Subscription</span>
+      <h2>One step left: <span class="grad-text">pay to send it for approval.</span></h2>
+      <p class="lead2">Payments are handled by Safepay. Your card details go to Safepay only, never to Assessify.</p>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div><b>Register</b><span class="s">Done: your details are saved</span></div></div>
+        <div class="step on" id="stepPay"><span class="n">2</span><div><b>Pay the subscription fee</b><span class="s">Monthly or yearly, through Safepay</span></div></div>
+        <div class="step" id="stepReview"><span class="n">3</span><div><b>Approval</b><span class="s">The Assessify team reviews it and emails you</span></div></div>
+      </div>
+    </aside>
+
+    <main class="auth-main">
+      <div class="auth-card glass fade-up" id="card">
+        <div class="card-head">
+          <div class="card-ico"><i data-icon="shield"></i></div>
+          <div>
+            <h1 id="ttl">Subscription payment</h1>
+            <p class="lead" id="lead">Loading…</p>
+          </div>
+        </div>
+
+        <div class="auth-err" id="authErr" role="alert"></div>
+        <div class="auth-ok" id="authOk" role="status"></div>
+        <div class="pay-test" id="testMode" hidden>Test mode (Safepay sandbox): no real money is taken. Use a Safepay test card.</div>
+
+        <div id="planBox" hidden>
+          <div class="plans" id="plans" role="radiogroup" aria-label="Choose a plan"></div>
+          <button type="button" class="btn btn-primary btn-block" id="payBtn" disabled>Pay with Safepay <i data-icon="arrow-right"></i></button>
+          <p class="pay-small">You will be taken to Safepay's secure page and brought back here afterwards.
+            If the registration is not approved, the full amount is refunded automatically.</p>
+        </div>
+
+        <div class="pay-result" id="result" hidden></div>
+
+        <p class="auth-foot" id="foot">Problems paying? Try another card, or sign in again later to get a fresh payment link.</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/main.js"></script>
+  <script src="../assets/js/institution-payment.js"></script>
+</body>
+</html>

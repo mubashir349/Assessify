@@ -9,6 +9,7 @@ from app.modules.directory.service import add_from_approved
 
 # current status -> statuses the Super Admin may move it to
 TRANSITIONS = {
+    "awaiting_payment": {"rejected"},          # Phase 11: has not paid yet -> can only be turned down (no refund)
     "pending": {"approved", "rejected"},
     "approved": {"suspended"},
     "suspended": {"approved"},
@@ -37,21 +38,43 @@ def list_institutions(status: str | None, q: str | None):
 
 
 def change_status(institution_id: int, new_status: str, note: str | None, reviewer_email: str) -> Institution:
+    """Phase 11: approving starts the paid subscription and emails the institution; rejecting a paid registration
+    refunds it automatically and emails the institution. The outcome of the refund is kept on inst._refund."""
+    from app.modules.payments import emails as pay_emails
+    from app.modules.payments import service as payments
+
     inst = db.session.get(Institution, institution_id)
     if inst is None:
         raise ApiError("NOT_FOUND", "Institution not found.", 404)
-    if new_status not in STATUSES or new_status == "pending":
+    if new_status not in STATUSES or new_status in ("pending", "awaiting_payment"):
         raise ApiError("BAD_REQUEST", "Status must be approved, rejected or suspended.", 400)
     if new_status not in TRANSITIONS.get(inst.status, set()):
+        if inst.status == "awaiting_payment" and new_status == "approved":
+            raise ApiError("NOT_PAID", "This institution has not paid the registration fee yet, so it cannot be "
+                           "approved.", 409)
         raise ApiError("INVALID_TRANSITION", f"Cannot change an institution from {inst.status} to {new_status}.", 409)
+    reg = inst.registration_payment()
+    if new_status == "approved" and inst.status == "rejected" and reg is not None and reg.status == "refunded":
+        raise ApiError("PAYMENT_REFUNDED", "This institution's registration fee was refunded when it was rejected, so "
+                       "it cannot be approved without paying again.", 409)
 
+    previous = inst.status
     if new_status == "approved":
         add_from_approved(inst)          # Phase 10: a hand-typed institution / campus joins the directory
     inst.status = new_status
     inst.reviewed_at = utcnow()
     inst.reviewed_by_email = reviewer_email
     inst.review_note = (note or "").strip()[:500] or None
+    if new_status == "approved" and previous in ("pending", "rejected"):
+        payments.start_subscription(inst)
     db.session.commit()
+
+    inst._refund = None
+    if new_status == "approved" and previous in ("pending", "rejected"):
+        pay_emails.approved(inst)
+    elif new_status == "rejected":
+        inst._refund = payments.refund_registration(inst) if previous != "awaiting_payment" else None
+        pay_emails.rejected(inst, inst._refund)
     return inst
 
 

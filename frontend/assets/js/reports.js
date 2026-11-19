@@ -174,6 +174,7 @@ function wire() {
   ['cQ'].forEach(k => $(k).addEventListener('input', reload));
   ['cDept', 'cStatus', 'cEmail'].forEach(k => $(k).addEventListener('change', reload));
   $('exportBtn').addEventListener('click', () => void downloadFile(`/reports/tests/${TEST_ID}/export.csv?${candQuery()}`, 'report.csv'));
+  $('exportXlsxBtn').addEventListener('click', () => void downloadFile(`/reports/tests/${TEST_ID}/export.xlsx?${candQuery()}`, 'report.xlsx'));
   $('sendBtn').addEventListener('click', () => void sendResults());
   $('aiBtn').addEventListener('click', () => void askAi({ scope: 'test', test_id: TEST_ID }, $('aiTips'), $('aiBtn')));
 }

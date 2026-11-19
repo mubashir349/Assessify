@@ -1,5 +1,8 @@
 """Phase 10: institution directory - the search box on the signup page and the "add to directory" step on approval."""
-from sqlalchemy import func, or_
+from datetime import timedelta
+
+from flask import current_app
+from sqlalchemy import and_, func, or_
 
 from app.common import email_rules
 from app.extensions import db
@@ -7,6 +10,15 @@ from app.models.directory import SOURCE_APPROVED, DirectoryCampus, DirectoryInst
 from app.models.institution import Institution
 
 ACTIVE_STATUSES = ("pending", "approved", "suspended")    # a rejected signup frees the campus again
+
+
+def holds_place():
+    """SQL condition: this signup still blocks the same campus / name. Phase 11: an UNPAID signup (awaiting_payment)
+    only holds it while its payment link is valid (PAYMENT_LINK_DAYS), so an abandoned signup frees it again."""
+    from app.common.utils import utcnow
+    days = int(current_app.config.get("PAYMENT_LINK_DAYS", 7))
+    return or_(Institution.status.in_(ACTIVE_STATUSES),
+               and_(Institution.status == "awaiting_payment", Institution.created_at >= utcnow() - timedelta(days=days)))
 MAX_RESULTS = 25
 
 
@@ -21,7 +33,7 @@ def taken_campus_ids(campus_ids) -> set[int]:
     if not campus_ids:
         return set()
     rows = (db.session.query(Institution.directory_campus_id)
-            .filter(Institution.directory_campus_id.in_(list(campus_ids)), Institution.status.in_(ACTIVE_STATUSES)))
+            .filter(Institution.directory_campus_id.in_(list(campus_ids)), holds_place()))
     return {r[0] for r in rows}
 
 

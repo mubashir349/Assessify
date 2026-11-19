@@ -124,3 +124,26 @@ class Config:
     OTP_VERIFIED_MINUTES = int(os.getenv("OTP_VERIFIED_MINUTES", "30"))    # signup must follow the code within this
     EMAIL_MX_CHECK = _flag("EMAIL_MX_CHECK", "true")                       # look up the email domain's mail server (DNS)
     PROOF_MAX_MB = int(os.getenv("PROOF_MAX_MB", "5"))                     # authorisation letter / certificate
+
+    # Phase 11: admit cards by email
+    APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Karachi").strip()      # times written in emails and PDFs
+    CANDIDATE_LOGIN_URL = os.getenv("CANDIDATE_LOGIN_URL", "").strip()   # empty -> the address the admin's page is on
+    # Bounced emails ("address not found") come back to the sending mailbox later; read them over IMAP with the same
+    # MAIL_USERNAME / MAIL_PASSWORD. Empty -> imap.gmail.com when MAIL_SERVER is smtp.gmail.com, otherwise off.
+    MAIL_IMAP_SERVER = os.getenv("MAIL_IMAP_SERVER", "").strip()
+    ADMIT_CARD_FONT = os.getenv("ADMIT_CARD_FONT", "").strip()           # optional .ttf for non-English names
+
+    # Phase 11: payments (registration fee + renewals) through Safepay's hosted checkout
+    PAYMENTS_ENABLED = _flag("PAYMENTS_ENABLED", "true")       # false = signup goes straight to "pending" (old flow)
+    PLAN_MONTHLY_PKR = int(os.getenv("PLAN_MONTHLY_PKR", "5000"))
+    PLAN_YEARLY_PKR = int(os.getenv("PLAN_YEARLY_PKR", "50000"))
+    SAFEPAY_ENVIRONMENT = os.getenv("SAFEPAY_ENVIRONMENT", "sandbox").strip().lower()   # sandbox | production
+    SAFEPAY_API_KEY = os.getenv("SAFEPAY_API_KEY", "").strip()           # "public" merchant key (starts with sec_)
+    SAFEPAY_SECRET_KEY = os.getenv("SAFEPAY_SECRET_KEY", "").strip()     # private API secret (server only)
+    SAFEPAY_WEBHOOK_SECRET = os.getenv("SAFEPAY_WEBHOOK_SECRET", "").strip()   # optional: only for webhooks
+    SAFEPAY_API_BASE = os.getenv("SAFEPAY_API_BASE", "").strip()         # empty -> the official host for the environment
+    SAFEPAY_CHECKOUT_BASE = os.getenv("SAFEPAY_CHECKOUT_BASE", "").strip()
+    SAFEPAY_REFUND_PATH = os.getenv("SAFEPAY_REFUND_PATH", "/order/payments/v3/{tracker}/refund").strip()
+    SAFEPAY_TIMEOUT_SECONDS = int(os.getenv("SAFEPAY_TIMEOUT_SECONDS", "30"))
+    PAYMENT_LINK_DAYS = int(os.getenv("PAYMENT_LINK_DAYS", "7"))          # "pay now" links in emails stay valid this long
+    SITE_URL = os.getenv("SITE_URL", "").strip()     # public address for links in emails; empty -> this server's address

@@ -87,6 +87,7 @@ async function loadRoster() {
     `<tr><td colspan="8" class="a-empty">${s.total ? 'No candidate matches the search.' : 'No candidates yet — drop the roster CSV above or click “Add candidate”.'}</td></tr>`;
   window.ROWS = d.items;
   $('pager').innerHTML = pagerHtml(d);
+  if (typeof loadAdmit === 'function') void loadAdmit();      // Phase 11: admit-card section follows the roster
 }
 
 function pagerHtml(d) {
@@ -224,7 +225,8 @@ function cancelPreview() { pendingFile = null; $('importBox').hidden = true; }
 // ---------------------------------------------------------------- add / correct / new code / remove
 function openCandModal(id) {
   editId = id || null;
-  const c = id ? window.ROWS.find(x => x.id === id) : null;
+  // Phase 11: a candidate listed in the admit-card section may be on another roster page
+  const c = id ? (window.ROWS.find(x => x.id === id) || (window.ADMIT_PEOPLE || {})[id] || null) : null;
   $('cTitle').textContent = c ? 'Correct candidate' : 'Add candidate';
   $('cSub').textContent = c ? 'To change the access code use “New code”. Removing the date of birth gives a PIN.'
                             : 'Name + at least one of email, phone or roll number. An access code is generated automatically.';

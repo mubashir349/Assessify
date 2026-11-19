@@ -20,7 +20,7 @@ from app.extensions import db
 from app.models.directory import DirectoryCampus, DirectoryInstitution, InstitutionProof
 from app.models.institution import INSTITUTION_TYPES, Institution
 from app.models.user import ROLE_INSTITUTION_ADMIN, User
-from app.modules.directory.service import ACTIVE_STATUSES, find_institution_by_name, taken_campus_ids
+from app.modules.directory.service import find_institution_by_name, holds_place, taken_campus_ids
 from app.modules.email_otp import service as otp
 
 PROOF_TYPES = {"application/pdf": b"%PDF", "image/png": b"\x89PNG", "image/jpeg": b"\xff\xd8\xff"}
@@ -113,7 +113,7 @@ def _check_not_registered(inst: dict) -> None:
         return
     q = Institution.query.filter(func.lower(Institution.name) == inst["name"].lower(),
                                  func.lower(Institution.city) == inst["city"].lower(),
-                                 Institution.status.in_(ACTIVE_STATUSES))
+                                 holds_place())
     for existing in q:
         if (existing.campus_name or "").lower() == (inst["campus_name"] or "").lower():
             raise _taken(f"{existing.display_name} ({existing.city}) is already registered.")
@@ -192,7 +192,9 @@ def register_institution(data: dict, proof_file=None) -> Institution:
 
     campus, parent = inst["campus"], inst["parent"]
     institution = Institution(
-        name=inst["name"], type=inst["type"], city=inst["city"], website=inst["website"], status="pending",
+        name=inst["name"], type=inst["type"], city=inst["city"], website=inst["website"],
+        # Phase 11: with payments on, the fee comes first; the Super Admin only sees it once it is paid
+        status="awaiting_payment" if current_app.config.get("PAYMENTS_ENABLED", True) else "pending",
         campus_name=inst["campus_name"], directory_campus_id=campus.id if campus else None,
         directory_institution_id=parent.id if parent else None, from_directory=campus is not None,
         email_domain_verified=domain_ok, no_official_email=no_official)

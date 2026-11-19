@@ -17,5 +17,9 @@ def signup():
         inst = service.register_institution(request.form.to_dict(), request.files.get("proof"))
     else:
         inst = service.register_institution(json_body())
-    return ok({"institution": inst.to_dict(),
+    if inst.status == "awaiting_payment":         # Phase 11: pay first, then the Super Admin reviews it
+        from app.modules.payments.service import make_token
+        return ok({"institution": inst.to_dict(), "next": "payment", "payment_token": make_token(inst),
+                   "message": "Registration saved. Pay the subscription fee to send it for approval."}, 201)
+    return ok({"institution": inst.to_dict(), "next": "wait",
                "message": "Registration submitted. You can sign in once the platform team approves it."}, 201)
