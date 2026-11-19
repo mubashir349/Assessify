@@ -2,6 +2,9 @@
 GET   /super/institutions?status=&q=     list + counts
 PATCH /super/institutions/<id>           {"status": "approved|rejected|suspended", "note": "..."}
 GET   /super/institutions/<id>/proof     the proof document (Phase 10: institutions without official email)
+GET   /super/institutions/<id>/payments  Phase 11: every payment of the institution
+POST  /super/institutions/<id>/refund/retry    Phase 11: try the automatic refund again
+POST  /super/institutions/<id>/refund/manual   Phase 11: {note} - refunded by hand in the Safepay dashboard
 """
 import io
 
@@ -28,7 +31,28 @@ def list_institutions():
 def update_institution(institution_id: int):
     body = json_body()
     inst = service.change_status(institution_id, body.get("status"), body.get("note"), g.current_user.email)
-    return ok({"institution": inst.to_dict()})
+    return ok({"institution": inst.to_dict(), "refund": getattr(inst, "_refund", None)})
+
+
+@bp.get("/institutions/<int:institution_id>/payments")
+@auth_required(ROLE_SUPER_ADMIN)
+def institution_payments(institution_id: int):
+    from app.modules.payments.service import payments_of
+    return ok({"payments": payments_of(institution_id)})
+
+
+@bp.post("/institutions/<int:institution_id>/refund/retry")
+@auth_required(ROLE_SUPER_ADMIN)
+def refund_retry(institution_id: int):
+    from app.modules.payments.service import retry_refund
+    return ok(retry_refund(institution_id))
+
+
+@bp.post("/institutions/<int:institution_id>/refund/manual")
+@auth_required(ROLE_SUPER_ADMIN)
+def refund_manual(institution_id: int):
+    from app.modules.payments.service import mark_refunded_by_hand
+    return ok(mark_refunded_by_hand(institution_id, json_body().get("note"), g.current_user.email))
 
 
 @bp.get("/institutions/<int:institution_id>/proof")

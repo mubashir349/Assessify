@@ -17,7 +17,8 @@ from app.models.user import ROLE_SUPER_ADMIN, User
 @pytest.fixture
 def app():
     app = create_app()
-    app.config.update(TESTING=True)
+    # Phases 1-10 describe signup without a fee; Phase 11 tests switch payments on themselves.
+    app.config.update(TESTING=True, PAYMENTS_ENABLED=False)
     with app.app_context():
         db.create_all()
         sa = User(full_name="Root", email="root@assessify.com", role=ROLE_SUPER_ADMIN)
@@ -54,8 +55,8 @@ def _capture_mail_and_dns(monkeypatch):
     SENT_MAIL.clear()
     _TOKENS.clear()
 
-    def fake_send(to, subject, body):
-        SENT_MAIL.append({"to": to, "subject": subject, "body": body})
+    def fake_send(to, subject, body, attachments=None):
+        SENT_MAIL.append({"to": to, "subject": subject, "body": body, "attachments": attachments or []})
         return "logged"
 
     monkeypatch.setattr(otp_service, "send_mail", fake_send)

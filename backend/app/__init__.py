@@ -38,6 +38,7 @@ def create_app(config_class=Config) -> Flask:
     _register_jwt_errors()
 
     # ---- One line per module. Later phases add more here ----
+    from app.modules.admit_cards.routes import bp as admit_cards_bp
     from app.modules.aptitude_tests.routes import bp as tests_bp
     from app.modules.auth.routes import bp as auth_bp
     from app.modules.candidate_auth.routes import bp as candidate_bp
@@ -51,6 +52,7 @@ def create_app(config_class=Config) -> Flask:
     from app.modules.institutions.routes import bp as institutions_bp
     from app.modules.meta.routes import bp as meta_bp
     from app.modules.monitor.routes import bp as monitor_bp
+    from app.modules.payments.routes import bp as payments_bp
     from app.modules.questions.routes import bp as questions_bp
     from app.modules.reports.routes import bp as reports_bp
     from app.modules.roster.routes import bp as roster_bp
@@ -73,6 +75,8 @@ def create_app(config_class=Config) -> Flask:
     app.register_blueprint(exam_admin_bp, url_prefix="/api/v1/attempts")
     app.register_blueprint(monitor_bp, url_prefix="/api/v1/monitor")
     app.register_blueprint(reports_bp, url_prefix="/api/v1/reports")
+    app.register_blueprint(admit_cards_bp, url_prefix="/api/v1/admit-cards")     # Phase 11
+    app.register_blueprint(payments_bp, url_prefix="/api/v1/payments")           # Phase 11
 
     from app.modules.candidate_auth.service import reset_limits
     reset_limits()          # wrong-attempt counters start empty for every new app (and every test)

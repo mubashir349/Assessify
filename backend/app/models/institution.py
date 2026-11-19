@@ -3,14 +3,17 @@ from sqlalchemy import CheckConstraint
 from app.common.utils import iso, utcnow
 from app.extensions import db
 
-STATUSES = ("pending", "approved", "rejected", "suspended")
+# Phase 11: awaiting_payment = registered, but the fee is not paid yet (it cannot sign in, the Super Admin waits)
+STATUSES = ("awaiting_payment", "pending", "approved", "rejected", "suspended")
+PLANS = ("monthly", "yearly")
 INSTITUTION_TYPES = ("University", "College", "School", "Institute", "Training Center")
 
 
 class Institution(db.Model):
     __tablename__ = "institutions"
     __table_args__ = (
-        CheckConstraint("status IN ('pending','approved','rejected','suspended')", name="status_valid"),
+        CheckConstraint("status IN ('awaiting_payment','pending','approved','rejected','suspended')",
+                        name="status_valid"),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -30,9 +33,29 @@ class Institution(db.Model):
     from_directory = db.Column(db.Boolean, nullable=False, default=False)          # picked from the list at signup
     email_domain_verified = db.Column(db.Boolean, nullable=False, default=False)   # admin email matches the domain
     no_official_email = db.Column(db.Boolean, nullable=False, default=False)       # free email + proof document
+    # Phase 11: subscription. plan = what was chosen at signup; paid_until = end of the paid period (set when the
+    # Super Admin approves, extended by renewals). NULL paid_until = registered before payments existed: never expires.
+    plan = db.Column(db.String(10), nullable=True)
+    paid_until = db.Column(db.DateTime, nullable=True)
 
     users = db.relationship("User", back_populates="institution", lazy="selectin")
     proof = db.relationship("InstitutionProof", uselist=False, lazy="select", cascade="all, delete-orphan")
+    payments = db.relationship("Payment", back_populates="institution", lazy="select",
+                               order_by="Payment.created_at.desc(), Payment.id.desc()")
+
+    def latest_payment(self, purpose: str | None = None):
+        for p in self.payments:
+            if purpose is None or p.purpose == purpose:
+                return p
+        return None
+
+    def registration_payment(self):
+        """The registration fee that counts: a paid / refunded one first, else the newest try."""
+        regs = [p for p in self.payments if p.purpose == "registration"]
+        for p in regs:
+            if p.status in ("paid", "refunded", "refund_failed"):
+                return p
+        return regs[0] if regs else None
 
     @property
     def display_name(self) -> str:
@@ -61,4 +84,7 @@ class Institution(db.Model):
             "no_official_email": bool(self.no_official_email),
             "has_proof": self.proof is not None,
             "admin": {"full_name": admin.full_name, "email": admin.email} if admin else None,
+            "plan": self.plan,
+            "paid_until": iso(self.paid_until),
+            "payment": (lambda p: p.to_dict() if p else None)(self.registration_payment()),
         }

@@ -27,6 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const { user } = await api('/auth/login', { method: 'POST', body: { email, password } });
       location.href = dest(user.role);
     } catch (ex) {
+      // Phase 11: unpaid registration / ended subscription -> the payment page (the server sends a signed link)
+      if ((ex.code === 'INSTITUTION_PAYMENT_REQUIRED' || ex.code === 'INSTITUTION_SUBSCRIPTION_EXPIRED') && ex.details?.payment_token) {
+        okBox.textContent = ex.message + ' Opening the payment page…'; okBox.style.display = 'block';
+        setTimeout(() => { location.href = 'institution-payment.html?token=' + encodeURIComponent(ex.details.payment_token); }, 1200);
+        return;
+      }
       showErr(ex.message);
       setBtnLoading(btn, false);
     }

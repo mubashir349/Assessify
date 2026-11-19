@@ -129,6 +129,25 @@
       </details>
     </div>
 
+    <!-- Phase 11: admit cards by email -->
+    <div class="a-card admit-card-box" id="admitBox" hidden>
+      <div class="section-head" style="margin-bottom:10px;">
+        <div><h2>Admit cards by email</h2>
+          <p>Each candidate with an email gets their admit card as a PDF, with the test schedule in the email. You can send until the test ends.</p></div>
+        <div class="admit-actions">
+          <a class="a-btn a-btn-ghost a-btn-sm" id="admitPreview" href="#" target="_blank" rel="noopener" hidden>Preview a card</a>
+          <button class="a-btn a-btn-ghost a-btn-sm" id="admitBounceBtn" onclick="checkBounces()" hidden title="Looks for “delivery failed” replies in the sending mailbox">Check for bounced emails</button>
+          <button class="a-btn a-btn-ghost a-btn-sm" id="admitResendBtn" onclick="sendAdmitCards(true)" hidden>Send again to everyone</button>
+          <span class="tip-wrap" id="admitSendWrap"><button class="a-btn a-btn-primary a-btn-sm" id="admitSendBtn" onclick="sendAdmitCards(false)">Send admit cards</button></span>
+        </div>
+      </div>
+      <div class="admit-stats" id="admitStats"></div>
+      <p class="admit-blocked" id="admitBlocked" hidden></p>
+      <p class="muted admit-note" id="admitNote"></p>
+      <div id="admitProblems"></div>
+      <div id="admitNoEmail"></div>
+    </div>
+
     <div class="section-head">
       <div><h2 id="rosterTitle">Roster</h2><p>Access codes, dates of birth and PINs are masked — click one to reveal it. They are never shown on the monitor, in emails or in reports.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -175,5 +194,6 @@
 <script src="../../assets/js/api.js"></script>
 <script src="../../assets/js/admin-shell.js"></script>
 <script src="../../assets/js/roster.js"></script>
+<script src="../../assets/js/admit-cards.js"></script>
 </body>
 </html>

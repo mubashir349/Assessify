@@ -9,7 +9,8 @@ MSG_BAD_LOGIN = "Invalid email or password."
 _TRY_LATER = "Too many wrong sign-in attempts. Wait {minutes} minute(s) and try again."
 
 _BLOCKED = {
-    "pending": ("INSTITUTION_PENDING", "Your institution is still awaiting Super Admin approval."),
+    "pending": ("INSTITUTION_PENDING", "Your payment is received. Your institution is now awaiting Super Admin approval;"
+                " you will get an email when it is approved."),
     "rejected": ("INSTITUTION_REJECTED", "Your institution's registration was not approved. Please contact the platform team."),
     "suspended": ("INSTITUTION_SUSPENDED", "Your institution has been suspended. Please contact the platform team."),
 }
@@ -41,8 +42,24 @@ def authenticate(email: str, password: str, remote_addr: str | None = None) -> U
     if not user.is_active:
         raise ApiError("ACCOUNT_DISABLED", "This account has been disabled.", 403)
     if user.role == ROLE_INSTITUTION_ADMIN:
-        status = user.institution.status if user.institution else "rejected"
+        inst = user.institution
+        status = inst.status if inst else "rejected"
+        # Phase 11: unpaid registration or expired subscription -> the page goes to the payment step (signed link)
+        if status == "awaiting_payment" or (inst is not None and _expired(inst)):
+            from app.modules.payments.service import make_token
+            expired = status != "awaiting_payment"
+            raise ApiError("INSTITUTION_SUBSCRIPTION_EXPIRED" if expired else "INSTITUTION_PAYMENT_REQUIRED",
+                           "Your subscription has ended. Renew it to continue." if expired else
+                           "Your registration is saved, but the subscription fee is not paid yet. Pay it to send "
+                           "your registration for approval.", 402, {"payment_token": make_token(inst)})
         if status in _BLOCKED:
             code, message = _BLOCKED[status]
+            if status == "pending" and inst is not None and inst.registration_payment() is None:
+                message = "Your institution is still awaiting Super Admin approval."
             raise ApiError(code, message, 403)
     return user
+
+
+def _expired(inst) -> bool:
+    from app.modules.payments.service import is_expired
+    return is_expired(inst)

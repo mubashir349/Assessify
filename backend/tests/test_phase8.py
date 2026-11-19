@@ -19,6 +19,10 @@ PUBLIC = {
     ("POST", "/api/v1/institutions/signup"), ("GET", "/api/v1/meta"),
     # Phase 10: signup email code + directory search
     ("POST", "/api/v1/auth/otp/send"), ("POST", "/api/v1/auth/otp/verify"), ("GET", "/api/v1/directory/search"),
+    # Phase 11: payment page. The institution cannot sign in before paying, so these take a signed "pay now" token
+    # instead of a login (tested in test_phase11.py); the webhook is called by Safepay.
+    ("GET", "/api/v1/payments/plans"), ("GET", "/api/v1/payments/session"), ("POST", "/api/v1/payments/checkout"),
+    ("POST", "/api/v1/payments/confirm"), ("POST", "/api/v1/payments/cancel"), ("POST", "/api/v1/payments/webhook"),
 }
 
 
@@ -152,10 +156,13 @@ def test_production_check_refuses_a_default_or_short_secret():
 
 
 def test_production_check_refuses_the_key_from_env_example():
-    from app.common.security import EXAMPLE_SECRET
+    # security.py keeps only a fingerprint of the published key, so read the key itself from .env.example
+    import re
+    from app.common.security import is_published_key
     with open(os.path.join(os.path.dirname(__file__), "..", ".env.example"), encoding="utf-8") as f:
-        assert f"SECRET_KEY={EXAMPLE_SECRET}" in f.read()
-    errors, _ = production_problems({"SECRET_KEY": EXAMPLE_SECRET, "SQLALCHEMY_DATABASE_URI": "mssql+pyodbc://"})
+        example_secret = re.search(r"^SECRET_KEY=(\S+)", f.read(), re.M).group(1)
+    assert is_published_key(example_secret)
+    errors, _ = production_problems({"SECRET_KEY": example_secret, "SQLALCHEMY_DATABASE_URI": "mssql+pyodbc://"})
     assert errors
 
 

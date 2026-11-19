@@ -21,6 +21,11 @@ def load_current_user() -> User:
         raise ApiError("UNAUTHORIZED", "Please sign in again.", 401)
     if user.role == ROLE_INSTITUTION_ADMIN and (user.institution is None or user.institution.status != "approved"):
         raise ApiError("INSTITUTION_NOT_ACTIVE", "Your institution is not active.", 403)
+    if user.role == ROLE_INSTITUTION_ADMIN and user.institution.paid_until is not None:
+        from app.common.utils import utcnow
+        if user.institution.paid_until <= utcnow():          # Phase 11: subscription ended while signed in
+            raise ApiError("INSTITUTION_SUBSCRIPTION_EXPIRED", "Your subscription has ended. Sign in again to renew "
+                           "it.", 402)
     g.current_user = user
     return user
 

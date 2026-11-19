@@ -13,3 +13,6 @@ Pillow>=10.0        # Phase 3: reads page pictures from photographed / scanned P
 gunicorn>=23.0; sys_platform != "win32"   # Phase 8: production server in Docker / Linux (Windows uses waitress: python serve.py)
 openpyxl>=3.1         # Phase 9: roster upload as Excel (.xlsx)
 dnspython>=2.6         # Phase 10: checks that a signup email domain has a mail server (MX record)
+fpdf2>=2.8             # Phase 11: admit card PDFs (pure Python)
+uharfbuzz>=0.40        # Phase 11: joins Urdu / Arabic letters correctly in admit card PDFs (optional but recommended)
+tzdata>=2024.1         # Phase 11: time zones (Asia/Karachi) on Windows, used for times in emails and PDFs

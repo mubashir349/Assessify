@@ -534,3 +534,97 @@ real emails set the `MAIL_*` lines in `.env` (Gmail + App Password, see `.env.ex
 python -m pytest -q                       # 258 tests: Phase 1-10
 python -m pytest tests/test_phase10.py -v
 ```
+
+## Phase 11 — payments (Safepay), admit cards by email, Excel reports
+
+**Payment at signup.** After registering, the institution is `awaiting_payment` and goes straight to the payment
+page (`aptitude/institution-payment.html`). Plans: **PKR 5,000 / month** or **PKR 50,000 / year** (saves PKR 10,000).
+The admin chooses a plan, pays on **Safepay's** hosted checkout page and comes back. The backend then asks Safepay
+itself (`GET /reporter/api/v1/payments/<tracker>`, signed with the secret key) whether it is paid; the browser landing
+on a "success" address proves nothing. When Safepay says `TRACKER_ENDED` with the right amount, the payment is
+**paid**, the institution becomes **pending** and gets a receipt email (receipt no. `ASY-2026-000123` + Safepay
+reference). Card details only ever go to Safepay.
+- **Cancelled / failed / expired** payment: the page says so and offers *Try again*; an email with a "try again"
+  link is sent (once). No money is taken.
+- **Signing in before paying** (correct password) opens the payment page again. The page is opened with a signed
+  link (made with `SECRET_KEY`, valid `PAYMENT_LINK_DAYS` = 7 days), because the institution cannot sign in yet.
+- An unpaid signup holds its campus / name for 7 days only, so an abandoned signup frees it again.
+
+**Super Admin.** New *Payment* column (amount, plan, Paid / Refunded / Refund failed, receipt, *Test mode*).
+- **Approve** (only paid institutions): the subscription starts that day (`paid_until` = +1 month / +12 months) and the
+  institution is emailed "approved, you can sign in".
+- **Reject** a paid institution: the fee is **refunded automatically** through Safepay and the email says so. If
+  Safepay refuses the refund (for example within 24 hours of the payment, when Safepay may want a reversal instead),
+  the row shows *Refund failed* with Safepay's reason and two buttons: **Retry refund**, or **Mark refunded by hand**
+  after refunding it yourself in the Safepay dashboard. A refunded institution cannot be approved without paying again.
+- An unpaid signup can only be removed (*Remove (unpaid)*), nothing to refund.
+
+**Renewal.** When `paid_until` passes, the admin is signed out of the API (402) and signing in opens the same payment
+page as a *renewal*; a paid renewal extends the plan straight away (from the old end date if paid early), no approval
+needed. Institutions registered before Phase 11 have no `paid_until` and never expire.
+
+**Who sends which email:** all of them come from Assessify's own mail account (the `MAIL_*` settings), never from
+Safepay: payment received (receipt), payment not completed (try-again link), approved, rejected (+ refund), refund
+completed, subscription renewed.
+
+**Admit cards by email (Roster page).** A new *Admit cards by email* box: delivered / waiting / not delivered /
+no email. **Send admit cards** emails every candidate with an email: the email explains why it was sent and gives the
+schedule (window, duration, time zone `APP_TIMEZONE`), the sign-in link and access code; the **admit card is attached
+as a PDF**. Sending works until the test ends.
+- The button is **disabled** with the reason shown when the mouse is over it (and under it): test ended, empty
+  roster, **nobody on the roster has an email**, email not set up, or everyone already has their card.
+- Candidates **without email** are listed by name with **Add email** (opens the *Correct* form) and a request to
+  collect their emails.
+- **Not delivered** are listed by name with the address and the reason: invalid address, the domain does not exist /
+  cannot receive email (checked before sending), the mail server refused the address, or **bounced** ("address not
+  found", mailbox full…). Bounces arrive a minute later in the sending mailbox: **Check for bounced emails** reads them
+  over IMAP (Gmail: same App Password, nothing is deleted or marked as read).
+- *Send to remaining* only sends to those still missing a card (also when an email was corrected after sending);
+  *Send again to everyone* resends all. *Preview a card* opens one PDF.
+- PDFs use a Unicode font (Arial on Windows, DejaVu on Linux, or `ADMIT_CARD_FONT`), so Urdu names print correctly
+  (joined letters need `uharfbuzz`, installed by `requirements.txt`).
+
+**Reports.** Next to *Download CSV* there is **Download Excel**: sheets *Summary*, *Results* (same columns and filters
+as the CSV, times in `APP_TIMEZONE`), *By field*, *By subject*. Text that starts with `=` stays text (no formulas).
+
+### One-time setup after pulling Phase 11 (PowerShell, inside `backend/`)
+```powershell
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt     # adds fpdf2 (PDF), uharfbuzz (Urdu letters), tzdata (time zones on Windows)
+flask --app run db upgrade          # payments, admit_card_emails, institutions.plan / paid_until, status awaiting_payment
+python run.py
+```
+Then add the Phase 11 block from `.env.example` to your `.env`:
+1. **Safepay sandbox keys:** sign up at https://sandbox.api.getsafepay.com/ (the Safepay sandbox dashboard), open
+   *Developers → API keys* and copy the public key into `SAFEPAY_API_KEY` and the secret key into `SAFEPAY_SECRET_KEY`.
+   Keep `SAFEPAY_ENVIRONMENT=sandbox` (no real money; use Safepay's test cards, e.g. 4456 5300 0000 1005).
+2. Real emails: `MAIL_BACKEND=smtp` with the Gmail + App Password lines (see `.env.example`).
+3. Webhooks are optional and need a public https address, so on localhost leave `SAFEPAY_WEBHOOK_SECRET` empty: the
+   page confirms the payment with Safepay itself when the admin comes back.
+
+`PAYMENTS_ENABLED=false` switches the fee off (signup goes straight to *pending*, like before Phase 11).
+
+**Not verified against the live sandbox from here:** Safepay's raw refund URL is not in their public docs (only their
+SDK's `refund` call is), so it is the setting `SAFEPAY_REFUND_PATH`. If the first refund in the sandbox says
+"Safepay refused the request", check Safepay's dashboard / API reference for the refund path and set it there; until
+then use *Mark refunded by hand*.
+
+### Done-when demo
+1. Register a new institution → the payment page opens (Test mode banner, Monthly PKR 5,000 / Yearly PKR 50,000).
+2. Pick Monthly → Safepay page → **Cancel** → "Payment not completed, no money was taken" + Try again; the email with
+   the try-again link appears.
+3. Pick Yearly → pay with a test card → back on Assessify: **Payment received** with receipt number; receipt email.
+4. Sign in → "payment is received… awaiting approval".
+5. Super Admin: *Paid · awaiting approval*, PKR 50,000 Yearly, receipt → **Approve** → approval email → the
+   institution signs in. (Reject instead → refund + email.)
+6. Roster: remove an email from one candidate → he appears under *no email address*; give another a fake domain →
+   **Send admit cards** → that candidate is listed with "domain does not exist"; *Add email* → *Send to remaining*.
+7. Remove every email → the Send button is greyed out; hover it to read why.
+8. Reports → **Download Excel** → four sheets.
+
+### Tests
+```powershell
+python -m pytest -q                       # 291 tests: Phase 1-11
+python -m pytest tests/test_phase11.py -v
+```
+Safepay is replaced by a fake HTTP server in the tests (no network, no money); the real client code runs.

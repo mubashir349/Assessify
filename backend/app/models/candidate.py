@@ -80,6 +80,9 @@ class Candidate(db.Model):
     institution = db.relationship("Institution", lazy="joined")
     # Phase 6: the candidate's attempt (at most one), shown on the roster
     attempt = db.relationship("ExamAttempt", uselist=False, viewonly=True, lazy="selectin")
+    # Phase 11: the admit-card email log row (deleted together with the candidate)
+    admit_card = db.relationship("AdmitCardEmail", uselist=False, lazy="selectin", cascade="all, delete-orphan",
+                                 passive_deletes=True)
 
     @property
     def login_with(self) -> str:

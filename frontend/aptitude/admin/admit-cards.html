@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admit Cards — Institution Admin</title>
+<link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../../assets/js/theme.js"></script>
+<script src="../../assets/js/icons.js"></script>
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/reports.css" />
+</head>
+<body data-page="roster" data-title="Admit Cards" data-sub="Email each candidate a PDF admit card that carries their access code">
+
+<template id="a-actions-template">
+  <a class="a-btn a-btn-ghost" id="backBtn" href="roster.html"><i data-icon="arrow-left"></i> Back to roster</a>
+</template>
+
+<template id="a-content-template">
+  <div class="a-card" style="margin-bottom:20px;">
+    <div class="section-head">
+      <div><h2 id="acName">Admit cards</h2><p id="acNote">Loading…</p></div>
+      <div class="rep-actions">
+        <button type="button" class="a-btn a-btn-ghost" id="pdfAllBtn"><i data-icon="download"></i> All cards (PDF)</button>
+        <button type="button" class="a-btn a-btn-primary" id="sendAllBtn"><i data-icon="mail"></i> Email pending cards</button>
+      </div>
+    </div>
+    <div class="a-grid a-grid-4">
+      <div class="a-card a-stat rep-stat"><div class="lbl">Emailed</div><div class="num ok" id="stSent">–</div></div>
+      <div class="a-card a-stat rep-stat"><div class="lbl">Not sent yet</div><div class="num" id="stPending">–</div></div>
+      <div class="a-card a-stat rep-stat"><div class="lbl">Failed</div><div class="num bad" id="stFailed">–</div></div>
+      <div class="a-card a-stat rep-stat"><div class="lbl">No email on roster</div><div class="num" id="stNoMail">–</div></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin-top:12px;">The email says the card is attached; the access code (and the PIN, for candidates without a date of birth) is inside the PDF. A card shows “Outdated” after you issue a new access code — send it again.</p>
+  </div>
+
+  <div class="a-card">
+    <div class="filters">
+      <input class="a-input" id="acQ" aria-label="Search candidates" placeholder="Search name, roll no. or email…" style="min-width:220px" />
+      <select class="a-select" id="acStatus" aria-label="Filter by status">
+        <option value="">All candidates</option><option value="not_sent">Not sent yet</option><option value="sent">Sent</option>
+        <option value="logged">Logged (test mode)</option><option value="failed">Failed</option>
+        <option value="outdated">Outdated (new code)</option><option value="no_email">No email</option>
+      </select>
+    </div>
+    <div class="a-table-wrap"><table class="a-table">
+      <thead><tr><th>Candidate</th><th>Roll No.</th><th>Email</th><th>Admit card</th><th></th></tr></thead>
+      <tbody id="acBody"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+</template>
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/admin-shell.js"></script>
+<script src="../../assets/js/admit-cards.js"></script>
+</body></html>
