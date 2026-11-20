@@ -59,3 +59,9 @@
   background: var(--text); color: var(--bg, #0b1020); box-shadow: 0 6px 24px rgba(0,0,0,.25);
 }
 .tip-wrap[data-tip] { cursor: not-allowed; }
+
+.student-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.student-detail-item{display:flex;flex-direction:column;gap:4px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2,transparent);min-width:0;}
+.student-detail-item span{font-size:11px;color:var(--text-2);}
+.student-detail-item b{font-size:13px;color:var(--text);overflow-wrap:anywhere;}
+@media(max-width:600px){.student-detail-grid{grid-template-columns:1fr;}}

@@ -18,7 +18,7 @@ function insights(s) {
   const l = {}; META.levels.forEach(x => l[x.value] = s.by_level[x.value] || 0);
   bars('diffBars', d, t); bars('lvlBars', l, t);
   const tips = [];
-  if (!t) tips.push(['target', 'The bank is empty — generate drafts from a PDF and approve them in Draft Review.']);
+  if (!t) tips.push(['target', 'The bank is empty — create questions manually or generate drafts from a PDF and approve them in Draft Review.']);
   if (t && (d.Hard || 0) / t < 0.2) tips.push(['warn', 'Only ' + Math.round((d.Hard || 0) / t * 100) + '% hard questions — add more to separate top candidates.']);
   if (t && (d.Easy || 0) / t > 0.5) tips.push(['warn', 'Bank skews easy — consider generating Medium/Hard drafts.']);
   const thin = META.levels.map(x => x.value).filter(x => !l[x]);
@@ -36,6 +36,7 @@ function card(x) {
       <span class="a-chip">${esc(x.department_name)}</span><span class="a-chip">${esc(x.level)}</span><span class="a-chip">${esc(x.subject)}</span>
       ${x.topic ? `<span class="a-chip">${esc(x.topic)}</span>` : ''}
       <span class="a-chip">${esc(label(META.difficulties, x.difficulty))} · ${esc(label(META.question_types, x.question_type))}</span>
+      ${x.bank_title ? `<span class="a-chip">Bank · ${esc(x.bank_title)}</span>` : ''}
       <span class="a-chip">${x.marks} mark${x.marks > 1 ? 's' : ''}</span></div></div>
     <div class="qactions"><a class="a-btn a-btn-ghost a-btn-sm" href="draft-review.html?attempt=${+x.attempt_id}">Source attempt</a></div></div>`;
 }

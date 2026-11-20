@@ -2,6 +2,11 @@
 Institution Admin only; everything is scoped to the signed-in admin's institution.
 
 GET   /questions/ai-status                       is AI generation configured? (no secrets)
+POST  /questions/imports                          multipart file -> provider-free extraction preview
+POST  /questions/imports/<token>/mapping           confirm structured-file column mapping
+POST  /questions/imports/<token>/ai-review        optional suggestions; never auto-applied
+POST  /questions/imports/<token>/save             save teacher-approved content into the shared bank
+GET   /questions/imports/<token>/source           authenticated original-file download
 POST  /questions/check-pdf                       multipart: file -> is it readable? (no AI call, no quota)
 POST  /questions/generate                        multipart: files (0-5 PDFs) + department_id, subject, question_type,
                                                  difficulty, count, marks, focus (required detail if no PDF)
@@ -16,7 +21,7 @@ POST  /questions/<id>/approve
 POST  /questions/<id>/reject                     {reason?}
 POST  /questions/<id>/regenerate
 """
-from flask import Blueprint, current_app, g, request
+from flask import Blueprint, current_app, g, request, send_file
 
 from app.ai import provider_status
 from app.common.decorators import auth_required
@@ -46,12 +51,52 @@ def check_pdf():
     return ok(service.check_pdf(request.files.get("file")))
 
 
+@bp.post("/manual")
+@auth_required(ADMIN)
+def manual():
+    attempt = service.create_manual_bank(g.current_user, json_body())
+    return ok({"attempt": attempt.to_dict(with_questions=True)}, 201)
+
+
 @bp.post("/generate")
 @auth_required(ADMIN)
 def generate():
     files = request.files.getlist("files") + request.files.getlist("file")   # "file" = older single-file form
     attempt = service.generate(g.current_user, request.form, files)
     return ok({"attempt": attempt.to_dict(with_questions=True)}, 201)
+
+
+@bp.post("/imports")
+@auth_required(ADMIN)
+def create_import():
+    result = service.create_question_import(g.current_user, request.files.get("file"))
+    return ok({"import": result}, 201)
+
+
+@bp.post("/imports/<token>/mapping")
+@auth_required(ADMIN)
+def map_import(token: str):
+    return ok({"import": service.map_question_import(g.current_user, token, _optional_json().get("mapping", {}))})
+
+
+@bp.get("/imports/<token>/source")
+@auth_required(ADMIN)
+def import_source(token: str):
+    path, filename = service.question_import_source(g.current_user, token)
+    return send_file(path, as_attachment=True, download_name=filename)
+
+
+@bp.post("/imports/<token>/ai-review")
+@auth_required(ADMIN)
+def review_import(token: str):
+    body = _optional_json()
+    return ok(service.review_import_with_ai(g.current_user, token, body.get("questions")))
+
+
+@bp.post("/imports/<token>/save")
+@auth_required(ADMIN)
+def save_import(token: str):
+    return ok(service.save_imported_question_bank(g.current_user, token, json_body()), 201)
 
 
 @bp.get("/attempts")

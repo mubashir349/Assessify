@@ -89,7 +89,14 @@ def send_results(user, test_id, data: dict) -> dict:
     for c in targets:
         subject, body = compose(c)
         try:
-            status, error = send_mail(c.email, subject, body), None
+            # Results are already saved and submitted at this point. Attach the same branded PDF that
+            # teachers can download; never attach question text or answer keys.
+            from app.modules.reports.pdf import render_student_result
+            pdf_data = render_student_result(c, current_app.config.get("ADMIT_CARD_FONT", ""),
+                                             current_app.config.get("APP_TIMEZONE", "Asia/Karachi"))
+            filename = "Result - " + "".join(ch if ch.isalnum() or ch in " -_" else "-" for ch in c.full_name)[:70]
+            attachment = (filename.strip() + ".pdf", pdf_data, "application/pdf")
+            status, error = send_mail(c.email, subject, body, [attachment]), None
         except MailError as exc:
             status, error = "failed", str(exc)[:300]
         _record(c, status, error, user)

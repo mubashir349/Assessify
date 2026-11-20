@@ -39,7 +39,32 @@ function showScheduled(res, who, submitted) {
   $('scheduledCard').style.display = 'block';
 }
 
+async function downloadMyResultPdf() {
+  const button = $('downloadResultPdf');
+  button.disabled = true;
+  $('resultPdfNote').textContent = 'Preparing your result PDF…';
+  try {
+    const response = await fetch(API_BASE + '/exam/result.pdf', { credentials: 'include' });
+    if (!response.ok) {
+      let message = 'The result PDF could not be generated.';
+      try { message = (await response.json()).error.message || message; } catch (e) { /* no JSON body */ }
+      if (response.status === 401) { window.location.replace('candidate-login.html'); return; }
+      $('resultPdfNote').textContent = message;
+      return;
+    }
+    const filename = (/filename=\"([^\"]+)\"/.exec(response.headers.get('Content-Disposition') || '') || [])[1] || 'my-result.pdf';
+    const url = URL.createObjectURL(await response.blob());
+    const link = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    $('resultPdfNote').textContent = 'Your PDF is ready to print or save.';
+  } catch (e) {
+    $('resultPdfNote').textContent = 'Cannot reach the server. Please try again.';
+  } finally { button.disabled = false; }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  $('downloadResultPdf').addEventListener('click', () => void downloadMyResultPdf());
   $('signOut').addEventListener('click', async () => {
     try { await api('/candidate/logout', { method: 'POST' }); } catch (e) { /* leave anyway */ }
     window.location.replace('candidate-login.html');

@@ -1,7 +1,7 @@
 // roster.html — candidate roster of one published test, stored in the database through the API (Phase 5).
 // Flow: pick a test → drop a CSV / Excel file → the server checks it (dry run) → "Import N" saves the good rows → roster table.
 // Phase 9: lenient import (name + email / phone / roll number), warnings, skipped rows, errors.csv, updated list, slips.
-let TESTS = [], TEST = null, page = 1, searchTimer, pendingFile = null, editId = null, lastResult = null;
+let TESTS = [], TEST = null, page = 1, searchTimer, pendingFile = null, editId = null, lastResult = null, detailId = null;
 const PER_PAGE = 50;
 const $ = id => document.getElementById(id);
 const term = () => TEST?.term || 'Field';
@@ -56,6 +56,7 @@ function selectTest() {
 // ---------------------------------------------------------------- roster table
 async function loadRoster() {
   const qs = new URLSearchParams({ test_id: TEST.id, page, per_page: PER_PAGE });
+  if ($('statusFilter').value) qs.set('status', $('statusFilter').value);
   if ($('deptFilter').value) qs.set('department_id', $('deptFilter').value);
   if ($('search').value.trim()) qs.set('q', $('search').value.trim());
   let d;
@@ -66,9 +67,11 @@ async function loadRoster() {
   if (opt) opt.textContent = `${TEST.name} · ${TEST.level} · ${plural(s.total, 'candidate')}`;
   $('rosterTitle').textContent = `Roster (${s.total})`;
   $('deptChips').innerHTML = s.total ? s.by_department.map(x => `<span class="a-chip">${esc(x.name)} · ${x.count}</span>`).join('') +
-    `<span class="a-chip">Signed in · ${s.logged_in}</span>` : '';
+    `<span class="a-chip">Active · ${s.status_counts.Active || 0}</span><span class="a-chip">Inactive · ${s.status_counts.Inactive || 0}</span>` +
+    `<span class="a-chip">Pending · ${s.status_counts.Pending || 0}</span><span class="a-chip">Signed in · ${s.logged_in}</span>` : '';
   $('rosterRows').innerHTML = d.items.map(c => `
     <tr>
+      <td><span class="badge ${c.status === 'Active' ? 'badge-approved' : c.status === 'Pending' ? 'badge-draft' : 'badge-locked'}">${esc(c.status)}</span></td>
       <td class="name">${esc(c.full_name)}</td><td class="mono">${esc(c.roll_number || '—')}</td>
       <td>${esc(c.email || '')}${c.phone ? `<span class="mon-sub mono">${esc(c.phone)}</span>` : ''}${!c.email && !c.phone ? '<span class="muted">—</span>' : ''}</td>
       <td><span class="a-chip">${esc(c.department.name)}</span></td>
@@ -79,12 +82,13 @@ async function loadRoster() {
       <td class="muted" style="font-size:12px;">${c.last_login_at ? esc(fmtWhen(c.last_login_at)) : '—'}${attemptCell(c.attempt)}</td>
       <td style="white-space:nowrap;">
         ${c.attempt?.status === 'locked' ? `<button class="a-btn a-btn-primary a-btn-sm" onclick="unlockAttempt(${c.attempt.id})" title="${esc(c.attempt.reference)}">Unlock</button>` : ''}
-        <button class="a-btn a-btn-ghost a-btn-sm" onclick="openCandModal(${c.id})">Correct</button>
+        <button class="a-btn a-btn-ghost a-btn-sm" onclick="viewStudent(${c.id})">View</button>
+        <button class="a-btn a-btn-ghost a-btn-sm" onclick="openCandModal(${c.id})">Edit</button>
         <button class="a-btn a-btn-ghost a-btn-sm" onclick="newCode(${c.id})" title="Issue a new access code (the old one stops working)">New code</button>
         ${c.attempt ? '' : `<button class="a-btn a-btn-danger a-btn-sm" onclick="removeCand(${c.id})" title="Remove from roster" aria-label="Remove from roster"><i data-icon="trash"></i></button>`}
       </td>
     </tr>`).join('') ||
-    `<tr><td colspan="8" class="a-empty">${s.total ? 'No candidate matches the search.' : 'No candidates yet — drop the roster CSV above or click “Add candidate”.'}</td></tr>`;
+    `<tr><td colspan="9" class="a-empty">${s.total ? 'No students match the selected filters.' : 'No students yet — drop the roster CSV above or click “Add student”.'}</td></tr>`;
   window.ROWS = d.items;
   $('pager').innerHTML = pagerHtml(d);
   if (typeof loadAdmit === 'function') void loadAdmit();      // Phase 11: admit-card section follows the roster
@@ -216,7 +220,7 @@ async function confirmImport() {
     const d = await sendCsv(pendingFile, false);
     showResult(d, pendingFile); pendingFile = null;
     const fixNote = d.error_count ? ` · ${d.error_count} row(s) need fixing` : '';
-    aToast(`${plural(d.imported, 'candidate')} imported${fixNote}.`);
+    aToast(`${plural(d.imported, 'student')} imported${fixNote}.`);
     page = 1; await loadRoster();
   } catch (e) { handleApiError(e); btn.disabled = false; }
 }
@@ -227,12 +231,13 @@ function openCandModal(id) {
   editId = id || null;
   // Phase 11: a candidate listed in the admit-card section may be on another roster page
   const c = id ? (window.ROWS.find(x => x.id === id) || (window.ADMIT_PEOPLE || {})[id] || null) : null;
-  $('cTitle').textContent = c ? 'Correct candidate' : 'Add candidate';
+  $('cTitle').textContent = c ? 'Edit student' : 'Add student';
   $('cSub').textContent = c ? 'To change the access code use “New code”. Removing the date of birth gives a PIN.'
                             : 'Name + at least one of email, phone or roll number. An access code is generated automatically.';
   $('cName').value = c ? c.full_name : ''; $('cEmail').value = c?.email || ''; $('cPhone').value = c?.phone || '';
   $('cRoll').value = c?.roll_number || ''; $('cDob').value = c?.date_of_birth || '';
   $('cDept').value = c ? c.department.id : TEST.departments[0]?.id;
+  $('cStatus').value = c?.status || 'Active';
   $('cCode').value = ''; $('cCodeField').hidden = !!c;
   $('cErr').style.display = 'none';
   openModal('candModal');
@@ -240,7 +245,7 @@ function openCandModal(id) {
 
 async function saveCand() {
   const body = { full_name: $('cName').value, email: $('cEmail').value, phone: $('cPhone').value, roll_number: $('cRoll').value,
-                 date_of_birth: $('cDob').value, department_id: Number($('cDept').value) };
+                 date_of_birth: $('cDob').value, department_id: Number($('cDept').value), status: $('cStatus').value };
   if (!editId) { body.test_id = TEST.id; if ($('cCode').value.trim()) body.access_code = $('cCode').value.trim(); }
   const btn = $('cSave'); btn.disabled = true;
   try {
@@ -248,7 +253,7 @@ async function saveCand() {
                                  : await api('/roster', { method: 'POST', body });
     closeModal('candModal');
     const pin = candidate.login_with === 'pin' ? ` · PIN ${esc(candidate.pin)}` : '';
-    aToast(editId ? 'Candidate corrected.' : `Added · access code ${esc(candidate.access_code)}${pin}`);
+    aToast(editId ? 'Student details updated.' : `Student added · access code ${esc(candidate.access_code)}${pin}`);
     await loadRoster();
   } catch (e) {
     if (e.status === 401) return handleApiError(e);
@@ -271,10 +276,27 @@ async function newCode(id) {
   catch (e) { handleApiError(e); }
 }
 
+async function viewStudent(id) {
+  try {
+    const { candidate: c } = await api('/roster/' + id);
+    detailId = id;
+    const rows = [
+      ['Status', c.status], ['Student name', c.full_name], ['Student ID / Roll number', c.roll_number || '—'],
+      ['Department', c.department?.name || '—'], ['Email', c.email || '—'], ['Contact', c.phone || '—'],
+      ['Date of birth', c.date_of_birth || '—'], ['Login method', c.login_with === 'pin' ? 'PIN' : 'Date of birth'],
+      ['Last sign-in', c.last_login_at ? fmtWhen(c.last_login_at) : 'Not signed in'],
+      ['Sign-in count', String(c.login_count || 0)], ['Test', TEST?.name || '—']
+    ];
+    $('studentDetailBody').innerHTML = rows.map(([label, value]) =>
+      `<div class="student-detail-item"><span>${esc(label)}</span><b>${esc(value)}</b></div>`).join('');
+    openModal('studentDetailModal');
+  } catch (e) { handleApiError(e); }
+}
+
 async function removeCand(id) {
   const c = window.ROWS.find(x => x.id === id);
-  if (!confirm(`Remove ${c.full_name}${c.roll_number ? ` (${c.roll_number})` : ''} from this roster? Their access code stops working.`)) return;
-  try { await api('/roster/' + id, { method: 'DELETE' }); aToast('Removed.'); await loadRoster(); }
+  if (!confirm(`Remove ${c.full_name}${c.roll_number ? ` (${c.roll_number})` : ''} from the active roster? Historical attempts and results will be preserved.`)) return;
+  try { await api('/roster/' + id, { method: 'DELETE' }); aToast('Student removed from the active roster. Historical records were preserved.'); await loadRoster(); }
   catch (e) { handleApiError(e); }
 }
 
@@ -291,6 +313,12 @@ document.addEventListener('admin:ready', () => {
   drop.addEventListener('drop', e => { void pickFile(e.dataTransfer.files[0]); });
   $('rosterRows').addEventListener('click', e => { const el = e.target.closest('.reveal'); if (el) toggleReveal(el, el.dataset.real); });
   $('deptFilter').addEventListener('change', () => { page = 1; void loadRoster(); });
+  $('statusFilter').addEventListener('change', () => { page = 1; void loadRoster(); });
+  $('detailEditBtn').addEventListener('click', () => {
+    const id = detailId;
+    closeModal('studentDetailModal');
+    if (id) openCandModal(id);
+  });
   $('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { page = 1; void loadRoster(); }, 250); });
   void loadTests();
 });

@@ -76,6 +76,13 @@ def add():
     return ok({"candidate": service.serialise(c)}, 201)
 
 
+@bp.get("/<int:candidate_id>")
+@auth_required(ADMIN)
+def detail(candidate_id: int):
+    c = service.get_candidate(g.current_user.institution_id, candidate_id)
+    return ok({"candidate": service.serialise(c)})
+
+
 @bp.put("/<int:candidate_id>")
 @auth_required(ADMIN)
 def update(candidate_id: int):

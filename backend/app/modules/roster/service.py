@@ -93,8 +93,19 @@ def published_test(institution_id: int, test_id) -> AptitudeTest:
     return test
 
 
+CANDIDATE_STATUSES = ("Active", "Inactive", "Pending")
+
+
+def _candidate_status(raw, default="Active") -> str:
+    value = default if raw is None else str(raw).strip()
+    if value not in CANDIDATE_STATUSES:
+        raise ApiError("VALIDATION_ERROR", "Choose Active, Inactive or Pending.", 422,
+                       {"status": "Choose Active, Inactive or Pending."})
+    return value
+
+
 def get_candidate(institution_id: int, candidate_id: int) -> Candidate:
-    c = Candidate.query.filter_by(id=candidate_id, institution_id=institution_id).first()
+    c = Candidate.query.filter_by(id=candidate_id, institution_id=institution_id, is_deleted=False).first()
     if c is None:
         raise ApiError("NOT_FOUND", "Candidate not found.", 404)
     return c
@@ -113,7 +124,12 @@ def list_roster(institution_id: int, args) -> dict:
     if not args.get("test_id"):
         raise ApiError("BAD_REQUEST", "test_id is required.", 400)
     test = published_test(institution_id, args.get("test_id"))
-    q = Candidate.query.filter_by(test_id=test.id)
+    q = Candidate.query.filter_by(test_id=test.id, is_deleted=False)
+    status = (args.get("status") or "").strip()
+    if status:
+        if status not in CANDIDATE_STATUSES:
+            raise ApiError("BAD_REQUEST", "status must be Active, Inactive or Pending.", 400)
+        q = q.filter(Candidate.status == status)
     if args.get("department_id"):
         try:
             q = q.filter(Candidate.department_id == int(args["department_id"]))
@@ -128,12 +144,18 @@ def list_roster(institution_id: int, args) -> dict:
     p = q.order_by(Candidate.roll_number, Candidate.full_name, Candidate.id).paginate(page=page, per_page=per_page, error_out=False)
 
     counts = dict(db.session.query(Candidate.department_id, func.count(Candidate.id))
-                  .filter(Candidate.test_id == test.id).group_by(Candidate.department_id).all())
+                  .filter(Candidate.test_id == test.id, Candidate.is_deleted == False)
+                  .group_by(Candidate.department_id).all())
     total = sum(counts.values())
-    logged_in = Candidate.query.filter(Candidate.test_id == test.id, Candidate.login_count > 0).count()
+    logged_in = Candidate.query.filter(Candidate.test_id == test.id, Candidate.is_deleted == False,
+                                       Candidate.login_count > 0).count()
+    status_counts = dict(db.session.query(Candidate.status, func.count(Candidate.id))
+                         .filter(Candidate.test_id == test.id, Candidate.is_deleted == False)
+                         .group_by(Candidate.status).all())
     return {"items": [serialise(c) for c in p.items], "page": p.page, "per_page": p.per_page, "total": p.total,
             "pages": p.pages,
             "summary": {"total": total, "logged_in": logged_in,
+                        "status_counts": {status: status_counts.get(status, 0) for status in CANDIDATE_STATUSES},
                         "by_department": [{"id": d.id, "name": d.name, "count": counts.get(d.id, 0)}
                                           for d in test.departments()]}}
 
@@ -155,7 +177,8 @@ def _refuse_if_started(c: Candidate, what: str) -> None:
 def counts_by_test(institution_id: int) -> dict:
     """{test_id: candidates} for the admin's tests - used by the Create Test page."""
     rows = (db.session.query(Candidate.test_id, func.count(Candidate.id))
-            .filter(Candidate.institution_id == institution_id).group_by(Candidate.test_id).all())
+            .filter(Candidate.institution_id == institution_id, Candidate.is_deleted == False)
+            .group_by(Candidate.test_id).all())
     return {str(t): n for t, n in rows}
 
 
@@ -347,11 +370,12 @@ def clean_fields(test: AptitudeTest, raw: dict, *, department=None, roll_require
     return clean, errors, warnings
 
 
-def _new_candidate(test: AptitudeTest, clean: dict, code: str, generated: bool, pin: str | None) -> Candidate:
+def _new_candidate(test: AptitudeTest, clean: dict, code: str, generated: bool, pin: str | None,
+                   status: str = "Active") -> Candidate:
     return Candidate(institution_id=test.institution_id, test_id=test.id, department_id=clean["department"].id,
                      full_name=clean["full_name"], email=clean["email"], phone=clean["phone"],
                      roll_number=clean["roll_number"], date_of_birth=clean["date_of_birth"], pin=pin,
-                     access_code=code, code_generated=generated)
+                     status=status, access_code=code, code_generated=generated)
 
 
 def _commit() -> None:
@@ -518,7 +542,7 @@ class _RosterIndex:
 
     def __init__(self, test: AptitudeTest):
         self.by_roll, self.by_email, self.by_phone, self.names = {}, {}, {}, set()
-        for c in Candidate.query.filter_by(test_id=test.id).all():
+        for c in Candidate.query.filter_by(test_id=test.id, is_deleted=False).all():
             if c.roll_number:
                 self.by_roll[c.roll_number.lower()] = c
             if c.email:
@@ -615,7 +639,7 @@ def import_csv(user: User, test_id, file_storage, dry_run: bool = False) -> dict
                         "missing_email": sum(1 for c in to_add if not c["email"]),
                         "missing_phone": sum(1 for c in to_add if not c["phone"]),
                         "missing_roll": sum(1 for c in to_add if not c["roll_number"])},
-            "roster_total": Candidate.query.filter_by(test_id=test.id).count()}
+            "roster_total": Candidate.query.filter_by(test_id=test.id, is_deleted=False).count()}
 
 
 def _add_candidates(test: AptitudeTest, to_add: list[dict], reserved: set, dry_run: bool) -> tuple[int, int]:
@@ -654,7 +678,7 @@ def _cell(value) -> str:
 
 
 def _ordered(test: AptitudeTest) -> list[Candidate]:
-    return (Candidate.query.filter_by(test_id=test.id)
+    return (Candidate.query.filter_by(test_id=test.id, is_deleted=False)
             .order_by(Candidate.roll_number, Candidate.full_name, Candidate.id).all())
 
 
@@ -710,7 +734,8 @@ def _json_errors(errors: dict) -> dict:
 def _roster_clashes(test: AptitudeTest, clean: dict, errors: dict, candidate: Candidate | None) -> None:
     """Roll number and email must not belong to someone else on this test's roster."""
     def taken(column, value):
-        q = Candidate.query.filter(Candidate.test_id == test.id, func.lower(column) == value.lower())
+        q = Candidate.query.filter(Candidate.test_id == test.id, Candidate.is_deleted == False,
+                                   func.lower(column) == value.lower())
         if candidate is not None:
             q = q.filter(Candidate.id != candidate.id)
         return q.first()
@@ -739,10 +764,15 @@ def add_candidate(user: User, test_id, data: dict) -> Candidate:
     dept = _department_by_id(test, data.get("department_id"), pre)
     clean, errors = _form_errors(test, data, dept, None)
     errors.update(pre)
+    try:
+        status = _candidate_status(data.get("status"), "Active")
+    except ApiError as exc:
+        errors.update(exc.details or {"status": exc.message})
+        status = "Active"
     raise_if(errors)
     code = clean["access_code"] or new_code()
     c = _new_candidate(test, clean, code, generated=not clean["access_code"],
-                       pin=None if clean["date_of_birth"] else new_pin())
+                       pin=None if clean["date_of_birth"] else new_pin(), status=status)
     db.session.add(c)
     _commit()
     return c
@@ -762,6 +792,7 @@ def update_candidate(institution_id: int, candidate_id: int, data: dict) -> Cand
         _refuse_if_started(c, "change their field / department (their paper is already built)")
     c.full_name, c.email, c.phone, c.roll_number = clean["full_name"], clean["email"], clean["phone"], clean["roll_number"]
     c.date_of_birth, c.department_id = clean["date_of_birth"], clean["department"].id
+    c.status = _candidate_status(data.get("status"), c.status)
     if c.date_of_birth:
         c.pin = None
     elif not c.pin:
@@ -782,7 +813,10 @@ def regenerate_code(institution_id: int, candidate_id: int) -> Candidate:
 
 
 def delete_candidate(institution_id: int, candidate_id: int) -> None:
+    """Soft-delete from the active roster. Attempts, answers and result history remain linked and untouched."""
     c = get_candidate(institution_id, candidate_id)
-    _refuse_if_started(c, "remove them (their answers are kept)")
-    db.session.delete(c)
-    db.session.commit()
+    c.is_deleted = True
+    c.status = "Inactive"
+    from app.common.utils import utcnow
+    c.deleted_at = utcnow()
+    _commit()
