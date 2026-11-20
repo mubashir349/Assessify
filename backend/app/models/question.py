@@ -48,6 +48,7 @@ class GenerationAttempt(db.Model):
     requested_count = db.Column(db.Integer, nullable=False)
     marks = db.Column(db.Integer, nullable=False, default=1)
     focus = db.Column(db.Unicode(500), nullable=True)            # optional "Description / focus" from the form
+    bank_title = db.Column(db.Unicode(150), nullable=True)       # title for manually authored question banks
 
     # the uploaded PDF itself is NOT stored - only safe metadata and the extracted text (needed for "Regenerate")
     # source_kind: "pdf" (1+ uploaded PDFs) or "description" (no PDF - questions from the admin's description)
@@ -94,6 +95,7 @@ class GenerationAttempt(db.Model):
             "requested_count": self.requested_count,
             "marks": self.marks,
             "focus": self.focus,
+            "title": self.bank_title,
             "source": {"kind": self.source_kind or "pdf", "files": self.source_files,
                        "filename": self.source_filename, "pages": self.source_pages,
                        "characters": self.source_chars, "truncated": self.source_truncated,
@@ -157,6 +159,7 @@ class Question(db.Model):
         return {
             "id": self.id,
             "attempt_id": self.attempt_id,
+            "bank_title": self.attempt.bank_title if self.attempt else None,
             "department_id": self.department_id,
             "department_name": self.department_name,
             "level": self.level,

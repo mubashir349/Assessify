@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manual Question Bank — Institution Admin</title>
+<link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../../assets/js/theme.js"></script>
+<script src="../../assets/js/icons.js"></script>
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/question-bank.css" />
+</head>
+<body data-page="bank" data-title="Manual Question Bank" data-sub="Write and save your own questions — this workflow does not use AI">
+<template id="a-actions-template">
+  <a class="a-btn a-btn-ghost" href="question-bank.html"><i data-icon="arrow-left"></i> Back to Question Bank</a>
+</template>
+<template id="a-content-template">
+  <div class="a-card" style="max-width:1040px;margin-bottom:18px;">
+    <div class="section-head"><div><h2>Question bank details</h2><p>Choose where the bank belongs, then choose how many questions to write.</p></div><span class="badge badge-approved">Manual · No AI</span></div>
+    <div class="a-grid a-grid-2">
+      <div class="a-field"><label for="bankTitle">Question bank title</label><input class="a-input" id="bankTitle" maxlength="150" placeholder="e.g. Semester 1 — Cell Biology" /></div>
+      <div class="a-field"><label for="bankDept" id="deptLabel">Department / Field</label><select class="a-select" id="bankDept"></select></div>
+      <div class="a-field"><label for="bankLevel">Degree level</label><input class="a-input" id="bankLevel" readonly /></div>
+      <div class="a-field"><label for="bankSubject">Subject / Course</label><select class="a-select" id="bankSubject"></select></div>
+      <div class="a-field"><label for="questionCount">How many questions would you like to add to your question bank?</label><input class="a-input" id="questionCount" type="number" min="1" value="5" /><span class="hint" id="countHint">Choose a number, then build your question forms.</span></div>
+      <div class="a-field" style="justify-content:flex-end;"><button class="btn btn-primary" type="button" id="buildBtn"><i data-icon="plus"></i> Build question forms</button></div>
+    </div>
+  </div>
+  <div id="questionArea" hidden>
+    <div class="section-head"><div><h2>Your questions</h2><p>Review and edit each question before saving. Every question is validated on the server.</p></div><span class="a-chip" id="questionCountLabel">0 questions</span></div>
+    <div id="questionForms" style="display:flex;flex-direction:column;gap:12px;"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 30px;">
+      <button class="a-btn a-btn-ghost" type="button" id="addQuestionBtn"><i data-icon="plus"></i> Add another question</button>
+      <button class="btn btn-primary" type="button" id="saveBankBtn"><i data-icon="check"></i> Review and save question bank</button>
+    </div>
+  </div>
+  <div class="a-card a-empty" id="emptyBankTip" style="max-width:1040px;">
+    <div class="ic"><i data-icon="pencil-line"></i></div><h4>Manual question creation</h4>
+    <p>No PDF upload and no AI generation are used here. Your questions are saved directly into the existing approved question bank.</p>
+  </div>
+</template>
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/admin-shell.js"></script>
+<script src="../../assets/js/manual-bank.js"></script>
+</body>
+</html>

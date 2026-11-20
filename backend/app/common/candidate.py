@@ -68,7 +68,7 @@ def load_current_candidate(*, allow_ended: bool = False) -> Candidate:
         candidate = _load(int(sub.split(":", 1)[1]))
     except ValueError:
         candidate = None
-    if candidate is None or claims.get("cv") != code_version(candidate.access_code):   # removed / new code issued
+    if candidate is None or candidate.is_deleted or claims.get("cv") != code_version(candidate.access_code):
         raise ApiError("UNAUTHORIZED", MSG_SIGN_IN, 401)
     check_can_continue(candidate, allow_ended=allow_ended)
     g.current_candidate = candidate

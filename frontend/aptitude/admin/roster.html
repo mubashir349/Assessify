@@ -12,13 +12,13 @@
 <link rel="stylesheet" href="../../assets/css/admin-shell.css" />
 <link rel="stylesheet" href="../../assets/css/roster.css" />
 </head>
-<body data-page="roster" data-title="Candidate Roster" data-sub="Candidates sign in with a one-time access code + date of birth or PIN · no candidate holds a persistent account">
+<body data-page="roster" data-title="Student Roster" data-sub="Manage registered students, their status, and test access · students sign in with their test slip">
 
 <template id="a-actions-template">
   <a class="a-btn a-btn-ghost" id="templateBtn" href="#" download>Download template CSV</a>
   <a class="a-btn a-btn-ghost" id="exportBtn" href="#" download hidden title="The whole roster with access codes, PINs and dates of birth">Export updated list (CSV)</a>
   <a class="a-btn a-btn-ghost" id="slipsBtn" href="#" target="_blank" rel="noopener" hidden>Print slips</a>
-  <button class="a-btn a-btn-primary" id="addBtn" onclick="openCandModal()" hidden><i data-icon="plus"></i> Add candidate</button>
+  <button class="a-btn a-btn-primary" id="addBtn" onclick="openCandModal()" hidden><i data-icon="plus"></i> Add student</button>
 </template>
 
 <template id="a-content-template">
@@ -151,15 +151,18 @@
     <div class="section-head">
       <div><h2 id="rosterTitle">Roster</h2><p>Access codes, dates of birth and PINs are masked — click one to reveal it. They are never shown on the monitor, in emails or in reports.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select class="a-select" id="statusFilter" aria-label="Filter by student status" style="width:auto;min-width:145px;">
+          <option value="">All statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option><option value="Pending">Pending</option>
+        </select>
         <select class="a-select" id="deptFilter" aria-label="Filter by field / department" style="width:auto;min-width:170px;"><option value="">All fields</option></select>
-        <input class="a-input" id="search" aria-label="Search the roster" style="width:220px;" placeholder="Search name, roll no, email or phone…" />
+        <input class="a-input" id="search" aria-label="Search students" style="width:220px;" placeholder="Search name, student ID, email…" />
       </div>
     </div>
     <div class="dept-chips" id="deptChips"></div>
     <div class="a-table-wrap">
       <table class="a-table">
-        <thead><tr><th>Name</th><th>Roll No.</th><th>Email / phone</th><th id="deptHead">Field</th><th>Access code</th><th>DOB / PIN</th><th>Signed in / test</th><th></th></tr></thead>
-        <tbody id="rosterRows"><tr><td colspan="8" class="a-empty">Loading…</td></tr></tbody>
+        <thead><tr><th>Status</th><th>Student name</th><th>Student ID / Roll No.</th><th>Email / phone</th><th id="deptHead">Field</th><th>Access code</th><th>DOB / PIN</th><th>Signed in / test</th><th>Actions</th></tr></thead>
+        <tbody id="rosterRows"><tr><td colspan="9" class="a-empty">Loading…</td></tr></tbody>
       </table>
     </div>
     <div id="pager"></div>
@@ -175,6 +178,8 @@
       <button class="a-modal-x" onclick="closeModal('candModal')" aria-label="Close"><i data-icon="x"></i></button>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="a-field"><label for="cStatus">Student status</label><select class="a-select" id="cStatus"><option>Active</option><option>Inactive</option><option>Pending</option></select>
+        <span class="hint">Only Active students are eligible to receive an admit card.</span></div>
       <div class="a-field"><label for="cName">Full name</label><input class="a-input" id="cName" /></div>
       <div class="a-field"><label for="cEmail">Email <span class="muted">(optional)</span></label><input class="a-input" id="cEmail" type="email" /></div>
       <div class="a-field"><label for="cPhone">Phone <span class="muted">(optional)</span></label><input class="a-input" id="cPhone" inputmode="tel" placeholder="0300-1234567" /></div>
@@ -186,6 +191,20 @@
         <span class="hint">6–20 letters or digits; must not be used by anyone else.</span></div>
       <div class="auth-err" id="cErr" style="display:none;color:var(--danger-text);font-size:12.5px;"></div>
       <button class="btn btn-primary" id="cSave" style="width:100%;" onclick="saveCand()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="a-modal-bg" id="studentDetailModal">
+  <div class="a-modal">
+    <div class="a-modal-head">
+      <div><h3>Student details</h3><p class="muted" style="font-size:12px;">Information saved in this test roster</p></div>
+      <button class="a-modal-x" onclick="closeModal('studentDetailModal')" aria-label="Close"><i data-icon="x"></i></button>
+    </div>
+    <div id="studentDetailBody" class="student-detail-grid"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+      <button class="a-btn a-btn-primary" id="detailEditBtn" type="button">Edit student</button>
     </div>
   </div>
 </div>

@@ -133,6 +133,30 @@ function scoreCell(r) {
   return `<span class="mono">${r.score}/${r.max_score}</span> <b>${r.percent}%</b>`;
 }
 
+async function openPdfForPrint(path) {
+  // Open the tab synchronously from the click handler so popup blockers recognise the user action.
+  const tab = window.open('about:blank', '_blank');
+  if (!tab) return aToast('Allow pop-ups to open the PDF for printing, or use Download PDF.', '⚠');
+  tab.opener = null;
+  try {
+    const response = await fetch(API_BASE + path, { credentials: 'include' });
+    if (!response.ok) {
+      let message = 'The PDF could not be opened.';
+      try { message = (await response.json()).error.message || message; } catch (e) { /* PDF / network response */ }
+      tab.close();
+      if (response.status === 401) return window.location.replace('../institution-login.html');
+      return aToast(esc(message), '⚠');
+    }
+    const url = URL.createObjectURL(await response.blob());
+    tab.location.replace(url);
+    // The browser PDF viewer provides its normal Print control; no report data is copied into the page.
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) {
+    tab.close();
+    aToast('Cannot reach the server. Is the backend running?', '⚠');
+  }
+}
+
 function renderCandidates(rows) {
   $('candBody').innerHTML = rows.map(r => {
     const [cls, label] = CAND_STATUS[r.status];
@@ -140,8 +164,9 @@ function renderCandidates(rows) {
     return `<tr><td class="mono">${r.rank ?? '—'}</td><td class="name">${esc(r.full_name)}<span class="mon-sub">${esc(r.email || '')}</span></td>
       <td class="mono">${esc(r.roll_number || '—')}</td><td>${esc(r.department.name)}</td>
       <td><span class="badge ${cls}">${label}</span><span class="muted">${reason}</span></td>
-      <td>${scoreCell(r)}</td><td class="mono">${r.lock_count}</td><td>${mailCell(r)}</td></tr>`;
-  }).join('') || '<tr><td colspan="8" class="muted">No candidates match.</td></tr>';
+      <td>${scoreCell(r)}</td><td class="mono">${r.lock_count}</td><td>${mailCell(r)}</td>
+      <td>${r.status === 'submitted' ? `<button type="button" class="a-btn a-btn-ghost a-btn-sm" data-result-pdf="${r.candidate_id}" title="Download this student's result PDF"><i data-icon="download"></i> PDF</button>` : '—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="9" class="muted">No candidates match.</td></tr>';
 }
 
 // ---------------------------------------------------------------- actions
@@ -173,6 +198,12 @@ function wire() {
   const reload = () => { clearTimeout(candTimer); candTimer = setTimeout(() => void loadReport(), 300); };
   ['cQ'].forEach(k => $(k).addEventListener('input', reload));
   ['cDept', 'cStatus', 'cEmail'].forEach(k => $(k).addEventListener('change', reload));
+  $('exportPdfBtn').addEventListener('click', () => void downloadFile(`/reports/tests/${TEST_ID}.pdf?${candQuery()}`, 'assessify-report.pdf'));
+  $('printPdfBtn').addEventListener('click', () => void openPdfForPrint(`/reports/tests/${TEST_ID}.pdf?${candQuery()}`));
+  $('candBody').addEventListener('click', e => {
+    const btn = e.target.closest('[data-result-pdf]');
+    if (btn) void downloadFile(`/reports/tests/${TEST_ID}/candidates/${btn.dataset.resultPdf}.pdf`, 'student-result.pdf');
+  });
   $('exportBtn').addEventListener('click', () => void downloadFile(`/reports/tests/${TEST_ID}/export.csv?${candQuery()}`, 'report.csv'));
   $('exportXlsxBtn').addEventListener('click', () => void downloadFile(`/reports/tests/${TEST_ID}/export.xlsx?${candQuery()}`, 'report.xlsx'));
   $('sendBtn').addEventListener('click', () => void sendResults());

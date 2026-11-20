@@ -63,8 +63,10 @@ class Config:
 
     # ---- Phase 3: PDF upload + AI question generation ----
     # Flask rejects any request body bigger than this with HTTP 413 (we turn that into FILE_TOO_LARGE).
-    MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "200"))          # total for all PDFs in one request
-    MAX_CONTENT_LENGTH = MAX_UPLOAD_MB * 1024 * 1024
+    MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "200"))          # total for existing AI PDF generation
+    MAX_IMPORT_UPLOAD_MB = int(os.getenv("MAX_IMPORT_UPLOAD_MB", "25"))  # one existing question-bank file
+    TESSERACT_CMD = os.getenv("TESSERACT_CMD", "").strip()
+    MAX_CONTENT_LENGTH = max(MAX_UPLOAD_MB, MAX_IMPORT_UPLOAD_MB) * 1024 * 1024
     PDF_MAX_PAGES = int(os.getenv("PDF_MAX_PAGES", "300"))          # pages read from one PDF
     PDF_MIN_TEXT_CHARS = int(os.getenv("PDF_MIN_TEXT_CHARS", "300"))  # less text than this -> "no usable text"
     MAX_PDFS_PER_GENERATION = int(os.getenv("MAX_PDFS_PER_GENERATION", "10"))

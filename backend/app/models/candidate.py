@@ -16,7 +16,7 @@ Only PUBLISHED tests take a roster: a published test is locked, so a candidate's
 The access code is kept readable (not hashed) on purpose: the admin has to print or email it, and it only works
 together with the date of birth, for one test, until that test ends.
 """
-from sqlalchemy import Index
+from sqlalchemy import CheckConstraint, Index
 
 from app.common.utils import iso, utcnow
 from app.extensions import db
@@ -54,8 +54,11 @@ DOB_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%Y/%m/%d", "%d-%
 class Candidate(db.Model):
     __tablename__ = "candidates"
     __table_args__ = (
+        CheckConstraint("status IN ('Active','Inactive','Pending')", name="status_valid"),
         Index("uq_candidates_test_roll", "test_id", "roll_number", unique=True,
-              mssql_where=db.text("roll_number IS NOT NULL"), sqlite_where=db.text("roll_number IS NOT NULL")),
+              mssql_where=db.text("is_deleted = 0 AND roll_number IS NOT NULL"),
+              sqlite_where=db.text("is_deleted = 0 AND roll_number IS NOT NULL")),
+        Index("ix_candidates_test_status_deleted", "test_id", "status", "is_deleted"),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -68,6 +71,10 @@ class Candidate(db.Model):
     roll_number = db.Column(db.Unicode(50), nullable=True)
     date_of_birth = db.Column(db.Date, nullable=True)
     pin = db.Column(db.String(PIN_LENGTH), nullable=True)                 # Phase 9, only when there is no DOB
+    # Existing roster entries and newly imported candidates keep their former default eligibility.
+    status = db.Column(db.String(12), nullable=False, default="Active", server_default="Active", index=True)
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false(), index=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     access_code = db.Column(db.String(20), nullable=False, unique=True)   # stored upper-case
     code_generated = db.Column(db.Boolean, nullable=False, default=True)  # False = supplied in the CSV
     last_login_at = db.Column(db.DateTime, nullable=True)
@@ -98,6 +105,7 @@ class Candidate(db.Model):
             "email": self.email,
             "phone": self.phone,
             "roll_number": self.roll_number,
+            "status": self.status,
             "date_of_birth": self.date_of_birth.isoformat() if self.date_of_birth else None,
             "login_with": self.login_with,
             "pin": self.pin,

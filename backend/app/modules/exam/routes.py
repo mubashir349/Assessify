@@ -15,7 +15,9 @@ POST /attempts/<id>/end    -> {attempt}   (Phase 7: the proctor ends the test fo
 Every candidate route runs with allow_ended=True so that, after the end time, the attempt is submitted and the
 request gets a clear TIME_UP / result instead of a bare "session closed".
 """
-from flask import Blueprint, g, request
+import io
+
+from flask import Blueprint, current_app, g, request, send_file
 
 from app.common.candidate import candidate_required
 from app.common.decorators import auth_required
@@ -81,6 +83,25 @@ def submit():
 @candidate_required(allow_ended=True)
 def result():
     return ok(service.result(g.current_candidate))
+
+
+@bp.get("/result.pdf")
+@candidate_required(allow_ended=True)
+def result_pdf():
+    """The signed-in candidate may download only their own currently published result."""
+    published = service.result(g.current_candidate)
+    if published.get("score") is None:
+        raise ApiError("RESULT_NOT_RELEASED", "Your result PDF is not available yet. The institution will release it by email.", 403)
+    from app.modules.reports import pdf
+    candidate = g.current_candidate
+    payload = pdf.render_student_result(candidate, current_app.config.get("ADMIT_CARD_FONT", ""),
+                                        current_app.config.get("APP_TIMEZONE", "Asia/Karachi"))
+    filename = "My Result - " + "".join(ch if ch.isalnum() or ch in " -_" else "-" for ch in candidate.full_name)[:70]
+    response = send_file(io.BytesIO(payload), mimetype="application/pdf", as_attachment=True,
+                         download_name=filename.strip() + ".pdf", max_age=0)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 def _admin_attempt(attempt_id: int) -> ExamAttempt:

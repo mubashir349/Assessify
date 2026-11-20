@@ -34,6 +34,8 @@
       <div class="section-head">
         <div><h2 id="rName"></h2><p id="rMeta"></p></div>
         <div class="rep-actions">
+          <button type="button" class="a-btn a-btn-primary" id="exportPdfBtn" title="Professional A4 report PDF">Download PDF <i data-icon="download"></i></button>
+          <button type="button" class="a-btn a-btn-ghost" id="printPdfBtn" title="Open the A4 report PDF in a new tab for printing">Print PDF <i data-icon="printer"></i></button>
           <button type="button" class="a-btn a-btn-ghost" id="exportBtn" title="Results as a CSV file (opens in Excel, Google Sheets…)">Download CSV <i data-icon="download"></i></button>
           <button type="button" class="a-btn a-btn-ghost" id="exportXlsxBtn" title="Excel workbook: summary, results, by field and by subject">Download Excel <i data-icon="download"></i></button>
           <button type="button" class="a-btn a-btn-primary" id="sendBtn"><i data-icon="mail"></i> Send results</button>
@@ -91,7 +93,7 @@
         </select>
       </div>
       <div class="a-table-wrap"><table class="a-table">
-        <thead><tr><th>Rank</th><th>Candidate</th><th>Roll No.</th><th>Field / Department</th><th>Status</th><th>Score</th><th>Locks</th><th>Result email</th></tr></thead>
+        <thead><tr><th>Rank</th><th>Candidate</th><th>Roll No.</th><th>Field / Department</th><th>Status</th><th>Score</th><th>Locks</th><th>Result email</th><th>Result PDF</th></tr></thead>
         <tbody id="candBody"></tbody>
       </table></div>
     </div>

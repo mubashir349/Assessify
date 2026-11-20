@@ -14,9 +14,13 @@ from flask import Blueprint, current_app, g, request, send_file
 
 from app.common.decorators import auth_required
 from app.common.responses import ok
+from app.extensions import db
 from app.common.validation import json_body
 from app.models.user import ROLE_INSTITUTION_ADMIN
-from app.modules.reports import ai_summary, emails, excel, service
+from app.models.candidate import Candidate
+from app.models.institution import Institution
+from app.common.errors import ApiError
+from app.modules.reports import ai_summary, emails, excel, pdf, service
 
 bp = Blueprint("reports", __name__)
 ADMIN = ROLE_INSTITUTION_ADMIN
@@ -32,6 +36,40 @@ def tests():
 @auth_required(ADMIN)
 def report(test_id: int):
     return ok(service.report(g.current_user.institution_id, test_id, request.args, current_app.config))
+
+
+@bp.get("/tests/<int:test_id>.pdf")
+@auth_required(ADMIN)
+def report_pdf(test_id: int):
+    data = service.report(g.current_user.institution_id, test_id, request.args, current_app.config)
+    institution = db.session.get(Institution, g.current_user.institution_id)
+    payload = pdf.render_test_report(data, institution, current_app.config.get("ADMIT_CARD_FONT", ""),
+                                     current_app.config.get("APP_TIMEZONE", "Asia/Karachi"))
+    filename = "Assessify - " + "".join(ch if ch.isalnum() or ch in " -_" else "-" for ch in data["test"]["name"])[:70]
+    response = send_file(io.BytesIO(payload), mimetype="application/pdf", as_attachment=True,
+                         download_name=filename.strip() + ".pdf", max_age=0)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@bp.get("/tests/<int:test_id>/candidates/<int:candidate_id>.pdf")
+@auth_required(ADMIN)
+def candidate_result_pdf(test_id: int, candidate_id: int):
+    candidate = Candidate.query.filter_by(id=candidate_id, test_id=test_id,
+                                          institution_id=g.current_user.institution_id).first()
+    if candidate is None:
+        raise ApiError("NOT_FOUND", "Candidate not found.", 404)
+    if candidate.attempt is None or candidate.attempt.status != "submitted":
+        raise ApiError("RESULT_NOT_READY", "A result PDF is available after the assessment has been submitted.", 409)
+    payload = pdf.render_student_result(candidate, current_app.config.get("ADMIT_CARD_FONT", ""),
+                                        current_app.config.get("APP_TIMEZONE", "Asia/Karachi"))
+    filename = "Result - " + "".join(ch if ch.isalnum() or ch in " -_" else "-" for ch in candidate.full_name)[:70]
+    response = send_file(io.BytesIO(payload), mimetype="application/pdf", as_attachment=True,
+                         download_name=filename.strip() + ".pdf", max_age=0)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @bp.get("/tests/<int:test_id>/export.csv")

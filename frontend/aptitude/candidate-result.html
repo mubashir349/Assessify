@@ -40,6 +40,8 @@
         Your attempt has been recorded and scored. This is a one-time score screen — no further login or dashboard access follows.
       </p>
       <div class="a-card res-rows" id="immediateRows"></div>
+      <button class="btn btn-primary" id="downloadResultPdf" type="button" style="width:100%;margin-top:16px;"><i data-icon="download"></i> Download result PDF</button>
+      <p class="res-note" id="resultPdfNote" role="status" aria-live="polite"></p>
     </div>
 
     <div class="result-card glass fade-up" id="scheduledCard" style="display:none;">
@@ -47,7 +49,7 @@
       <h1 class="res-title">Test submitted</h1>
       <p class="res-note">
         Your answers have been recorded. This institution has chosen to release results later —
-        your score will be emailed to you on the date below. No further login or dashboard access follows.
+        your score and a PDF result document will be emailed to you on the date below. No further login or dashboard access follows.
       </p>
       <div class="a-card res-rows" id="scheduledRows"></div>
     </div>

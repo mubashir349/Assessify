@@ -1,0 +1,6 @@
+# Optional features for imported question banks. Base import works without these:
+# - xlrd reads legacy .xls files (CSV and .xlsx are supported by the base requirements).
+# - PyMuPDF + pytesseract enable OCR for scanned/image-only PDFs; Windows also needs the Tesseract OCR executable.
+xlrd>=2.0.1
+PyMuPDF>=1.24
+pytesseract>=0.3.13

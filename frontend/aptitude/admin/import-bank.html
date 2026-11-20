@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Import Existing Question Bank — Institution Admin</title>
+<link rel="icon" href="data:,">
+<meta name="theme-color" content="#0B1020">
+<script src="../../assets/js/theme.js"></script>
+<script src="../../assets/js/icons.js"></script>
+<link rel="stylesheet" href="../../assets/css/theme.css" />
+<link rel="stylesheet" href="../../assets/css/admin-shell.css" />
+<link rel="stylesheet" href="../../assets/css/question-bank.css" />
+<link rel="stylesheet" href="../../assets/css/import-bank.css" />
+</head>
+<body data-page="bank" data-title="Import Existing Question Bank" data-sub="Extract an existing question bank, review it, and decide which optional AI suggestions to apply">
+<template id="a-actions-template">
+  <a class="a-btn a-btn-ghost" href="question-bank.html"><i data-icon="arrow-left"></i> Back to Question Bank</a>
+</template>
+<template id="a-content-template">
+  <div class="ib-wrap">
+    <div class="ib-steps" aria-label="Import steps">
+      <div class="ib-step active" data-step-label="upload"><span>1</span> Upload</div>
+      <div class="ib-step" data-step-label="preview"><span>2</span> Preview & edit</div>
+      <div class="ib-step" data-step-label="review"><span>3</span> AI review (optional)</div>
+      <div class="ib-step" data-step-label="save"><span>4</span> Final review & save</div>
+    </div>
+
+    <section class="a-card ib-card">
+      <div class="section-head"><div><h2>Question bank details</h2><p>Choose where the imported questions should be stored.</p></div><span class="badge badge-approved">Teacher-controlled import</span></div>
+      <div class="a-grid a-grid-2">
+        <div class="a-field"><label for="bankTitle">Question bank title</label><input class="a-input" id="bankTitle" maxlength="150" placeholder="e.g. Semester 1 — Existing Question Bank" /></div>
+        <div class="a-field"><label for="bankDept" id="deptLabel">Department / Field</label><select class="a-select" id="bankDept"><option value="">Choose a department</option></select></div>
+        <div class="a-field"><label for="bankLevel">Degree level</label><input class="a-input" id="bankLevel" readonly /></div>
+        <div class="a-field"><label for="bankSubject">Subject / Course</label><select class="a-select" id="bankSubject" disabled><option value="">Choose a subject</option></select></div>
+      </div>
+    </section>
+
+    <section class="a-card ib-card" id="uploadPanel">
+      <div class="section-head"><div><h2>1. Upload an existing question bank</h2><p>Extraction does not call AI. Your original file is retained for reference during this import.</p></div><span class="badge badge-neutral">No AI used</span></div>
+      <label class="ib-dropzone" id="dropzone" for="sourceFile">
+        <input type="file" id="sourceFile" accept=".pdf,.doc,.docx,.csv,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+        <span class="ib-upload-icon"><i data-icon="upload-cloud"></i></span>
+        <strong id="filePrompt">Choose a PDF, Word, CSV or Excel file</strong>
+        <span>PDF · DOCX · DOC · CSV · XLSX · XLS</span>
+        <small>Maximum upload size: 25 MB. Scanned PDFs need local OCR software for automatic text extraction.</small>
+      </label>
+      <div class="ib-file-row" id="selectedFileRow" hidden><span id="selectedFileName"></span><button class="a-btn a-btn-ghost a-btn-sm" type="button" id="clearFileBtn">Remove</button></div>
+      <div class="ib-actions"><button class="a-btn a-btn-primary" id="uploadBtn" type="button" disabled><i data-icon="file-search"></i> Upload & extract questions</button><span class="hint" id="uploadStatus">Choose a file to begin.</span></div>
+    </section>
+
+    <section class="a-card ib-card" id="mappingPanel" hidden>
+      <div class="section-head"><div><h2>Confirm column mapping</h2><p>Assessify suggests likely columns. Confirm or change them before extracting structured rows.</p></div><span class="badge badge-warning">Teacher confirmation required</span></div>
+      <div id="mappingFields" class="a-grid a-grid-2"></div>
+      <div class="ib-sample"><strong>Sample rows</strong><div id="mappingSample"></div></div>
+      <div class="ib-actions"><button class="a-btn a-btn-primary" id="confirmMappingBtn" type="button">Confirm mapping & extract</button></div>
+    </section>
+
+    <section class="a-card ib-card" id="previewPanel" hidden>
+      <div class="section-head"><div><h2>2. Extracted questions — preview & edit</h2><p>Check every question, option and correct answer. Incomplete items are not auto-completed.</p></div><span class="a-chip" id="previewCount">0 questions</span></div>
+      <div class="ib-source-row"><span id="sourceFileLabel"></span><button type="button" class="a-btn a-btn-ghost a-btn-sm" id="downloadSourceBtn"><i data-icon="download"></i> Download original</button></div>
+      <div id="extractWarnings" class="ib-warnings" hidden></div>
+      <div id="questionPreviewList" class="ib-question-list"></div>
+      <div class="ib-actions ib-actions-wrap">
+        <button class="a-btn a-btn-ghost" type="button" id="addQuestionBtn"><i data-icon="plus"></i> Add question</button>
+        <button class="a-btn a-btn-ghost" type="button" id="reviewAiBtn"><i data-icon="sparkles"></i> Review Question Bank with AI Recommendations</button>
+        <button class="a-btn a-btn-primary" type="button" id="withoutAiBtn">Continue without AI</button>
+      </div>
+      <div class="hint" id="aiAvailability"></div>
+    </section>
+
+    <section class="a-card ib-card" id="reviewPanel" hidden>
+      <div class="section-head"><div><h2>3. AI recommendations</h2><p>Every suggestion is independent. Select only the changes you personally approve.</p></div><span class="badge badge-ai">Optional AI review</span></div>
+      <div class="ib-ai-banner"><i data-icon="shield-check"></i><span>AI suggestions never change your questions automatically. Unchecked suggestions remain unapplied. Low-confidence items require teacher verification.</span></div>
+      <div class="ib-review-tools"><label><input type="checkbox" id="selectAllRecommendations" /> Select all recommendations</label><span id="recommendationCount" class="a-chip">0 recommendations</span></div>
+      <div id="recommendationList" class="ib-recommendation-list"></div>
+      <div class="ib-actions ib-actions-wrap">
+        <button class="a-btn a-btn-primary" type="button" id="applySelectedBtn">Apply selected recommendations</button>
+        <button class="a-btn a-btn-ghost" type="button" id="continueUnchangedBtn">Continue without applying recommendations</button>
+      </div>
+      <div class="hint" id="reviewStatus"></div>
+    </section>
+
+    <section class="a-card ib-card" id="finalPanel" hidden>
+      <div class="section-head"><div><h2>4. Final review</h2><p>This is the exact question content that will be saved to the existing Question Bank.</p></div><span class="badge badge-approved">Ready for teacher approval</span></div>
+      <div id="finalSummary" class="ib-final-summary"></div>
+      <div id="finalQuestionList" class="ib-final-list"></div>
+      <div class="ib-actions ib-actions-wrap">
+        <button class="a-btn a-btn-ghost" type="button" id="backToEditBtn">Back to edit</button>
+        <button class="a-btn a-btn-primary" type="button" id="saveImportedBankBtn"><i data-icon="check"></i> Save Question Bank</button>
+      </div>
+      <div class="hint" id="saveStatus"></div>
+    </section>
+  </div>
+</template>
+<script src="../../assets/js/api.js"></script>
+<script src="../../assets/js/admin-shell.js"></script>
+<script src="../../assets/js/import-bank.js"></script>
+</body>
+</html>

@@ -54,6 +54,11 @@ def login_url(raw: str | None) -> str:
 
 
 def _card(c: Candidate, url: str) -> content.Card:
+    # Backend guard used by email issuance and direct PDF preview/download routes.
+    if c.is_deleted or c.status != "Active":
+        raise ApiError("ADMIT_CARD_NOT_ELIGIBLE",
+                       f"{c.full_name} is {c.status.lower()} and is not eligible for an admit card. "
+                       "Only Active students can receive admit cards.", 403)
     return content.build(c, url, _cfg("APP_TIMEZONE", "Asia/Karachi"), _term(c.test))
 
 
@@ -91,6 +96,7 @@ def imap_server() -> str:
 # ---------------------------------------------------------------- status (what the Roster page shows)
 def blocked_reason(test, candidates: list[Candidate]) -> str | None:
     """Why the Send button is disabled (shown when the mouse is over it). None = it can be pressed."""
+    candidates = [c for c in candidates if not c.is_deleted and c.status == "Active"]
     if _test_ended(test):
         return "This test has ended. Admit cards can only be sent before the test ends."
     if not candidates:
@@ -109,7 +115,7 @@ def blocked_reason(test, candidates: list[Candidate]) -> str | None:
 def _person(c: Candidate) -> dict:
     row = c.admit_card
     return {"id": c.id, "full_name": c.full_name, "roll_number": c.roll_number, "email": c.email,
-            "department": c.department.name, "state": _state(c),
+            "status": c.status, "department": c.department.name, "state": _state(c),
             "error": row.error if row and row.status in ("failed", "bounced") else None,
             "sent_to": row.to_email if row else None, "sent_at": iso(row.sent_at) if row else None,
             "candidate": c.to_dict()}
@@ -123,13 +129,17 @@ def status(institution_id: int, test_id) -> dict:
     counts = {k: 0 for k in ("no_email", "not_sent", "sent", "failed", "bounced", "changed")}
     for p in people:
         counts[p["state"]] += 1
+    eligible = [p for p in people if p["status"] == "Active"]
+    status_counts = {status: sum(1 for p in people if p["status"] == status)
+                     for status in ("Active", "Inactive", "Pending")}
     reason = blocked_reason(test, cands)
     ready, mail_note = mail_ready(current_app.config)
     can_resend = (not _test_ended(test)) and ready and counts["sent"] > 0
     return {
         "test": {"id": test.id, "name": test.name, "ended": _test_ended(test),
                  "ends_at": iso(test.schedule.ends_at) if test.schedule else None},
-        "total": len(cands), "with_email": len(cands) - counts["no_email"], "counts": counts,
+        "total": len(cands), "eligible": len(eligible), "status_counts": status_counts,
+        "with_email": sum(1 for p in eligible if p["email"]), "counts": counts,
         "can_send": reason is None, "blocked_reason": reason, "can_resend": can_resend,
         "mail_note": mail_note, "bounce_check": bool(imap_server()),
         "no_email": [p for p in people if p["state"] == "no_email"],
@@ -165,7 +175,7 @@ def _record(c: Candidate, status_: str, error: str | None, user) -> None:
 def _targets(cands, ids: set[int] | None, resend: bool) -> list[Candidate]:
     out = []
     for c in cands:
-        if not c.email or (ids is not None and c.id not in ids):
+        if not c.email or c.is_deleted or c.status != "Active" or (ids is not None and c.id not in ids):
             continue
         if resend or not _delivered(c):
             out.append(c)
@@ -183,6 +193,13 @@ def send(user, data: dict) -> dict:
                        {"candidate_ids": "Send a list of candidate ids, or leave it out to send to everyone."})
     ids = set(raw_ids) if raw_ids is not None else None
     resend = data.get("resend") is True
+    if ids is not None:
+        selected = [c for c in cands if c.id in ids]
+        ineligible = [c for c in selected if c.status != "Active" or c.is_deleted]
+        if ineligible:
+            names = ", ".join(f"{c.full_name} ({c.status})" for c in ineligible[:5])
+            raise ApiError("ADMIT_CARD_NOT_ELIGIBLE",
+                           f"Admit cards can only be issued to Active students. Ineligible: {names}.", 403)
 
     reason = blocked_reason(test, cands)
     if reason and not (resend and "already has their admit card" in reason):
