@@ -25,7 +25,7 @@ MSG_SIGN_IN = "Please sign in with your access code."
 
 def code_version(access_code: str) -> str:
     """Short fingerprint of the access code, stored in the token: issuing a new code ends the old sessions."""
-    return hashlib.sha256(access_code.encode()).hexdigest()[:12]
+    return hashlib.sha256((access_code or "").encode()).hexdigest()[:12]
 
 
 def candidate_query():
@@ -50,7 +50,7 @@ def _load(candidate_id: int) -> Candidate | None:
 
 
 def load_current_candidate(*, allow_ended: bool = False) -> Candidate:
-    from app.modules.candidate_auth.service import check_can_continue
+    from app.modules.candidate_auth.service import check_can_continue, ensure_candidate_active
 
     token = request.cookies.get(CANDIDATE_COOKIE)
     if not token:
@@ -68,6 +68,8 @@ def load_current_candidate(*, allow_ended: bool = False) -> Candidate:
         candidate = _load(int(sub.split(":", 1)[1]))
     except ValueError:
         candidate = None
+    if candidate is not None and not candidate.is_deleted and candidate.access_code is None:
+        ensure_candidate_active(candidate)   # code withdrawn (Inactive / Pending): clear 403 instead of a vague 401
     if candidate is None or candidate.is_deleted or claims.get("cv") != code_version(candidate.access_code):
         raise ApiError("UNAUTHORIZED", MSG_SIGN_IN, 401)
     check_can_continue(candidate, allow_ended=allow_ended)

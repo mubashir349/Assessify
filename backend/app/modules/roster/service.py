@@ -26,6 +26,7 @@ import secrets
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
+from flask import current_app
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 
@@ -55,8 +56,10 @@ def canonical_code(raw) -> str:
     return "".join(ch for ch in str(raw or "").upper() if ch.isalnum())
 
 
-def display_code(code: str) -> str:
-    """'8K4Q2P1X' -> '8K4Q-2P1X' (groups of 4)."""
+def display_code(code: str | None) -> str | None:
+    """'8K4Q2P1X' -> '8K4Q-2P1X' (groups of 4). None when no code has been issued (Inactive / Pending)."""
+    if not code:
+        return None
     return "-".join(code[i:i + CODE_GROUP] for i in range(0, len(code), CODE_GROUP))
 
 
@@ -76,6 +79,31 @@ def new_code(reserved: set | None = None) -> str:
 def new_pin() -> str:
     """6 random digits, never starting with 0 (Excel drops a leading 0 when it opens the CSV)."""
     return secrets.choice("123456789") + "".join(secrets.choice("0123456789") for _ in range(PIN_LENGTH - 1))
+
+
+def _sync_access(c: Candidate) -> None:
+    """Login credentials exist only for Active students.
+
+    Inactive / Pending / removed -> the access code and PIN are withdrawn (nothing is generated), so the student can
+    no longer sign in and no slip or admit card can be produced.
+    Active -> a code is generated if there is none (and a PIN when there is no date of birth). A card that was
+    emailed earlier carried the old credentials, so its record is dropped and it shows as "not sent" again.
+    """
+    if c.is_deleted or c.status != "Active":
+        if c.access_code is not None or c.pin is not None:
+            c.access_code, c.pin = None, None
+            c.admit_card = None
+        return
+    changed = False
+    if not c.access_code:
+        c.access_code, c.code_generated, changed = new_code(), True, True
+    if c.date_of_birth:
+        if c.pin:
+            c.pin, changed = None, True
+    elif not c.pin:
+        c.pin, changed = new_pin(), True
+    if changed and c.admit_card is not None:
+        c.admit_card = None
 
 
 # ---------------------------------------------------------------- reading
@@ -381,8 +409,9 @@ def _new_candidate(test: AptitudeTest, clean: dict, code: str, generated: bool, 
 def _commit() -> None:
     try:
         db.session.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         db.session.rollback()   # two imports at the same moment picked the same roll number / code
+        current_app.logger.error("Roster commit failed: %s", getattr(exc, "orig", exc))
         raise ApiError("CONFLICT", "Someone changed this roster at the same time. Please try again.", 409)
 
 
@@ -693,9 +722,11 @@ def export_csv(institution_id: int, test_id) -> tuple[str, str]:
     w = csv.writer(out)
     w.writerow(EXPORT_HEADER + [_term(test).lower()])
     for c in _ordered(test):
+        issued = c.status == "Active" and bool(c.access_code)      # Inactive / Pending students have no credentials
         w.writerow([_cell(v) for v in (
-            c.full_name, c.roll_number, display_code(c.access_code),
-            "date of birth" if c.login_with == "dob" else "PIN", c.pin,
+            c.full_name, c.roll_number, display_code(c.access_code) if issued else "",
+            ("date of birth" if c.login_with == "dob" else "PIN") if issued else f"not issued ({c.status})",
+            c.pin if issued else "",
             c.date_of_birth.isoformat() if c.date_of_birth else "", c.email, c.phone, c.department.name)])
     safe = "".join(ch if ch.isalnum() else "-" for ch in test.name).strip("-")[:60] or "test"
     return f"roster-{safe}.csv", out.getvalue()
@@ -711,7 +742,8 @@ def slips(institution_id: int, test_id) -> dict:
                      "schedule": sched.to_dict() if sched else None},
             "slips": [{"id": c.id, "full_name": c.full_name, "roll_number": c.roll_number,
                        "department": c.department.name, "access_code": display_code(c.access_code),
-                       "login_with": c.login_with, "pin": c.pin} for c in _ordered(test)]}
+                       "login_with": c.login_with, "pin": c.pin}
+                      for c in _ordered(test) if c.status == "Active" and c.access_code]}
 
 
 # ---------------------------------------------------------------- add / correct / new code / remove
@@ -769,10 +801,16 @@ def add_candidate(user: User, test_id, data: dict) -> Candidate:
     except ApiError as exc:
         errors.update(exc.details or {"status": exc.message})
         status = "Active"
+    if status != "Active" and clean["access_code"]:
+        errors["access_code"] = (f"A {status} student does not get an access code. Leave this empty, "
+                                 "or set the status to Active.")
     raise_if(errors)
-    code = clean["access_code"] or new_code()
-    c = _new_candidate(test, clean, code, generated=not clean["access_code"],
-                       pin=None if clean["date_of_birth"] else new_pin(), status=status)
+    if status == "Active":
+        code, generated = clean["access_code"] or new_code(), not clean["access_code"]
+        pin = None if clean["date_of_birth"] else new_pin()
+    else:                         # Inactive / Pending: no access code and no PIN are generated at all
+        code, generated, pin = None, True, None
+    c = _new_candidate(test, clean, code, generated=generated, pin=pin, status=status)
     db.session.add(c)
     _commit()
     return c
@@ -793,10 +831,7 @@ def update_candidate(institution_id: int, candidate_id: int, data: dict) -> Cand
     c.full_name, c.email, c.phone, c.roll_number = clean["full_name"], clean["email"], clean["phone"], clean["roll_number"]
     c.date_of_birth, c.department_id = clean["date_of_birth"], clean["department"].id
     c.status = _candidate_status(data.get("status"), c.status)
-    if c.date_of_birth:
-        c.pin = None
-    elif not c.pin:
-        c.pin = new_pin()
+    _sync_access(c)             # Active: issue the code / PIN if missing. Inactive or Pending: withdraw them.
     _commit()
     return c
 
@@ -805,9 +840,14 @@ def regenerate_code(institution_id: int, candidate_id: int) -> Candidate:
     """A lost or leaked slip: the old code stops working immediately. A PIN was on the same slip, so it is
     replaced too."""
     c = get_candidate(institution_id, candidate_id)
+    if c.is_deleted or c.status != "Active":
+        raise ApiError("CANDIDATE_NOT_ACTIVE",
+                       f"{c.full_name} is {c.status.lower()}, so no access code is issued. Set the student to "
+                       "Active first; a code is generated automatically.", 409)
     c.access_code, c.code_generated = new_code(), True
     if c.pin:
         c.pin = new_pin()
+    c.admit_card = None          # the admit card already emailed carries the old code
     _commit()
     return c
 
@@ -817,6 +857,7 @@ def delete_candidate(institution_id: int, candidate_id: int) -> None:
     c = get_candidate(institution_id, candidate_id)
     c.is_deleted = True
     c.status = "Inactive"
+    _sync_access(c)              # a removed student keeps no working code or PIN
     from app.common.utils import utcnow
     c.deleted_at = utcnow()
     _commit()

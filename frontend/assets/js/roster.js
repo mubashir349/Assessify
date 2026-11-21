@@ -75,16 +75,18 @@ async function loadRoster() {
       <td class="name">${esc(c.full_name)}</td><td class="mono">${esc(c.roll_number || '—')}</td>
       <td>${esc(c.email || '')}${c.phone ? `<span class="mon-sub mono">${esc(c.phone)}</span>` : ''}${!c.email && !c.phone ? '<span class="muted">—</span>' : ''}</td>
       <td><span class="a-chip">${esc(c.department.name)}</span></td>
-      <td class="mono reveal" data-real="${esc(c.access_code)}">••••-••••</td>
+      ${!c.access_code
+        ? `<td class="muted" style="font-size:12px;" title="Access codes and PINs are only generated for Active students">Not issued</td><td class="muted">—</td>`
+        : `<td class="mono reveal" data-real="${esc(c.access_code)}">••••-••••</td>
       ${c.login_with === 'pin'
         ? `<td class="mono reveal" data-real="PIN ${esc(c.pin)}" title="No date of birth: signs in with this PIN">PIN ••••••</td>`
-        : `<td class="mono reveal" data-real="${esc(new Date(c.date_of_birth + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }))}">••-•••-••••</td>`}
+        : `<td class="mono reveal" data-real="${esc(new Date(c.date_of_birth + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }))}">••-•••-••••</td>`}`}
       <td class="muted" style="font-size:12px;">${c.last_login_at ? esc(fmtWhen(c.last_login_at)) : '—'}${attemptCell(c.attempt)}</td>
       <td style="white-space:nowrap;">
         ${c.attempt?.status === 'locked' ? `<button class="a-btn a-btn-primary a-btn-sm" onclick="unlockAttempt(${c.attempt.id})" title="${esc(c.attempt.reference)}">Unlock</button>` : ''}
         <button class="a-btn a-btn-ghost a-btn-sm" onclick="viewStudent(${c.id})">View</button>
         <button class="a-btn a-btn-ghost a-btn-sm" onclick="openCandModal(${c.id})">Edit</button>
-        <button class="a-btn a-btn-ghost a-btn-sm" onclick="newCode(${c.id})" title="Issue a new access code (the old one stops working)">New code</button>
+        ${c.access_code ? `<button class="a-btn a-btn-ghost a-btn-sm" onclick="newCode(${c.id})" title="Issue a new access code (the old one stops working)">New code</button>` : ''}
         ${c.attempt ? '' : `<button class="a-btn a-btn-danger a-btn-sm" onclick="removeCand(${c.id})" title="Remove from roster" aria-label="Remove from roster"><i data-icon="trash"></i></button>`}
       </td>
     </tr>`).join('') ||
@@ -239,8 +241,19 @@ function openCandModal(id) {
   $('cDept').value = c ? c.department.id : TEST.departments[0]?.id;
   $('cStatus').value = c?.status || 'Active';
   $('cCode').value = ''; $('cCodeField').hidden = !!c;
+  syncStatusHint();
   $('cErr').style.display = 'none';
   openModal('candModal');
+}
+
+document.addEventListener('change', e => { if (e.target && e.target.id === 'cStatus') syncStatusHint(); });
+
+function syncStatusHint() {
+  const st = $('cStatus').value, hint = $('cStatusHint');
+  if (hint) hint.textContent = st === 'Active'
+    ? 'Active students get an access code (and a PIN when there is no date of birth) automatically.'
+    : `No access code or PIN is created for ${st} students. If this student already has one, it is withdrawn and the old login stops working.`;
+  if (!editId) $('cCodeField').hidden = st !== 'Active';
 }
 
 async function saveCand() {
@@ -248,12 +261,20 @@ async function saveCand() {
                  date_of_birth: $('cDob').value, department_id: Number($('cDept').value), status: $('cStatus').value };
   if (!editId) { body.test_id = TEST.id; if ($('cCode').value.trim()) body.access_code = $('cCode').value.trim(); }
   const btn = $('cSave'); btn.disabled = true;
+  const before = editId ? window.ROWS.find(x => x.id === editId) : null;
   try {
     const { candidate } = editId ? await api('/roster/' + editId, { method: 'PUT', body })
                                  : await api('/roster', { method: 'POST', body });
     closeModal('candModal');
     const pin = candidate.login_with === 'pin' ? ` · PIN ${esc(candidate.pin)}` : '';
-    aToast(editId ? 'Student details updated.' : `Student added · access code ${esc(candidate.access_code)}${pin}`);
+    if (!editId) {
+      aToast(candidate.access_code ? `Student added · access code ${esc(candidate.access_code)}${pin}`
+        : `Student added as ${esc(candidate.status)} · no access code or PIN was generated.`);
+    } else if (before && !before.access_code && candidate.access_code) {
+      aToast(`${esc(candidate.full_name)} is Active · access code ${esc(candidate.access_code)}${pin}. Send their admit card.`);
+    } else if (before && before.access_code && !candidate.access_code) {
+      aToast(`${esc(candidate.full_name)} is ${esc(candidate.status)} · access code and PIN withdrawn; the old login no longer works.`);
+    } else aToast('Student details updated.');
     await loadRoster();
   } catch (e) {
     if (e.status === 401) return handleApiError(e);

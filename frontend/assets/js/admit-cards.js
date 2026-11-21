@@ -43,7 +43,7 @@ function renderAdmit() {
   }
   $('admitResendBtn').hidden = !d.can_resend;
   $('admitBounceBtn').hidden = !(d.bounce_check && c.sent + c.bounced > 0);
-  const first = window.ROWS && window.ROWS[0];
+  const first = window.ROWS && window.ROWS.find(r => r.status === 'Active');   // only Active students have a card
   $('admitPreview').hidden = !first;
   if (first) $('admitPreview').href = `${API_BASE}/admit-cards/${first.id}.pdf?login_url=${encodeURIComponent(candidateLoginUrl())}`;
   $('admitNote').textContent = d.mail_note || '';

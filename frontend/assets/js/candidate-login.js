@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!form) return;
   const err = document.getElementById('authErr'), btn = document.getElementById('loginBtn');
   const show = msg => { err.textContent = msg; err.style.display = 'block'; };
+  if (new URLSearchParams(window.location.search).get('reason') === 'roster-status') {
+    show('Your test access is currently disabled because your roster status is Inactive or Pending. Only Active students may enter the test. Please contact your institution administrator.');
+  }
   const factor = () => form.querySelector('input[name="factor"]:checked').value;
   form.querySelectorAll('input[name="factor"]').forEach(r => r.addEventListener('change', () => {
     document.getElementById('dobField').hidden = factor() !== 'dob';

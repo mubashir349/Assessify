@@ -30,6 +30,7 @@ from app.common.utils import iso, utcnow
 from app.extensions import commit_keep, db
 from app.models.aptitude_test import ANY_DIFFICULTY
 from app.models.candidate import Candidate
+from app.modules.candidate_auth.service import ensure_candidate_active
 from app.models.exam import LOCK_REASONS, ExamAttempt, LockEvent, PaperItem
 from app.models.question import DIFFICULTIES, Question
 
@@ -85,6 +86,7 @@ def _score_and_submit(attempt: ExamAttempt, reason: str, now) -> None:
 # ------------------------------------------------------------------------------------------------ gate
 def gate(candidate: Candidate, now=None) -> dict:
     """What the start page needs: can this candidate start now, and if not, why. Uses the SERVER clock."""
+    ensure_candidate_active(candidate)
     now = now or utcnow()
     sc = candidate.test.schedule
     attempt = attempt_of(candidate)
@@ -129,6 +131,7 @@ def build_paper(candidate: Candidate) -> list[tuple[Question, str]]:
 
     Specific-difficulty rows draw first, then 'any' rows, so an 'any' row can't use up the only easy questions a
     'easy' row needs. A question is never used twice on one paper."""
+    ensure_candidate_active(candidate)
     test = candidate.test
     rows = [r for r in test.rows if r.department_id == candidate.department_id]
     if not rows:
@@ -170,6 +173,7 @@ def _option_order(q: Question) -> list[int]:
 
 def start(candidate: Candidate, now=None) -> ExamAttempt:
     """Pressing Start. Pressing it again (reload, lost connection) returns the same attempt and paper."""
+    ensure_candidate_active(candidate)
     now = now or utcnow()
     attempt = attempt_of(candidate)
     if attempt is not None:
@@ -203,6 +207,7 @@ def start(candidate: Candidate, now=None) -> ExamAttempt:
 
 
 def current(candidate: Candidate) -> ExamAttempt:
+    ensure_candidate_active(candidate)
     attempt = _require_attempt(candidate)
     finalize_if_overdue(attempt)
     return attempt
@@ -220,6 +225,7 @@ def _require_open(attempt: ExamAttempt, now) -> None:
 
 def save_answer(candidate: Candidate, number: int, data: dict, now=None) -> PaperItem:
     """{choice: 0-based position as shown | null (clear), flagged?: bool}. Either key may be left out."""
+    ensure_candidate_active(candidate)
     now = now or utcnow()
     attempt = _require_attempt(candidate)
     _require_open(attempt, now)
@@ -252,6 +258,7 @@ def save_answer(candidate: Candidate, number: int, data: dict, now=None) -> Pape
 
 def lock(candidate: Candidate, reason, now=None) -> ExamAttempt:
     """The browser reports a fullscreen exit / tab switch. Locking twice is harmless (one event)."""
+    ensure_candidate_active(candidate)
     now = now or utcnow()
     attempt = _require_attempt(candidate)
     if finalize_if_overdue(attempt, now) or attempt.status != "in_progress":
@@ -284,6 +291,7 @@ def unlock(attempt: ExamAttempt, user, now=None) -> ExamAttempt:
 def submit(candidate: Candidate, now=None) -> ExamAttempt:
     """The candidate presses Submit, or their timer reached zero. A locked attempt can't be submitted by the
     candidate (it is submitted automatically when time runs out). Submitting twice returns the same result."""
+    ensure_candidate_active(candidate)
     now = now or utcnow()
     attempt = _require_attempt(candidate)
     if finalize_if_overdue(attempt, now) or attempt.status == "submitted":
@@ -299,6 +307,7 @@ def submit(candidate: Candidate, now=None) -> ExamAttempt:
 def result(candidate: Candidate, now=None) -> dict:
     """After submitting. The score is shown only when the test releases results immediately; otherwise the page
     says it will be emailed (Phase 7 sends the emails). Never shows which questions were right or the answers."""
+    ensure_candidate_active(candidate)
     now = now or utcnow()
     attempt = _require_attempt(candidate)
     finalize_if_overdue(attempt, now)

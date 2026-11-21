@@ -16,6 +16,7 @@ const pad = n => String(n).padStart(2, '0');
 function toResult() { S.finishing = true; window.location.replace('candidate-result.html'); }
 
 function handleFatal(e) {
+  if (e.code === 'CANDIDATE_NOT_ACTIVE') return window.location.replace('candidate-login.html?reason=roster-status');
   if (e.status === 401 || (e.status === 403 && e.code !== 'TEST_NOT_STARTED')) return window.location.replace('candidate-login.html');
   if (e.code === 'ATTEMPT_NOT_STARTED' || e.code === 'TEST_NOT_STARTED') return window.location.replace('candidate-start.html');
   if (e.code === 'TIME_UP' || e.code === 'ALREADY_SUBMITTED') return toResult();
@@ -256,6 +257,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('online', flush);
 
   tick(); setInterval(tick, 1000);
-  setInterval(() => { if (S.attempt.status === 'locked') void resync(); }, 10000);
-  setInterval(resync, 30000);
+  setInterval(resync, 10000); // notice promptly when an administrator changes this candidate to Inactive/Pending
 });

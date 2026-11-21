@@ -103,6 +103,21 @@ def test_monitor_lists_tests_with_their_state(app, live):
     assert tests[0]["candidates"] == 4
 
 
+def test_inactive_and_pending_candidates_are_not_test_monitor_participants(app, live):
+    admin, test_id, _ = live
+    from app.models.candidate import Candidate
+
+    Candidate.query.filter_by(test_id=test_id, roll_number="R-2").update({"status": "Inactive"})
+    Candidate.query.filter_by(test_id=test_id, roll_number="R-3").update({"status": "Pending"})
+    db.session.commit()
+
+    data = monitor(admin, test_id)
+    assert data["counts"]["all"] == 2
+    assert {item["roll_number"] for item in data["items"]} == {"R-1", "R-4"}
+    tests = admin.get("/api/v1/monitor/tests").get_json()["data"]["tests"]
+    assert tests[0]["candidates"] == 2
+
+
 def test_monitor_shows_each_status_and_counts(app, live):
     admin, test_id, _ = live
     start(app, 1)                                             # in progress
@@ -199,6 +214,26 @@ def test_overdue_attempt_shows_as_auto_submitted(app, live):
 
 
 # ---------------------------------------------------------------- reports
+def test_reports_exclude_disabled_candidates_without_attempt_but_keep_attempt_history(app, live):
+    admin, test_id, _ = live
+    from app.models.candidate import Candidate
+
+    Candidate.query.filter_by(test_id=test_id, roll_number="R-3").update({"status": "Inactive"})
+    Candidate.query.filter_by(test_id=test_id, roll_number="R-4").update({"status": "Pending"})
+    db.session.commit()
+
+    # R-1 completed before being disabled: its saved result remains part of the historical report.
+    student, data = start(app, 1)
+    answer_right(student, data["questions"], 1)
+    assert student.post("/api/v1/exam/submit").status_code == 200
+    Candidate.query.filter_by(test_id=test_id, roll_number="R-1").update({"status": "Inactive"})
+    db.session.commit()
+
+    result = report(admin, test_id)
+    assert {row["roll_number"] for row in result["candidates"]} == {"R-1", "R-2"}
+    assert result["summary"]["candidates"] == 2
+
+
 def test_report_numbers(app, finished):
     admin, test_id, dept = finished
     data = report(admin, test_id)

@@ -90,6 +90,55 @@ def live(app):
 
 
 # ---------------------------------------------------------------- the time gate
+def test_status_change_revokes_an_existing_candidate_paper_session(app):
+    admin = make_admin(app)
+    test_id, dept = make_test(app, admin, [row(count=6)], roster=1)
+    set_window(app, test_id, -1, 60)
+
+    student = candidate(app, 1)
+    started = student.post("/api/v1/exam/start")
+    assert started.status_code == 200, started.get_json()
+    question_number = started.get_json()["data"]["questions"][0]["number"]
+
+    roster_item = admin.get("/api/v1/roster", query_string={"test_id": test_id}).get_json()["data"]["items"][0]
+    updated = admin.put(f"/api/v1/roster/{roster_item['id']}", json={
+        "full_name": roster_item["full_name"], "email": roster_item["email"],
+        "phone": roster_item["phone"], "roll_number": roster_item["roll_number"],
+        "date_of_birth": roster_item["date_of_birth"], "department_id": roster_item["department"]["id"],
+        "status": "Inactive",
+    })
+    assert updated.status_code == 200, updated.get_json()
+
+    for response in (
+        student.get("/api/v1/exam"),
+        student.get("/api/v1/exam/paper"),
+        student.put(f"/api/v1/exam/answers/{question_number}", json={"choice": 0}),
+        student.post("/api/v1/exam/submit"),
+    ):
+        assert response.status_code == 403, response.get_json()
+        assert response.get_json()["error"]["code"] == "CANDIDATE_NOT_ACTIVE"
+
+    assert updated.get_json()["data"]["candidate"]["access_code"] is None      # the code was withdrawn
+
+    # Reactivating issues a fresh code. The old code and the old session stay dead; the original attempt is intact.
+    updated = admin.put(f"/api/v1/roster/{roster_item['id']}", json={
+        "full_name": roster_item["full_name"], "email": roster_item["email"],
+        "phone": roster_item["phone"], "roll_number": roster_item["roll_number"],
+        "date_of_birth": roster_item["date_of_birth"], "department_id": dept, "status": "Active",
+    })
+    assert updated.status_code == 200, updated.get_json()
+    new_code = updated.get_json()["data"]["candidate"]["access_code"]
+    assert new_code and new_code.replace("-", "") != "CAND0001"
+    assert student.get("/api/v1/exam/paper").status_code == 401
+    again = app.test_client()
+    login = again.post("/api/v1/candidate/login", json={"access_code": new_code,
+                                                          "date_of_birth": roster_item["date_of_birth"]})
+    assert login.status_code == 200, login.get_json()
+    resumed = again.get("/api/v1/exam/paper")
+    assert resumed.status_code == 200, resumed.get_json()
+    assert resumed.get_json()["data"]["attempt"]["status"] == "in_progress"
+
+
 def test_exam_routes_need_a_candidate_session(client, app):
     assert client.get("/api/v1/exam").status_code == 401
     assert client.post("/api/v1/exam/start").status_code == 401

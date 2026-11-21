@@ -499,3 +499,24 @@ Sign-in errors: `402 INSTITUTION_PAYMENT_REQUIRED` (not paid yet) and `402 INSTI
 
 ### Reports
 `GET /reports/tests/<id>/export.xlsx` — same filters as `export.csv`; sheets Summary, Results, By field, By subject.
+
+
+### Candidate eligibility and roster status
+
+Only candidates whose roster status is exactly `Active` may enter or continue an unsubmitted test: login, exam gate,
+start/resume, paper fetch, answer save, lock, and submit are checked against the current database status. Changing an
+already signed-in candidate to `Inactive` or `Pending` revokes their live paper access; the test page detects this on
+its next server resync and redirects to the candidate login page. A previously submitted result remains available for
+historical access, but the candidate cannot open or continue a paper. Reactivating the candidate to `Active` restores
+eligibility for an unsubmitted attempt. Inactive/Pending candidates are excluded from Live Monitor participants and
+counts, but remain visible in the administrative roster for status management.
+
+## Roster status and credentials (Phase 12)
+
+* Access codes and PINs exist **only for Active students**. Creating or editing a student as Inactive or Pending
+  generates nothing (`access_code` and `pin` are `null`); moving an Active student to Inactive / Pending, or removing
+  them, withdraws both and the old login stops working at once. Setting a student back to Active generates a fresh
+  code (and a PIN when there is no date of birth).
+* `POST /roster/<id>/new-code` returns `409 CANDIDATE_NOT_ACTIVE` for a student who is not Active.
+* Slips and the roster export include credentials for Active students only.
+* Nothing is emailed to Inactive, Pending or removed students: admit cards (`ADMIT_CARD_NOT_ELIGIBLE`) and result emails.

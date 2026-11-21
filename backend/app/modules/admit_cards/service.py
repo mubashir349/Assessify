@@ -59,6 +59,9 @@ def _card(c: Candidate, url: str) -> content.Card:
         raise ApiError("ADMIT_CARD_NOT_ELIGIBLE",
                        f"{c.full_name} is {c.status.lower()} and is not eligible for an admit card. "
                        "Only Active students can receive admit cards.", 403)
+    if not c.access_code:
+        raise ApiError("NO_ACCESS_CODE", f"{c.full_name} has no access code yet. Save the student as Active to "
+                       "generate one.", 409)
     return content.build(c, url, _cfg("APP_TIMEZONE", "Asia/Karachi"), _term(c.test))
 
 
@@ -127,9 +130,9 @@ def status(institution_id: int, test_id) -> dict:
     cands = _ordered(test)
     people = [_person(c) for c in cands]
     counts = {k: 0 for k in ("no_email", "not_sent", "sent", "failed", "bounced", "changed")}
-    for p in people:
+    eligible = [p for p in people if p["status"] == "Active"]   # only Active students can receive an admit card
+    for p in eligible:
         counts[p["state"]] += 1
-    eligible = [p for p in people if p["status"] == "Active"]
     status_counts = {status: sum(1 for p in people if p["status"] == status)
                      for status in ("Active", "Inactive", "Pending")}
     reason = blocked_reason(test, cands)
@@ -142,11 +145,11 @@ def status(institution_id: int, test_id) -> dict:
         "with_email": sum(1 for p in eligible if p["email"]), "counts": counts,
         "can_send": reason is None, "blocked_reason": reason, "can_resend": can_resend,
         "mail_note": mail_note, "bounce_check": bool(imap_server()),
-        "no_email": [p for p in people if p["state"] == "no_email"],
-        "problems": [p for p in people if p["state"] in ("failed", "bounced")],
-        "changed": [p for p in people if p["state"] == "changed"],
+        "no_email": [p for p in eligible if p["state"] == "no_email"],
+        "problems": [p for p in eligible if p["state"] in ("failed", "bounced")],
+        "changed": [p for p in eligible if p["state"] == "changed"],
         "sent": [{k: p[k] for k in ("id", "full_name", "roll_number", "email", "sent_at")}
-                 for p in people if p["state"] == "sent"],
+                 for p in eligible if p["state"] == "sent"],
     }
 
 

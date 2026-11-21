@@ -3,7 +3,6 @@
 Every query is filtered by the signed-in admin's institution_id (taken from the login, never from the request),
 so one institution can never read or change another institution's attempts or questions - they simply get 404.
 """
-
 import hashlib
 import json
 import logging

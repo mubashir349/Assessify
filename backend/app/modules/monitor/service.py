@@ -57,7 +57,8 @@ def _candidate_counts(test_ids: list[int]) -> dict:
     if not test_ids:
         return {}
     rows = (db.session.query(Candidate.test_id, func.count(Candidate.id))
-            .filter(Candidate.test_id.in_(test_ids)).group_by(Candidate.test_id).all())
+            .filter(Candidate.test_id.in_(test_ids), Candidate.status == "Active", Candidate.is_deleted == False)
+            .group_by(Candidate.test_id).all())
     return dict(rows)
 
 
@@ -129,9 +130,14 @@ def snapshot(institution_id: int, args, offline_after: int, now=None) -> dict:
     now = now or utcnow()
     status, dept_id, search = _filters(args)
     test = published_test(institution_id, args.get("test_id"))
-    candidates = Candidate.query.filter_by(test_id=test.id).order_by(Candidate.roll_number, Candidate.id).all()
-    for c in candidates:
+    # Finalize overdue attempts even if their roster status was changed, preserving the scored history.
+    all_candidates = Candidate.query.filter_by(test_id=test.id).all()
+    for c in all_candidates:
         finalize_if_overdue(c.attempt, now)
+    # The live monitor represents eligible test participants only. Inactive/Pending candidates remain
+    # visible in the administrative roster, but are not counted or listed as test participants.
+    candidates = [c for c in all_candidates if c.status == "Active" and not c.is_deleted]
+    candidates.sort(key=lambda c: (c.roll_number or "", c.id))
     rows = [_row(c, now, offline_after) for c in candidates]
     counts = dict.fromkeys(MONITOR_STATUSES, 0)
     for r in rows:
