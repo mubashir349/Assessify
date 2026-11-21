@@ -7,6 +7,7 @@ Refusals:
   wrong code OR wrong date of birth / PIN -> 401 INVALID_ACCESS_CODE (one message for all, so a code can't be confirmed)
   too many wrong tries               -> 429 TOO_MANY_ATTEMPTS (per code: guessing the date of birth of a leaked slip;
                                         per network address, looser: guessing codes. Exam halls share one address.)
+  inactive / pending roster status  -> 403 CANDIDATE_NOT_ACTIVE
   institution not approved any more  -> 403 INSTITUTION_NOT_ACTIVE
   the test's window has ended        -> 403 TEST_CLOSED
 Before the start time the login works; the start page shows the countdown (Phase 6 enforces it on the server).
@@ -84,8 +85,31 @@ def authenticate(access_code, date_of_birth, remote_addr: str | None, pin=None) 
     return candidate
 
 
+def ensure_candidate_active(candidate: Candidate) -> None:
+    """Only Active roster entries may access a test paper.
+
+    This is checked at login and on every authenticated candidate request so changing a
+    candidate to Inactive or Pending also revokes an already-issued candidate session.
+    """
+    if candidate.is_deleted:
+        raise ApiError(
+            "CANDIDATE_NOT_ACTIVE",
+            "Your test access has been removed from the roster. Please contact your institution administrator.",
+            403,
+        )
+    if candidate.status != "Active":
+        status = candidate.status or "Inactive"
+        raise ApiError(
+            "CANDIDATE_NOT_ACTIVE",
+            f"Your test access is disabled because your roster status is {status}. "
+            "Only Active students may enter or continue this test. Please contact your institution administrator.",
+            403,
+        )
+
+
 def check_can_continue(candidate: Candidate, *, allow_ended: bool = False) -> None:
-    """Re-checked on every candidate request, like the admin login: suspending an institution cuts candidates off."""
+    """Re-check eligibility on every candidate request, including already-issued sessions."""
+    ensure_candidate_active(candidate)
     if candidate.institution is None or candidate.institution.status != "approved":
         raise ApiError("INSTITUTION_NOT_ACTIVE", "This institution's tests are not available right now.", 403)
     test = candidate.test

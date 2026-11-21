@@ -140,3 +140,39 @@ def test_inactive_and_pending_students_cannot_download_admit_cards(app, cards):
     assert update_status(inactive, "Active").status_code == 200
     restored = admin.get(f"/api/v1/admit-cards/{inactive['id']}.pdf")
     assert restored.status_code == 200 and restored.data.startswith(b"%PDF-")
+
+
+def _set_status(admin, person, status, department_id=None):
+    return admin.put(f"/api/v1/roster/{person['id']}", json={
+        "full_name": person["full_name"], "email": person["email"], "phone": person.get("phone"),
+        "roll_number": person["roll_number"], "date_of_birth": person["date_of_birth"],
+        "department_id": department_id or person["department"]["id"], "status": status})
+
+
+def test_no_admit_card_email_goes_to_inactive_or_pending_students(app, cards):
+    admin, test_id, department_id, batch = cards
+    people = admin.get(f"/api/v1/roster?test_id={test_id}").get_json()["data"]["items"]
+    assert _set_status(admin, people[0], "Inactive", department_id).status_code == 200
+    assert _set_status(admin, people[1], "Pending", department_id).status_code == 200
+
+    sent = admin.post("/api/v1/admit-cards/send", json={"test_id": test_id}).get_json()["data"]
+    assert len(sent["sent"]) == 2 and len(batch.sent) == 2
+    assert {m["to"] for m in batch.sent}.isdisjoint({people[0]["email"], people[1]["email"]})
+    # asking for them by name is refused as well
+    refused = admin.post("/api/v1/admit-cards/send", json={"test_id": test_id, "candidate_ids": [people[0]["id"]],
+                                                          "resend": True})
+    assert refused.status_code == 403 and len(batch.sent) == 2
+
+
+def test_result_emails_skip_inactive_students(app, finished, monkeypatch):
+    admin, test_id, _ = finished
+    delivered = []
+    monkeypatch.setattr(report_emails, "send_mail",
+                        lambda to, subject, body, attachments=None: delivered.append(to) or "logged")
+    items = admin.get(f"/api/v1/roster?test_id={test_id}").get_json()["data"]["items"]
+    person = next(i for i in items if i["attempt"] and i["attempt"]["status"] == "submitted")
+    assert _set_status(admin, person, "Inactive").status_code == 200
+
+    response = admin.post(f"/api/v1/reports/tests/{test_id}/send-results", json={})
+    assert response.status_code == 200, response.get_json()
+    assert person["email"] not in delivered and len(delivered) == 2

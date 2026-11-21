@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try { [{ candidate: me }] = await Promise.all([api('/candidate/me'), loadGate()]); }
   catch (e) {
+    if (e.code === 'CANDIDATE_NOT_ACTIVE') return window.location.replace('candidate-login.html?reason=roster-status');
     if (e.status === 401 || e.status === 403) return window.location.replace('candidate-login.html');
     return say('warn', 'Cannot load your test', esc(e.message));
   }
@@ -75,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await api('/exam/start', { method: 'POST' });
       window.location.href = 'candidate-test.html';
     } catch (e) {
+      if (e.code === 'CANDIDATE_NOT_ACTIVE') return window.location.replace('candidate-login.html?reason=roster-status');
       if (e.code === 'ALREADY_SUBMITTED') return window.location.replace('candidate-result.html');
       setBtnLoading(startBtn, false); startBtn.innerHTML = 'Start test ' + AIcon('arrow-right');
       say('warn', 'Could not start', esc(e.message));

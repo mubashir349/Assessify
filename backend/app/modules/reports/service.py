@@ -7,7 +7,7 @@ import csv
 import io
 import statistics
 
-from sqlalchemy import extract
+from sqlalchemy import and_, extract, or_
 
 from app.common.errors import ApiError
 from app.common.mailer import mail_ready
@@ -62,8 +62,20 @@ def list_tests(institution_id: int, args, now=None) -> list[dict]:
     return [_test_card(t, now) for t in tests]
 
 
+def _report_candidates(test_id: int) -> list[Candidate]:
+    """Active roster entries plus anyone with an existing attempt (preserve historical results).
+
+    A candidate switched to Inactive/Pending before starting is excluded from test reports; completed or
+    previously-started attempts remain available for audit/history instead of being erased by a status change.
+    """
+    return Candidate.query.filter(
+        Candidate.test_id == test_id,
+        or_(and_(Candidate.status == "Active", Candidate.is_deleted == False), Candidate.attempt.has()),
+    ).all()
+
+
 def _test_card(test: AptitudeTest, now) -> dict:
-    candidates = Candidate.query.filter_by(test_id=test.id).all()
+    candidates = _report_candidates(test.id)
     for c in candidates:
         finalize_if_overdue(c.attempt, now)
     done = [c.attempt for c in candidates if c.attempt and c.attempt.status == "submitted"]
@@ -258,7 +270,7 @@ def mail_status(r: dict) -> str:
 def load(institution_id: int, test_id, now=None) -> tuple[AptitudeTest, list[Candidate], list[dict]]:
     now = now or utcnow()
     test = published_test(institution_id, test_id)
-    candidates = Candidate.query.filter_by(test_id=test.id).all()
+    candidates = _report_candidates(test.id)
     for c in candidates:
         finalize_if_overdue(c.attempt, now)
     rows = [_candidate_row(c) for c in candidates]

@@ -72,11 +72,13 @@
     <section class="a-card ib-card" id="reviewPanel" hidden>
       <div class="section-head"><div><h2>3. AI recommendations</h2><p>Every suggestion is independent. Select only the changes you personally approve.</p></div><span class="badge badge-ai">Optional AI review</span></div>
       <div class="ib-ai-banner"><i data-icon="shield-check"></i><span>AI suggestions never change your questions automatically. Unchecked suggestions remain unapplied. Low-confidence items require teacher verification.</span></div>
-      <div class="ib-review-tools"><label><input type="checkbox" id="selectAllRecommendations" /> Select all recommendations</label><span id="recommendationCount" class="a-chip">0 recommendations</span></div>
+      <div class="ib-review-tools"><label><input type="checkbox" id="selectAllRecommendations" /> Select all recommendations</label><button class="a-btn a-btn-ghost a-btn-sm" type="button" id="selectHighConfBtn">Select high-confidence only</button><span id="recommendationCount" class="a-chip">0 recommendations</span><span id="appliedCount" class="a-chip">0 applied</span></div>
       <div id="recommendationList" class="ib-recommendation-list"></div>
       <div class="ib-actions ib-actions-wrap">
         <button class="a-btn a-btn-primary" type="button" id="applySelectedBtn">Apply selected recommendations</button>
+        <button class="a-btn a-btn-ghost" type="button" id="revertAiBtn" disabled>Revert all AI changes</button>
         <button class="a-btn a-btn-ghost" type="button" id="continueUnchangedBtn">Continue without applying recommendations</button>
+        <button class="a-btn a-btn-ghost" type="button" id="backToPreviewBtn">Back to edit questions</button>
       </div>
       <div class="hint" id="reviewStatus"></div>
     </section>

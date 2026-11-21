@@ -58,6 +58,17 @@ def cand_login(app, code, dob):
     return app.test_client().post("/api/v1/candidate/login", json={"access_code": code, "date_of_birth": dob})
 
 
+def set_roster_status(admin_client, test_id, roll_number, status):
+    item = next(x for x in roster(admin_client, test_id)["items"] if x["roll_number"] == roll_number)
+    response = admin_client.put(f"/api/v1/roster/{item['id']}", json={
+        "full_name": item["full_name"], "email": item["email"], "phone": item["phone"],
+        "roll_number": item["roll_number"], "date_of_birth": item["date_of_birth"],
+        "department_id": item["department"]["id"], "status": status,
+    })
+    assert response.status_code == 200, response.get_json()
+    return item
+
+
 # ---------------------------------------------------------------- access + roster belongs to a published test
 def test_roster_requires_institution_admin(client, app):
     assert client.get("/api/v1/roster?test_id=1").status_code == 401
@@ -292,6 +303,54 @@ def test_imported_candidate_can_log_in_and_a_wrong_code_is_refused(app, admin):
     assert r.status_code == 401
     assert r.get_json()["error"]["code"] == "INVALID_ACCESS_CODE"
     assert roster(c, test_id, q="Sana")["items"][0]["login_count"] == 1
+
+
+def test_inactive_and_pending_students_hold_no_code_or_pin_and_old_logins_stop(app, admin):
+    c, test_id, _, _ = admin
+    upload(c, test_id, GOOD)
+    old = {q: roster(c, test_id, q=q)["items"][0]["access_code"] for q in ("Ahmed", "Sana")}
+    assert all(old.values())
+    set_roster_status(c, test_id, "PE-001", "Inactive")
+    set_roster_status(c, test_id, "PM-001", "Pending")
+
+    for q in ("Ahmed", "Sana"):                       # nothing is kept for them: no code and no PIN
+        item = roster(c, test_id, q=q)["items"][0]
+        assert item["access_code"] is None and item["pin"] is None
+    for code, dob in ((old["Ahmed"], "2008-03-14"), (old["Sana"], "2007-07-02")):
+        response = cand_login(app, code, dob)         # the withdrawn code no longer exists
+        assert response.status_code == 401, response.get_json()
+        assert response.get_json()["error"]["code"] == "INVALID_ACCESS_CODE"
+
+
+def test_reactivating_a_student_generates_a_fresh_code(app, admin):
+    c, test_id, _, _ = admin
+    upload(c, test_id, GOOD)
+    old = roster(c, test_id, q="Ahmed")["items"][0]["access_code"]
+    set_roster_status(c, test_id, "PE-001", "Pending")
+    set_roster_status(c, test_id, "PE-001", "Active")
+    new = roster(c, test_id, q="Ahmed")["items"][0]["access_code"]
+    assert new and new != old
+    assert cand_login(app, old, "2008-03-14").status_code == 401
+    assert cand_login(app, new, "2008-03-14").status_code == 200
+
+
+def test_new_inactive_student_is_created_without_code_or_pin(app, admin):
+    c, test_id, eng, _ = admin
+    body = {"test_id": test_id, "full_name": "Zara Ali", "email": "zara@mail.com", "roll_number": "PE-050",
+            "date_of_birth": "", "department_id": eng, "status": "Pending"}
+    r = c.post("/api/v1/roster", json=body)
+    assert r.status_code == 201, r.get_json()
+    person = r.get_json()["data"]["candidate"]
+    assert person["access_code"] is None and person["pin"] is None
+
+    typed = c.post("/api/v1/roster", json={**body, "full_name": "Omar Ali", "email": "omar@mail.com",
+                                           "roll_number": "PE-051", "status": "Inactive", "access_code": "OMAR2026"})
+    assert typed.status_code >= 400                   # a typed code is refused for a student without access
+
+    slips = c.get(f"/api/v1/roster/slips?test_id={test_id}").get_json()["data"]["slips"]
+    assert all(x["full_name"] != "Zara Ali" for x in slips)          # no slip is printed for them
+    assert c.post(f"/api/v1/roster/{person['id']}/new-code").status_code == 409   # and none can be forced
+
 
 
 def test_candidate_session_and_logout(app, admin):

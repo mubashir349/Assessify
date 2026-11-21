@@ -59,6 +59,10 @@ class Candidate(db.Model):
               mssql_where=db.text("is_deleted = 0 AND roll_number IS NOT NULL"),
               sqlite_where=db.text("is_deleted = 0 AND roll_number IS NOT NULL")),
         Index("ix_candidates_test_status_deleted", "test_id", "status", "is_deleted"),
+        # Only issued codes must be unique: Inactive / Pending students have none (NULL).
+        Index("uq_candidates_code_issued", "access_code", unique=True,
+              mssql_where=db.text("access_code IS NOT NULL"),
+              sqlite_where=db.text("access_code IS NOT NULL")),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -75,7 +79,8 @@ class Candidate(db.Model):
     status = db.Column(db.String(12), nullable=False, default="Active", server_default="Active", index=True)
     is_deleted = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false(), index=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
-    access_code = db.Column(db.String(20), nullable=False, unique=True)   # stored upper-case
+    # stored upper-case. NULL = no code issued: only Active students get an access code (and PIN).
+    access_code = db.Column(db.String(20), nullable=True)
     code_generated = db.Column(db.Boolean, nullable=False, default=True)  # False = supplied in the CSV
     last_login_at = db.Column(db.DateTime, nullable=True)
     login_count = db.Column(db.Integer, nullable=False, default=0)

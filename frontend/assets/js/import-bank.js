@@ -1,6 +1,9 @@
 /* Existing Question Bank import wizard. Extraction is separate from optional AI review. */
 const $ = id => document.getElementById(id);
 let META = null, DEPTS = [], draft = null, aiRecommendations = [], originalQuestions = [];
+// Snapshot of the questions taken the moment an AI review starts, so every applied change can be reverted.
+let reviewBaseline = null, appliedCount = 0;
+const cleanForServer = q => { const { ai_edited, ...rest } = q; return rest; };   // ai_edited is a screen-only marker
 const MAP_FIELDS = [
   ['text', 'Question statement', true], ['correct_answer', 'Correct answer', false], ['options', 'All options (one column)', false],
   ['option_a', 'Option A', false], ['option_b', 'Option B', false], ['option_c', 'Option C', false], ['option_d', 'Option D', false],
@@ -118,7 +121,23 @@ function renderPreview() {
   showWarnings(draft.warnings || []);
   setStage('preview');
   $('previewPanel').hidden = false;
+  syncContinueLabels();
   if (window.AIcons) AIcons.hydrate($('previewPanel'));
+}
+function syncContinueLabels() {
+  // After an AI review has changed the questions, "Continue without AI" would be wrong: those changes are kept.
+  const edited = (draft?.questions || []).filter(q => q.ai_edited).length;
+  $('withoutAiBtn').textContent = edited ? `Continue to final review (${edited} AI-edited)` : 'Continue without AI';
+}
+function syncReviewButtons() {
+  $('appliedCount').textContent = `${appliedCount} applied`;
+  $('revertAiBtn').disabled = appliedCount === 0;
+  const cont = $('continueUnchangedBtn');
+  cont.textContent = appliedCount ? `Continue to final review (${appliedCount} applied)` : 'Continue without applying recommendations';
+  cont.classList.toggle('a-btn-primary', appliedCount > 0);
+  cont.classList.toggle('a-btn-ghost', appliedCount === 0);
+  $('applySelectedBtn').classList.toggle('a-btn-primary', appliedCount === 0);
+  $('applySelectedBtn').classList.toggle('a-btn-ghost', appliedCount > 0);
 }
 function captureQuestions() {
   // The preview DOM is hidden during AI review/final review. Do not overwrite accepted AI changes with stale DOM.
@@ -179,9 +198,12 @@ async function requestAiReview() {
   $('reviewAiBtn').disabled = true; $('reviewAiBtn').textContent = 'Reviewing questions with AI…';
   try {
     captureQuestions();
-    const result = await api(`/questions/imports/${draft.token}/ai-review`, { method: 'POST', body: { questions: draft.questions } });
+    const result = await api(`/questions/imports/${draft.token}/ai-review`, { method: 'POST', body: { questions: draft.questions.map(cleanForServer) } });
     aiRecommendations = result.recommendations || [];
+    reviewBaseline = structuredClone(draft.questions);      // "no AI changes applied" state, for Revert
+    appliedCount = 0;
     renderRecommendations(result.recommendation_count || 0);
+    syncReviewButtons();
     setStage('review'); $('reviewPanel').hidden = false;
   } catch (e) { handleApiError(e); }
   finally { $('reviewAiBtn').disabled = false; $('reviewAiBtn').innerHTML = '<i data-icon="sparkles"></i> Review Question Bank with AI Recommendations'; if (window.AIcons) AIcons.hydrate($('reviewAiBtn')); }
@@ -204,6 +226,9 @@ function renderRecommendations(total) {
   $('selectAllRecommendations').checked = false;
 }
 function applySelectedRecommendations() {
+  if (!$('recommendationList').querySelector('input[type="checkbox"][data-rec-q]:checked:not(:disabled)')) {
+    return aToast('Tick at least one recommendation first.', '⚠');
+  }
   let count = 0;
   $('recommendationList').querySelectorAll('input[type="checkbox"][data-rec-q]:checked').forEach(box => {
     const qi = Number(box.dataset.recQ), ri = Number(box.dataset.recI), rec = aiRecommendations.find(g => g.question_number - 1 === qi)?.items?.[ri];
@@ -224,13 +249,32 @@ function applySelectedRecommendations() {
       q[rec.field] = structuredClone(rec.suggested_value);
     }
     count++;
+    q.ai_edited = true;
     box.disabled = true;
     box.checked = true;
     box.closest('.ib-rec-row').classList.add('applied');
     box.closest('.ib-rec-row').querySelector('.ib-rec-content').insertAdjacentHTML('beforeend', '<span class="badge badge-approved">Applied by teacher</span>');
   });
-  $('reviewStatus').textContent = `${count} selected recommendation(s) applied. Unselected recommendations were left unchanged.`;
+  appliedCount += count;
+  syncReviewButtons();
+  $('reviewStatus').textContent = `${count} selected recommendation(s) applied (${appliedCount} in total). Unselected recommendations were left unchanged. Use "Revert all AI changes" to undo them.`;
   aToast(`${count} selected recommendation(s) applied to your working preview.`, '✓');
+}
+function revertAiChanges() {
+  if (!reviewBaseline || !appliedCount) return;
+  if (!confirm('Remove all applied AI changes? Your questions go back to how they were before this AI review started.')) return;
+  draft.questions = structuredClone(reviewBaseline);
+  appliedCount = 0;
+  renderRecommendations(aiRecommendations.reduce((n, g) => n + g.items.length, 0));   // boxes are free to tick again
+  syncReviewButtons();
+  $('reviewStatus').textContent = 'All AI changes were reverted. Your questions are exactly as they were before the review.';
+  aToast('AI changes reverted.', '✓');
+}
+function selectHighConfidence() {
+  $('recommendationList').querySelectorAll('input[type="checkbox"][data-rec-q]:not(:disabled)').forEach(box => {
+    const rec = aiRecommendations.find(g => g.question_number - 1 === Number(box.dataset.recQ))?.items?.[Number(box.dataset.recI)];
+    box.checked = !!rec && rec.confidence === 'high' && !rec.requires_verification;
+  });
 }
 function finalReview() {
   captureQuestions();
@@ -239,10 +283,10 @@ function finalReview() {
   if (title.length < 2 || !deptId || !subject) return aToast('Complete bank title, department and subject before saving.', '⚠');
   const duplicates = draft.questions.filter(q => q.possible_duplicate).length;
   const incomplete = draft.questions.filter(q => !q.text || q.text.trim().length < 10 || !Array.isArray(q.options) || q.options.length < 2 || q.options.some(x => !String(x).trim()) || !Number.isInteger(q.correct_index)).length;
-  $('finalSummary').innerHTML = `<span class="a-chip">${draft.questions.length} reviewed questions</span><span class="a-chip">${duplicates} possible duplicates (exact matches are skipped)</span><span class="a-chip">${incomplete} incomplete — edit before saving</span><span class="a-chip">Source: ${esc(draft.filename)}</span>`;
+  $('finalSummary').innerHTML = `<span class="a-chip">${draft.questions.length} reviewed questions</span><span class="a-chip">${duplicates} possible duplicates (exact matches are skipped)</span><span class="a-chip">${incomplete} incomplete — edit before saving</span><span class="a-chip">${draft.questions.filter(q => q.ai_edited).length} edited by AI recommendations</span><span class="a-chip">Source: ${esc(draft.filename)}</span>`;
   $('finalQuestionList').innerHTML = draft.questions.map((q, i) => {
     const answer = Number.isInteger(q.correct_index) && q.options?.[q.correct_index] ? `${String.fromCharCode(65+q.correct_index)}. ${q.options[q.correct_index]}` : 'Not selected';
-    return `<article class="ib-final-q"><strong>Question ${i+1}. ${esc(q.text)}</strong><p>${(q.options || []).map((o, j) => `${String.fromCharCode(65+j)}. ${esc(o)}`).join('\n')}</p><small>Correct answer: ${esc(answer)} · Marks: ${esc(q.marks)} · Difficulty: ${esc(q.difficulty)}${q.topic ? ` · Topic: ${esc(q.topic)}` : ''}</small>${q.warnings?.length ? `<div class="ib-qflags">${q.warnings.map(w => `<span class="flag warn">${esc(w)}</span>`).join('')}</div>` : ''}</article>`;
+    return `<article class="ib-final-q"><strong>Question ${i+1}. ${esc(q.text)}</strong>${q.ai_edited ? ' <span class="badge badge-ai">AI-edited</span>' : ''}<p>${(q.options || []).map((o, j) => `${String.fromCharCode(65+j)}. ${esc(o)}`).join('\n')}</p><small>Correct answer: ${esc(answer)} · Marks: ${esc(q.marks)} · Difficulty: ${esc(q.difficulty)}${q.topic ? ` · Topic: ${esc(q.topic)}` : ''}</small>${q.warnings?.length ? `<div class="ib-qflags">${q.warnings.map(w => `<span class="flag warn">${esc(w)}</span>`).join('')}</div>` : ''}</article>`;
   }).join('');
   setStage('save'); $('finalPanel').hidden = false;
 }
@@ -261,7 +305,7 @@ async function saveBank() {
   const title = $('bankTitle').value.trim(), department_id = Number($('bankDept').value), subject = $('bankSubject').value;
   if (title.length < 2 || !department_id || !subject) return aToast('Complete bank title, department and subject.', '⚠');
   $('saveImportedBankBtn').disabled = true; $('saveImportedBankBtn').textContent = 'Saving…'; $('saveStatus').textContent = 'Saving the teacher-reviewed version to the existing Question Bank…';
-  const questions = draft.questions.map(q => ({ ...q, marks: Number(q.marks), correct_index: Number(q.correct_index) }));
+  const questions = draft.questions.map(q => ({ ...cleanForServer(q), marks: Number(q.marks), correct_index: Number(q.correct_index) }));
   try {
     const result = await api(`/questions/imports/${draft.token}/save`, { method: 'POST', body: { title, department_id, subject, questions } });
     const skipped = result.skipped_duplicates?.length || 0;
@@ -289,6 +333,9 @@ function init() {
   $('withoutAiBtn').addEventListener('click', () => { if (validateBeforeReview()) finalReview(); });
   $('continueUnchangedBtn').addEventListener('click', () => finalReview());
   $('applySelectedBtn').addEventListener('click', applySelectedRecommendations);
+  $('revertAiBtn').addEventListener('click', revertAiChanges);
+  $('selectHighConfBtn').addEventListener('click', selectHighConfidence);
+  $('backToPreviewBtn').addEventListener('click', () => renderPreview());
   $('selectAllRecommendations').addEventListener('change', e => $('recommendationList').querySelectorAll('input[type="checkbox"][data-rec-q]:not(:disabled)').forEach(c => c.checked = e.target.checked));
   $('backToEditBtn').addEventListener('click', () => { renderPreview(); });
   $('saveImportedBankBtn').addEventListener('click', () => void saveBank());

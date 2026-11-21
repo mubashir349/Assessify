@@ -60,6 +60,8 @@ def _targets(candidates: list[Candidate], ids: set[int] | None, resend: bool) ->
         a = c.attempt
         if a is None or a.status != "submitted" or (ids is not None and c.id not in ids) or not c.email:
             continue                      # Phase 9: a candidate without an email is skipped (shown as "no email")
+        if c.is_deleted or c.status != "Active":
+            continue                      # Phase 12: nothing is emailed to an Inactive / Pending / removed student
         if resend or a.result_email is None or a.result_email.status == "failed":
             out.append(c)
     return out
